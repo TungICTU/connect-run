@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>connect run</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg: #0a1a2c;
+    --bg-deep: #071322;
+    --panel: #0f2440;
+    --panel-line: rgba(94,200,216,0.14);
+    --ink: #e9eef5;
+    --ink-dim: #8fa8bf;
+    --amber: #f2a65a;
+    --amber-dim: rgba(242,166,90,0.35);
+    --cyan: #5ec8d8;
+    --cyan-dim: rgba(94,200,216,0.35);
+    --green: #6fcf97;
+    --red: #e85d4e;
+    --gold: #f2c94c;
+    --cell-gap: 4px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0; padding:0;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(94,200,216,0.06), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(242,166,90,0.05), transparent 45%),
+      var(--bg);
+    color: var(--ink);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  body{ display:flex; flex-direction:column; align-items:center; padding: 18px 12px 40px; gap: 12px; }
+
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(var(--panel-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--panel-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events:none; opacity:0.5; z-index:0;
+  }
+
+  .app{
+    position:relative; z-index:1; width:100%; max-width: 520px;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+
+  header.hud{
+    width:100%; background: var(--panel);
+    border: 1px solid var(--panel-line); border-radius: 10px;
+    padding: 12px 16px;
+    display:flex; flex-wrap: wrap; align-items:center; justify-content: space-between;
+    gap: 8px 16px;
+  }
+
+  .logo{
+    font-family:'JetBrains Mono', monospace; font-weight:700; letter-spacing: 2px; font-size: 14px;
+    color: var(--cyan); text-shadow: 0 0 10px var(--cyan-dim); white-space: nowrap;
+  }
+
+  .stats{ display:flex; gap: 14px; flex-wrap: wrap; }
+  .stat{ display:flex; flex-direction:column; gap:1px; }
+  .stat .label{ font-size: 9px; letter-spacing: 1px; color: var(--ink-dim); text-transform: uppercase; }
+  .stat .value{ font-family:'JetBrains Mono', monospace; font-size: 15px; font-weight:600; }
+  .stat.score .value{ color: var(--amber); }
+  .stat.target .value{ color: var(--ink); }
+  .stat.money .value{ color: var(--gold); }
+  .stat.level .value{ color: var(--ink); }
+
+  button{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size: 13px;
+    border-radius: 7px; border: 1px solid var(--cyan-dim);
+    background: rgba(94,200,216,0.08); color: var(--cyan);
+    padding: 7px 12px; cursor:pointer; transition: background .15s, transform .1s;
+  }
+  button:hover{ background: rgba(94,200,216,0.18); }
+  button:active{ transform: scale(0.96); }
+  button:focus-visible{ outline: 2px solid var(--cyan); outline-offset:2px; }
+  button:disabled{ opacity:0.32; cursor:not-allowed; }
+  button.gold{ border-color: rgba(242,201,76,0.4); color: var(--gold); background: rgba(242,201,76,0.08); }
+  button.gold:hover{ background: rgba(242,201,76,0.18); }
+
+  .instructions{ font-size: 12px; color: var(--ink-dim); text-align:center; line-height:1.5; max-width: 440px; }
+
+  .ball-queue{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:center; }
+  .ball-chip{
+    width: 28px; height:28px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #fff, var(--amber) 65%);
+    box-shadow: 0 0 8px 2px var(--amber-dim);
+    position:relative; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-size: 8px; font-weight:700; color: #0a1a2c;
+    cursor: default;
+  }
+  .ball-chip.fired{ background: rgba(255,255,255,0.06); box-shadow:none; color: var(--ink-dim); opacity: 0.5; }
+  .ball-chip[data-prop]:not(.fired){ box-shadow: 0 0 0 2px var(--prop-color), 0 0 8px 2px var(--prop-color); }
+  .ball-chip.targetable{ cursor:pointer; animation: targetPulse 1s ease-in-out infinite; }
+  @keyframes targetPulse{ 0%,100%{ box-shadow:0 0 0 2px var(--green),0 0 8px 2px var(--green);} 50%{ box-shadow:0 0 0 2px var(--green),0 0 14px 6px var(--green);} }
+
+  .card-hand{ width:100%; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .power-card-chip{
+    display:flex; align-items:center; gap:8px;
+    background: var(--panel); border:1px solid var(--panel-line); border-radius:7px;
+    padding:6px 10px; font-size:12px;
+  }
+  .power-card-chip .name{ color:var(--cyan); font-weight:600; }
+  .card-hand .tag-empty{ font-size:11px; color:var(--ink-dim); }
+
+  .target-banner{
+    position:fixed; top:10px; left:50%; transform:translateX(-50%);
+    background: var(--panel); border:1px solid var(--amber-dim); border-radius:8px;
+    padding:8px 14px; display:flex; align-items:center; gap:10px;
+    font-size:13px; color:var(--amber); z-index: 60; box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  }
+  .target-banner.hidden{ display:none; }
+
+  .board-wrap{ position:relative; width: min(92vw, 460px); aspect-ratio: 1 / 1; }
+
+  .discard-row{ display:flex; justify-content:center; align-items:center; gap:8px; }
+  .discard-btn{ border-color:var(--red); color:var(--red); }
+  .discard-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .board{
+    position:relative; z-index:1; width:100%; height:100%; display:grid; gap: var(--cell-gap);
+    background: var(--bg-deep); border: 1px solid var(--panel-line); border-radius: 10px;
+    padding: var(--cell-gap); box-shadow: inset 0 0 30px rgba(0,0,0,0.4);
+  }
+
+  @keyframes placeIn{
+    0%{ transform: scale(0.4) rotate(var(--place-deg,0deg)); opacity:0.2; }
+    65%{ transform: scale(1.15) rotate(var(--place-deg,0deg)); opacity:1; }
+    100%{ transform: scale(1) rotate(var(--place-deg,0deg)); opacity:1; }
+  }
+  .cell.just-placed .block-visual{ animation: placeIn .32s cubic-bezier(.34,1.56,.64,1); }
+
+  .cell{
+    position:relative; background: rgba(255,255,255,0.02);
+    border: 1px dashed rgba(94,200,216,0.12); border-radius: 5px; touch-action: none;
+  }
+  .cell.empty.drop-hover{ background: rgba(94,200,216,0.14); border-color: var(--cyan); }
+  .cell.hasblock{ cursor: grab; border-style: solid; border-color: rgba(94,200,216,0.08); }
+  .cell.hasblock:active{ cursor: grabbing; }
+  .cell.targetable{ cursor:pointer; animation: cellTargetPulse 1s ease-in-out infinite; }
+  @keyframes cellTargetPulse{ 0%,100%{ box-shadow:inset 0 0 0 2px var(--green);} 50%{ box-shadow:inset 0 0 0 2px var(--green), 0 0 10px var(--green);} }
+
+  .cell.blocked-flash{ animation: flashRed .4s ease; }
+  @keyframes flashRed{ 0%,100%{ background: rgba(255,255,255,0.02); } 40%{ background: rgba(232,93,78,0.35); } }
+
+  .block-visual{ position:absolute; inset:0; transition: transform .28s cubic-bezier(.34,1.56,.64,1); transform-origin: 50% 50%; }
+  .arm{ position:absolute; background: var(--cyan); box-shadow: 0 0 7px var(--cyan-dim); border-radius: 3px; }
+  .arm-N{ top:0; left:50%; width:24%; height:54%; transform:translateX(-50%); }
+  .arm-S{ bottom:0; left:50%; width:24%; height:54%; transform:translateX(-50%); }
+  .arm-E{ right:0; top:50%; height:24%; width:54%; transform:translateY(-50%); }
+  .arm-W{ left:0; top:50%; height:24%; width:54%; transform:translateY(-50%); }
+
+  .hub{
+    position:absolute; top:50%; left:50%; width:28%; height:28%; transform:translate(-50%,-50%);
+    border-radius:50%; background: var(--cyan); box-shadow: 0 0 8px var(--cyan-dim);
+  }
+
+  .prop-ring{ position:absolute; inset: 3px; border-radius: 4px; border: 2px solid var(--prop-color); box-shadow: 0 0 6px var(--prop-color); pointer-events:none; }
+  .prop-badge{
+    position:absolute; top:2px; left:2px; font-family:'JetBrains Mono', monospace; font-size: 8px; font-weight:700;
+    color: var(--prop-color); background: rgba(7,19,34,0.7); border-radius:3px; padding: 0 2px; z-index:2;
+  }
+  .enh-badge{
+    position:absolute; bottom:2px; right:2px; font-family:'JetBrains Mono', monospace; font-size: 8px; font-weight:700;
+    color: var(--enh-color); background: rgba(7,19,34,0.7); border-radius:3px; padding: 0 2px; z-index:2;
+  }
+
+  /* node: styled like a connector block with one amber arm + a launch-button hub */
+  .cell.node{ cursor:pointer; }
+  .cell.node .arm{ background: var(--amber); box-shadow: 0 0 9px var(--amber-dim); }
+  .cell.node .hub{
+    width:46%; height:46%;
+    background: var(--amber);
+    box-shadow: none;
+  }
+
+  .cell.hole{ border-color: rgba(111,207,151,0.3); }
+  .cell.hole .ring{ position:absolute; top:50%; left:50%; border-radius:50%; border: 2px solid var(--green); transform: translate(-50%,-50%); box-shadow: 0 0 8px rgba(111,207,151,0.5); }
+  .cell.hole .ring.r2{ width:44%; height:44%; background:var(--green); }
+  @keyframes holeConnectorV{ from{ opacity:.15; transform:translateX(-50%) scaleY(0); } to{ opacity:1; transform:translateX(-50%) scaleY(1); } }
+  @keyframes holeConnectorH{ from{ opacity:.15; transform:translateY(-50%) scaleX(0); } to{ opacity:1; transform:translateY(-50%) scaleX(1); } }
+  .hole-connector.N,.hole-connector.S{ transform-origin:50% 50%; }
+  .hole-connector.E,.hole-connector.W{ transform-origin:50% 50%; }
+  .hole-connector.forming.N,.hole-connector.forming.S{ animation:holeConnectorV .28s cubic-bezier(.34,1.56,.64,1); }
+  .hole-connector.forming.E,.hole-connector.forming.W{ animation:holeConnectorH .28s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes holeConnectorRetractV{ from{opacity:1;transform:translateX(-50%) scaleY(1)} to{opacity:.15;transform:translateX(-50%) scaleY(0)} }
+  @keyframes holeConnectorRetractH{ from{opacity:1;transform:translateY(-50%) scaleX(1)} to{opacity:.15;transform:translateY(-50%) scaleX(0)} }
+  .hole-connector.retracting.N,.hole-connector.retracting.S{ animation:holeConnectorRetractV .28s ease; }
+  .hole-connector.retracting.E,.hole-connector.retracting.W{ animation:holeConnectorRetractH .28s ease; }
+  .hole-connector{ position:absolute; background:var(--green); box-shadow:0 0 7px rgba(111,207,151,0.55); border-radius:3px; pointer-events:none; z-index:1; }
+  .hole-connector.N{ top:0; left:50%; width:20%; height:54%; transform:translateX(-50%); }
+  .hole-connector.S{ bottom:0; left:50%; width:20%; height:54%; transform:translateX(-50%); }
+  .hole-connector.E{ right:0; top:50%; height:20%; width:54%; transform:translateY(-50%); }
+  .hole-connector.W{ left:0; top:50%; height:20%; width:54%; transform:translateY(-50%); }
+
+  .ball{
+    position:absolute; width: 16px; height:16px; margin-left:-8px; margin-top:-8px; border-radius:50%;
+    background:var(--amber);
+    box-shadow:none;
+    transition: left .22s linear, top .22s linear, opacity .3s ease;
+    z-index: 5; pointer-events:none;
+  }
+  .ball.lost{ opacity:0; }
+  .ball.scored{ opacity:0; transform: scale(0.3); }
+  .ball[data-prop]{ background:var(--prop-color); box-shadow:none; }
+
+  .ball-tooltip{
+    position:absolute; transform: translate(-50%, calc(-100% - 14px));
+    background: rgba(10,26,44,0.92); border: 1px solid var(--amber-dim); color: var(--amber);
+    font-family:'JetBrains Mono',monospace; font-size: 11px; font-weight:700;
+    padding: 2px 6px; border-radius: 5px; white-space:nowrap;
+    transition: left .22s linear, top .22s linear, opacity .2s ease;
+    z-index: 6; pointer-events:none;
+  }
+  .ball-tooltip::after{
+    content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:4px solid transparent; border-top-color: var(--amber-dim);
+  }
+
+  .hand{ width:100%; display:flex; gap: 10px; justify-content:center; }
+  .hand-slot{ position:relative; width: 78px; height:78px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; touch-action:none; }
+  .hand-slot.filled{ cursor: grab; }
+  .hand-slot.filled:active{ cursor:grabbing; }
+  .hand-slot.targetable{ cursor:pointer; }
+  .hand-slot.empty-slot::after{ content:"—"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color: var(--ink-dim); font-size:12px; }
+
+  .bag-row{ display:flex; align-items:center; gap:10px; }
+  .bag-count{ font-family:'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-dim); text-align:center; }
+  .inventory-panel{ width:min(92vw, 560px); max-width:560px; text-align:left; }
+  .inventory-panel h2{ font-family:'JetBrains Mono', monospace; letter-spacing:1px; color: var(--cyan); text-align:center; margin: 0 0 14px; font-size:15px; }
+  .inventory-grid{ display:grid; grid-template-columns:repeat(5,52px); justify-content:center; gap:8px; max-height:50vh; overflow-y:auto; margin-bottom:16px; }
+  .inventory-item{ position:relative; width:52px; height:52px; background: var(--bg-deep); border: 1px solid var(--panel-line); border-radius: 6px; margin: 0 auto; }
+  .inventory-item.grayed{ opacity:.28; filter:grayscale(1); }
+  @keyframes handRefresh{ 0%{ transform:scale(.4); opacity:.2; } 65%{ transform:scale(1.15); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+  .hand-slot.just-refreshed .block-visual{ animation:handRefresh .32s cubic-bezier(.34,1.56,.64,1); }
+  .status-strip{ min-height: 20px; font-size: 13px; font-family:'JetBrains Mono', monospace; color: var(--ink-dim); text-align:center; }
+  .status-strip.good{ color: var(--green); }
+  .status-strip.bad{ color: var(--red); }
+
+  .drag-ghost{ position:fixed; width:70px; height:70px; pointer-events:none; z-index: 50; opacity: 0.95; transform: translate(-50%,-50%); filter: drop-shadow(0 16px 22px rgba(0,0,0,0.5)); }
+  .drag-source-fade{ opacity: 0.3; transition: opacity .15s ease; }
+
+  .overlay{ position:fixed; inset:0; background: rgba(7,19,34,0.9); display:flex; align-items:flex-start; justify-content:center; z-index: 100; overflow-y:auto; padding: 30px 14px; }
+  .overlay.hidden{ display:none; }
+  .overlay-panel{ background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; padding: 26px 28px; text-align:center; max-width: 320px; margin: auto; }
+  .overlay-panel h2{ margin: 0 0 8px; font-family:'JetBrains Mono', monospace; letter-spacing:1px; }
+  .overlay-panel.win h2{ color: var(--green); }
+  .overlay-panel.lose h2{ color: var(--red); }
+  .overlay-panel p{ color: var(--ink-dim); font-size:13px; margin: 4px 0 18px; }
+
+  .shop-panel{ background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; padding: 20px; width: 100%; max-width: 460px; margin: auto; }
+  .shop-title{ font-family:'JetBrains Mono', monospace; letter-spacing:1px; color: var(--green); text-align:center; margin: 0 0 4px; }
+  .shop-sub{ text-align:center; color: var(--ink-dim); font-size:12px; margin: 0 0 18px; }
+  .shop-money{ text-align:center; font-family:'JetBrains Mono', monospace; color: var(--gold); font-size:18px; margin-bottom: 16px; }
+  .shop-section{ margin-bottom: 18px; }
+  .shop-section h3{ font-size: 11px; letter-spacing:1px; text-transform:uppercase; color: var(--cyan); margin: 0 0 8px; border-bottom: 1px solid var(--panel-line); padding-bottom:6px; }
+  .shop-card{ display:flex; align-items:center; justify-content:space-between; gap: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--panel-line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .shop-card .desc{ font-size: 12.5px; line-height:1.4; }
+  .shop-card .desc .name{ font-weight:600; display:block; margin-bottom:2px; }
+  .shop-card .price{ font-family:'JetBrains Mono', monospace; color:var(--gold); font-size:12px; white-space:nowrap; }
+  .gacha-box{ background: rgba(255,255,255,0.03); border: 1px solid var(--panel-line); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  .gacha-box .gacha-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:6px; }
+  .gacha-options{ display:flex; gap:8px; flex-wrap:wrap; }
+  .gacha-opt{ flex: 1 1 90px; background: rgba(255,255,255,0.04); border: 1px solid var(--panel-line); border-radius: 7px; padding: 8px; text-align:center; cursor:pointer; font-size: 10.5px; line-height:1.4; }
+  .gacha-opt:hover{ background: rgba(94,200,216,0.1); }
+  .gacha-opt.selected{ border-color: var(--green); background: rgba(111,207,151,0.12); }
+  .gacha-opt .swatch{ width:20px; height:20px; border-radius:50%; margin: 0 auto 6px; background: var(--prop-color, var(--cyan)); box-shadow: 0 0 8px var(--prop-color, var(--cyan)); }
+  .shop-continue{ display:flex; justify-content:center; margin-top: 8px; }
+  .tag-done{ font-size:11px; color: var(--ink-dim); text-align:center; padding: 6px; }
+
+  @media (prefers-reduced-motion: reduce){ .ball{ transition: none; } .ring{ animation: none; } }
+
+  .shop-lower{ display:grid; grid-template-columns:1fr 1.35fr; gap:12px; }
+  @media(max-width:620px){ .shop-lower{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="hud">
+    <div class="logo">◈ connect run</div>
+    <div class="stats">
+      <div class="stat level"><span class="label">Màn</span><span class="value" id="levelVal">1</span></div>
+      <div class="stat score"><span class="label">Điểm</span><span class="value" id="scoreVal">0</span></div>
+      <div class="stat target"><span class="label">Mục tiêu</span><span class="value" id="targetVal">0</span></div>
+      <div class="stat money"><span class="label">Tiền</span><span class="value" id="moneyVal">$0</span></div>
+    </div>
+    <button id="newGameBtn">Chơi lại từ đầu</button>
+  </header>
+
+  <p class="instructions">Kéo khối từ khay xuống bảng để nối mạch từ <b style="color:var(--amber)">nút nguồn</b> tới <b style="color:var(--green)">đích</b>. Click khối để xoay 90°. Bấm nút nguồn để bắn bóng tiếp theo. Thẻ sức mạnh trong tay dùng được bất cứ lúc nào đang chơi.</p>
+
+  <div class="ball-queue" id="ballQueue"></div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="hand" id="hand"></div>
+  <div class="discard-row">
+    <button class="discard-btn" id="discardBtn">Loại bỏ <span id="discardCount">(3/3)</span></button>
+  </div>
+  <div class="bag-row">
+    <div class="bag-count" id="bagCount"></div>
+    <button id="inventoryBtn">Kho đồ</button>
+  </div>
+  <div class="card-hand" id="cardHand"></div>
+  <div class="status-strip" id="statusStrip"></div>
+
+</div>
+
+<div class="target-banner hidden" id="targetBanner"></div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="overlay-panel" id="overlayPanel">
+    <h2 id="overlayTitle"></h2>
+    <p id="overlayText"></p>
+    <button id="overlayBtn">Chơi lại từ đầu</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="shopOverlay"></div>
+
+<div class="overlay hidden" id="inventoryOverlay"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- constants ----------
+  const N_DIR=0,E_DIR=1,S_DIR=2,W_DIR=3;
+  const DIR_NAMES = ['N','E','S','W'];
+  const DIR_VEC = { 0:[0,-1], 1:[1,0], 2:[0,1], 3:[-1,0] };
+  const opposite = d => (d+2)%4;
+
+  const BASE_SIDES = {
+    straight: [E_DIR, W_DIR],
+    L: [N_DIR, E_DIR],
+    T: [N_DIR, E_DIR, S_DIR],
+    plus: [N_DIR, E_DIR, S_DIR, W_DIR]
+  };
+  function openSides(block){ return BASE_SIDES[block.type].map(s => (s + block.rotation) % 4); }
+
+  const BAG_RECIPE = { straight:7, L:7, T:4, plus:2 };
+  const BASE_MAX_BALLS = 5;
+  const HAND_SIZE = 3;
+
+  const BLOCK_PROPS = ['steel','stone','gold','wood','glass'];
+  const BALL_PROPS  = ['steel','striped','grid','gold','glass'];
+  const ENHANCEMENTS = ['holo','spark','invert'];
+
+  const PROP_COLOR = { steel:'#b8c4cf', stone:'#9c8768', gold:'#f2c94c', wood:'#c98a4b', glass:'#8fe3e0', striped:'#e26fa6', grid:'#7c8cf8' };
+  const PROP_LABEL = { steel:'Thép', stone:'Đá', gold:'Vàng', wood:'Gỗ', glass:'Kính', striped:'Sọc', grid:'Kẻ' };
+  const PROP_INITIAL = { steel:'T', stone:'Đ', gold:'V', wood:'G', glass:'K', striped:'S', grid:'K' };
+  const ENH_LABEL = { holo:'Đa sắc', spark:'Lấp lánh', invert:'Âm bản' };
+  const ENH_COLOR = { holo:'#c792ea', spark:'#ffd166', invert:'#ff6b9d' };
+  const ENH_INITIAL = { holo:'Đ', spark:'L', invert:'Â' };
+  const TYPE_LABEL = { straight:'Thẳng', L:'Chữ L', T:'Chữ T', plus:'Dấu Cộng' };
+
+  const GACHA_TIERS = [
+    { key:'small', label:'Nhỏ', cost:10, options:3, picks:1 },
+    { key:'large', label:'Lớn', cost:18, options:5, picks:1 },
+    { key:'mega',  label:'Siêu lớn', cost:28, options:5, picks:2 },
+  ];
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function rollProp(list, chance){ return Math.random() < chance ? pick(list) : null; }
+  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+  let _uid = 1;
+  function cardUid(){ return 'c'+(_uid++); }
+
+  // ---------- upgrade & buff & power card defs ----------
+  const UPGRADE_POOL = [
+    { id:'base', name:'Nâng cấp bóng cơ bản', desc:'+10 điểm mỗi lần bóng thoát khối (mọi bóng)', cost:15, apply(){ state.baseRateBonus += 10; } },
+    { id:'straight', name:'Nâng cấp khối Thẳng', desc:'+10 điểm khi bóng thoát khối Thẳng', cost:12, apply(){ state.typeBonus.straight += 10; } },
+    { id:'L', name:'Nâng cấp khối chữ L', desc:'+10 điểm khi bóng thoát khối L', cost:12, apply(){ state.typeBonus.L += 10; } },
+    { id:'T', name:'Nâng cấp khối chữ T', desc:'+10 điểm khi bóng thoát khối T', cost:14, apply(){ state.typeBonus.T += 10; } },
+    { id:'plus', name:'Nâng cấp khối Dấu Cộng', desc:'+10 điểm khi bóng thoát khối +', cost:16, apply(){ state.typeBonus.plus += 10; } },
+  ];
+
+  const BUFF_POOL = [
+    { id:'balls', name:'Tay nhanh', desc:'+1 giới hạn số bóng bắn mỗi màn, vĩnh viễn', cost:25, apply(){ state.maxBallsBonus += 1; } },
+    { id:'bag', name:'Túi lớn', desc:'+5 khối trong túi đồ mỗi màn, vĩnh viễn', cost:20, apply(){ state.bagBonus += 5; } },
+    { id:'start', name:'Khởi động', desc:'Mọi bóng bắt đầu với +5 điểm nền, vĩnh viễn', cost:18, apply(){ state.startBonus += 5; } },
+    { id:'interest', name:'Tích luỹ', desc:'Trần lãi suất cuối màn +2$, vĩnh viễn', cost:22, apply(){ state.interestCapBonus += 2; } },
+  ];
+
+  const PROPERTY_CARD_TARGET_KIND = { steel:'both', stone:'block', gold:'both', wood:'block', glass:'both', striped:'ball', grid:'ball' };
+  const POWER_CARD_DEFS = {};
+  ['steel','stone','gold','wood','glass','striped','grid'].forEach(p=>{
+    const kind = PROPERTY_CARD_TARGET_KIND[p];
+    const kindLabel = kind==='ball' ? 'bóng' : (kind==='block' ? 'khối' : 'khối hoặc bóng');
+    POWER_CARD_DEFS['prop_'+p] = {
+      id:'prop_'+p, name:`Thẻ ${PROP_LABEL[p]}`,
+      desc:`Biến 1 ${kindLabel} thành thuộc tính ${PROP_LABEL[p]}`,
+      cost: 14, targetKind: kind, targetCount:1,
+      use(targets){ targets[0].obj.property = p; }
+    };
+  });
+  POWER_CARD_DEFS['money'] = { id:'money', name:'Thẻ tiền', desc:'+25% số tiền hiện có', cost:20, targetKind:null, targetCount:0,
+    use(){ state.money = Math.round(state.money*1.25); moneyValEl.textContent=`$${state.money}`; } };
+  POWER_CARD_DEFS['swap'] = { id:'swap', name:'Thẻ hoán đổi', desc:'Chọn 2 khối HOẶC 2 bóng, hoán đổi thuộc tính + enhancement', cost:16, targetKind:'swap', targetCount:2,
+    use(targets){ const a=targets[0].obj, b=targets[1].obj; const pa=a.property, ea=a.enhancement; a.property=b.property; a.enhancement=b.enhancement; b.property=pa; b.enhancement=ea; } };
+  POWER_CARD_DEFS['magic'] = { id:'magic', name:'Thẻ ma thuật', desc:'Chọn 1 khối hoặc bóng, thêm enhancement ngẫu nhiên', cost:16, targetKind:'both', targetCount:1,
+    use(targets){ targets[0].obj.enhancement = pick(ENHANCEMENTS); } };
+  POWER_CARD_DEFS['clone'] = { id:'clone', name:'Thẻ nhân bản', desc:'Chọn 1 khối, tạo thêm 1 khối giống hệt cho túi đồ màn sau', cost:18, targetKind:'block', targetCount:1,
+    use(targets){ const o=targets[0].obj; state.pendingBlocks.push({type:o.type, rotation:0, property:o.property, enhancement:o.enhancement}); } };
+  POWER_CARD_DEFS['copy'] = { id:'copy', name:'Thẻ sao chép', desc:'Lặp lại hiệu ứng thẻ nâng cấp vừa dùng gần nhất', cost:12, targetKind:null, targetCount:0,
+    use(){ if(state.lastUpgrade){ state.lastUpgrade.apply(); } } };
+
+  // ---------- run / level state ----------
+  let state = null;
+
+  function newRun(){
+    state = {
+      money: 10, level: 0,
+      baseRateBonus: 0, typeBonus: { straight:0, L:0, T:0, plus:0 },
+      maxBallsBonus: 0, bagBonus: 0, startBonus: 0, interestCapBonus: 0,
+      pendingBlocks: [], nextBallPreset: null,
+      cardHand: [], lastUpgrade: null, targeting: null,
+      phase: 'playing',
+      shopBuff: null, shopBuffBought: false, commonItems: null, commonRerollCost: 3,
+      bag: [], hand: [], discardPile: [], discardsLeft: 3, cells: null, holeConnections: new Set()
+    };
+    state.bag = makeInitialDeck();
+    newLevel();
+  }
+
+  function computeTarget(level){ return Math.round(300 * Math.pow(1.35, level-1)); }
+
+  // kho đồ (bag) is generated once per run and persists (recycled level to level) until loss/restart
+  function makeInitialDeck(){
+    let bag = [];
+    for(const type in BAG_RECIPE){
+      for(let i=0;i<BAG_RECIPE[type];i++) bag.push({ type, rotation:0, property:null, enhancement:null });
+    }
+    shuffle(bag);
+    return bag;
+  }
+
+  function makeBallQueue(){
+    const max = BASE_MAX_BALLS + state.maxBallsBonus;
+    const queue = [];
+    for(let i=0;i<max;i++) queue.push({ fired:false, property:null, enhancement:null });
+    if(state.nextBallPreset){
+      queue[0].property = state.nextBallPreset.property;
+      queue[0].enhancement = state.nextBallPreset.enhancement;
+      state.nextBallPreset = null;
+    }
+    return queue;
+  }
+
+  function newLevel(){
+    state.level += 1;
+    state.target = computeTarget(state.level);
+    state.score = 0;
+    state.ballsFired = 0;
+    state.resolving = false;
+    state.phase = 'playing';
+    state.targeting = null;
+    state.discardsLeft = 3;
+    if(state.level===1 || (state.level>1 && (state.level-1)%3===0)){ state.shopBuff = {...pick(BUFF_POOL), bought:false}; state.shopBuffBought=false; }
+
+    // recycle everything from the previous level (board + hand + discards) back into the persistent bag
+    if(state.cells){
+      for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
+        const b = state.cells[r][c].block;
+        if(b) state.bag.push(b);
+      }
+    }
+    state.bag.push(...state.hand);
+    state.bag.push(...state.discardPile);
+    state.hand = [];
+    state.discardPile = [];
+    if(state.pendingBlocks.length){ state.bag.push(...state.pendingBlocks); state.pendingBlocks = []; }
+    shuffle(state.bag);
+
+    const boardOptions = state.level===1
+      ? [[4,4]]
+      : state.level<6
+        ? [[4,4],[4,5],[5,5]]
+        : [[4,4],[4,5],[5,5],[4,6],[5,6],[6,4],[6,5],[6,6]];
+    let [rows,cols] = pick(boardOptions);
+    const cells = [];
+    for(let r=0;r<rows;r++){ const row=[]; for(let c=0;c<cols;c++) row.push({type:'empty', block:null}); cells.push(row); }
+
+    let nodeR, nodeC, validDirs;
+    do{
+      nodeR = Math.floor(Math.random()*rows);
+      nodeC = Math.floor(Math.random()*cols);
+      validDirs = [0,1,2,3].filter(d=>{ const [dx,dy]=DIR_VEC[d]; const nr=nodeR+dy, nc=nodeC+dx; return nr>=0&&nr<rows&&nc>=0&&nc<cols; });
+    } while(validDirs.length===0);
+    const nodeDir = validDirs[Math.floor(Math.random()*validDirs.length)];
+    cells[nodeR][nodeC] = {type:'node', block:null};
+
+    let holeR, holeC;
+    const holeCandidates = [];
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      if(Math.abs(r-nodeR)<=1 && Math.abs(c-nodeC)<=1) continue;
+      holeCandidates.push([r,c]);
+    }
+    if(!holeCandidates.length){
+      state.level -= 1;
+      return newLevel();
+    }
+    [holeR,holeC] = pick(holeCandidates);
+    cells[holeR][holeC] = {type:'hole', block:null};
+
+    state.rows = rows; state.cols = cols; state.cells = cells;
+    state.node = {r:nodeR, c:nodeC, dir:nodeDir};
+    state.hole = {r:holeR, c:holeC};
+    state.holeConnections.clear();
+
+    // top up the bag only if it's short of what's needed to fill this board, plus the permanent bag-size buff
+    // ponytail: bagBonus folded into the top-up step rather than added unconditionally every level, since the bag is now a fixed run-long pool
+    const neededCells = rows*cols - 2;
+    const topUp = Math.max(0, neededCells - state.bag.length) + state.bagBonus;
+    for(let i=0;i<topUp;i++){
+      state.bag.push({ type: pick(Object.keys(BASE_SIDES)), rotation:0, property:null, enhancement:null });
+    }
+
+    state.hand = [];
+    refillHand();
+    state.ballQueue = makeBallQueue();
+
+    render();
+    setStatus('', '');
+    hideOverlay();
+    hideShop();
+    renderTargetBanner();
+  }
+
+  function refillHand(animate=false){
+    if(state.hand.length > 0) return;
+    while(state.hand.length < HAND_SIZE && state.bag.length > 0) state.hand.push(state.bag.shift());
+    if(animate && typeof refreshAnimSlots !== 'undefined') refreshAnimSlots = new Set(state.hand.map((_,i)=>i));
+  }
+
+  function discardHand(){
+    if(state.discardsLeft<=0 || !state.hand.length || state.resolving || state.phase!=='playing' || state.targeting) return;
+    state.discardsLeft--;
+    state.discardPile.push(...state.hand);
+    state.hand = [];
+    refillHand();
+    refreshAnimSlots = new Set(state.hand.map((_,i)=>i));
+    setStatus(`Đã loại bỏ tay — còn ${state.discardsLeft} lần loại bỏ`, '');
+    render();
+  }
+
+  // ---------- DOM refs ----------
+  const boardEl = document.getElementById('board');
+  const handEl = document.getElementById('hand');
+  const bagCountEl = document.getElementById('bagCount');
+  const scoreValEl = document.getElementById('scoreVal');
+  const targetValEl = document.getElementById('targetVal');
+  const moneyValEl = document.getElementById('moneyVal');
+  const levelValEl = document.getElementById('levelVal');
+  const statusStripEl = document.getElementById('statusStrip');
+  const ballQueueEl = document.getElementById('ballQueue');
+  const cardHandEl = document.getElementById('cardHand');
+  const targetBannerEl = document.getElementById('targetBanner');
+  const boardWrapEl = document.querySelector('.board-wrap');
+  const discardBtnEl = document.getElementById('discardBtn');
+  const discardCountEl = document.getElementById('discardCount');
+  let refreshAnimSlots = new Set();
+  discardBtnEl.addEventListener('click', discardHand);
+  let placeAnimCell = null; // {r,c} of the block placed by the most recent drop, for the pop-in animation
+
+  function renderBlockArms(container, block){
+    container.querySelectorAll('.block-visual,.prop-ring,.prop-badge,.enh-badge').forEach(n=>n.remove());
+    const visual = document.createElement('div'); visual.className='block-visual';
+    const deg = block.rotation*90;
+    visual.dataset.deg = deg;
+    visual.style.transform = `rotate(${deg}deg)`;
+    const hub = document.createElement('div'); hub.className='hub';
+    visual.appendChild(hub);
+    BASE_SIDES[block.type].forEach(side=>{
+      const arm = document.createElement('div');
+      arm.className = 'arm arm-' + DIR_NAMES[side];
+      visual.appendChild(arm);
+    });
+    container.appendChild(visual);
+    if(block.property){
+      container.style.setProperty('--prop-color', PROP_COLOR[block.property]);
+      const ring = document.createElement('div'); ring.className='prop-ring';
+      const badge = document.createElement('div'); badge.className='prop-badge'; badge.textContent=PROP_INITIAL[block.property];
+      container.appendChild(ring); container.appendChild(badge);
+    }
+    if(block.enhancement){
+      container.style.setProperty('--enh-color', ENH_COLOR[block.enhancement]);
+      const eb = document.createElement('div'); eb.className='enh-badge'; eb.textContent=ENH_INITIAL[block.enhancement];
+      container.appendChild(eb);
+    }
+  }
+
+  function render(){
+    state._animateNewHoleConnections = new Set();
+    if(placeAnimCell){
+      const {r,c}=placeAnimCell;
+      const block=state.cells[r][c].block;
+      for(const d of [0,1,2,3]){
+        const [dx,dy]=DIR_VEC[d], hr=r+dy, hc=c+dx;
+        if(hr<0||hr>=state.rows||hc<0||hc>=state.cols || state.cells[hr][hc].type!=='hole' || !block) continue;
+        const key=`${hr},${hc},${opposite(d)}`;
+        if(openSides(block).includes(d) && !state.holeConnections.has(key)) state._animateNewHoleConnections.add(key);
+      }
+    }
+    boardEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+    boardEl.style.gridTemplateRows = `repeat(${state.rows}, 1fr)`;
+    boardWrapEl.style.aspectRatio = `${state.cols} / ${state.rows}`;
+    boardEl.innerHTML = '';
+
+    for(let r=0;r<state.rows;r++){
+      for(let c=0;c<state.cols;c++){
+        const cellData = state.cells[r][c];
+        const el = document.createElement('div');
+        el.dataset.r=r; el.dataset.c=c;
+        el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '');
+
+        if(cellData.type==='node'){
+          el.dataset.dir = DIR_NAMES[state.node.dir];
+          const arm = document.createElement('div'); arm.className = 'arm arm-'+DIR_NAMES[state.node.dir];
+          const hub = document.createElement('div'); hub.className='hub';
+          el.appendChild(arm); el.appendChild(hub);
+          el.addEventListener('click', onNodeClick);
+        } else if(cellData.type==='hole'){
+          const r2=document.createElement('div'); r2.className='ring r2';
+          el.appendChild(r2);
+          const nextConnections = new Set();
+          for(const d of [0,1,2,3]){
+            const [dx,dy]=DIR_VEC[d];
+            const nr=r+dy, nc=c+dx;
+            if(nr<0||nr>=state.rows||nc<0||nc>=state.cols) continue;
+            const nb=state.cells[nr][nc].block;
+            if(!nb || !openSides(nb).includes(opposite(d))) continue;
+            const key=`${r},${c},${d}`;
+            nextConnections.add(key);
+            const connector=document.createElement('div');
+            connector.className='hole-connector '+DIR_NAMES[d];
+            if(state._animateNewHoleConnections?.has(key)) connector.classList.add('forming');
+            el.appendChild(connector);
+          }
+          for(const key of [...state.holeConnections]){
+            if(!key.startsWith(`${r},${c},`) || nextConnections.has(key)) continue;
+            const d=+key.split(',')[2];
+            const connector=document.createElement('div');
+            connector.className='hole-connector '+DIR_NAMES[d]+' retracting';
+            el.appendChild(connector);
+            setTimeout(()=>connector.remove(),290);
+            state.holeConnections.delete(key);
+          }
+          for(const key of nextConnections) state.holeConnections.add(key);
+        } else if(cellData.block){
+          renderBlockArms(el, cellData.block);
+          attachBoardBlockDrag(el);
+          if(state.targeting && targetKindMatches(state.targeting.def, 'block')) el.classList.add('targetable');
+          if(placeAnimCell && placeAnimCell.r===r && placeAnimCell.c===c){
+            el.classList.add('just-placed');
+            const visual = el.querySelector('.block-visual');
+            if(visual) visual.style.setProperty('--place-deg', (cellData.block.rotation*90)+'deg');
+          }
+        }
+        boardEl.appendChild(el);
+      }
+    }
+    placeAnimCell = null;
+    renderHand();
+    renderBallQueue();
+    renderCardHand();
+    bagCountEl.textContent = `Túi khối còn lại: ${state.bag.length}`;
+    discardCountEl.textContent = `(${state.discardsLeft}/3)`;
+    discardBtnEl.disabled = state.discardsLeft<=0 || state.hand.length===0 || state.resolving || state.phase!=='playing' || !!state.targeting;
+    refreshAnimSlots.clear();
+    scoreValEl.textContent = state.score;
+    targetValEl.textContent = state.target;
+    moneyValEl.textContent = `$${state.money}`;
+    levelValEl.textContent = state.level;
+  }
+
+  function renderHand(){
+    handEl.innerHTML = '';
+    for(let i=0;i<HAND_SIZE;i++){
+      const slot = document.createElement('div');
+      const block = state.hand[i];
+      slot.className = 'hand-slot' + (block ? ' filled' : ' empty-slot');
+      slot.dataset.idx = i;
+      if(block){
+        renderBlockArms(slot, block);
+        if(refreshAnimSlots.has(i)) slot.classList.add('just-refreshed');
+        attachHandBlockDrag(slot, i);
+        if(state.targeting && targetKindMatches(state.targeting.def, 'block')) slot.classList.add('targetable');
+      }
+      handEl.appendChild(slot);
+    }
+  }
+
+  function renderBallQueue(){
+    ballQueueEl.innerHTML = '';
+    state.ballQueue.forEach((b, i)=>{
+      const chip = document.createElement('div');
+      chip.className = 'ball-chip' + (b.fired ? ' fired' : '');
+      if(b.property){
+        chip.style.setProperty('--prop-color', PROP_COLOR[b.property]);
+        chip.dataset.prop = b.property;
+        if(!b.fired) chip.textContent = PROP_INITIAL[b.property] + (b.enhancement?('·'+ENH_INITIAL[b.enhancement]):'');
+      }
+      if(!b.fired && state.targeting && targetKindMatches(state.targeting.def, 'ball')){
+        chip.classList.add('targetable');
+        chip.addEventListener('click', ()=> handleTargetClick({obj:b, kind:'ball'}));
+      }
+      ballQueueEl.appendChild(chip);
+    });
+  }
+
+  function renderCardHand(){
+    cardHandEl.innerHTML = '';
+    if(!state.cardHand.length){
+      cardHandEl.innerHTML = '<div class="tag-empty">Chưa có thẻ sức mạnh nào trong tay</div>';
+      return;
+    }
+    state.cardHand.forEach((card, idx)=>{
+      const def = POWER_CARD_DEFS[card.defId];
+      const chip = document.createElement('div'); chip.className='power-card-chip';
+      const nameSpan = document.createElement('span'); nameSpan.className='name'; nameSpan.textContent = def.name;
+      const btn = document.createElement('button'); btn.textContent='Dùng';
+      btn.disabled = state.phase!=='playing' || !!state.targeting;
+      btn.addEventListener('click', ()=> startTargeting(idx, def));
+      chip.appendChild(nameSpan); chip.appendChild(btn);
+      cardHandEl.appendChild(chip);
+    });
+  }
+
+  function setStatus(text, kind){ statusStripEl.textContent = text; statusStripEl.className = 'status-strip' + (kind ? ' '+kind : ''); }
+
+  // ---------- targeting mode (power cards) ----------
+  function targetKindMatches(def, kind){
+    if(def.targetKind === 'both') return true;
+    if(def.targetKind === 'swap'){
+      if(!state.targeting.targets.length) return true;
+      return state.targeting.targets[0].kind === kind;
+    }
+    return def.targetKind === kind;
+  }
+
+  function startTargeting(handIdx, def){
+    if(def.targetCount === 0){
+      def.use([]);
+      state.cardHand.splice(handIdx,1);
+      setStatus(`Đã dùng: ${def.name}`, 'good');
+      render();
+      return;
+    }
+    state.targeting = { handIdx, def, need: def.targetCount, targets: [] };
+    render();
+    renderTargetBanner();
+  }
+
+  function cancelTargeting(){ state.targeting = null; render(); renderTargetBanner(); }
+
+  function handleTargetClick(target){
+    const t = state.targeting;
+    if(!t) return;
+    const def = t.def;
+    if(!targetKindMatches(def, target.kind)) return;
+    if(t.targets.some(x=>x.obj===target.obj)) return;
+    t.targets.push(target);
+    if(t.targets.length >= t.need){
+      def.use(t.targets);
+      state.cardHand.splice(t.handIdx,1);
+      state.targeting = null;
+      setStatus(`Đã dùng: ${def.name}`, 'good');
+      render();
+      renderTargetBanner();
+    } else {
+      render();
+      renderTargetBanner();
+    }
+  }
+
+  function renderTargetBanner(){
+    if(!state.targeting){ targetBannerEl.classList.add('hidden'); targetBannerEl.innerHTML=''; return; }
+    targetBannerEl.classList.remove('hidden');
+    const t = state.targeting;
+    targetBannerEl.innerHTML = '';
+    const span = document.createElement('span'); span.textContent = `Chọn mục tiêu cho ${t.def.name} (${t.targets.length}/${t.need})`;
+    const cancelBtn = document.createElement('button'); cancelBtn.textContent='Huỷ';
+    cancelBtn.addEventListener('click', cancelTargeting);
+    targetBannerEl.appendChild(span); targetBannerEl.appendChild(cancelBtn);
+  }
+
+  // ---------- drag & rotate ----------
+  let drag = null;
+
+  function attachHandBlockDrag(slot, idx){
+    slot.addEventListener('pointerdown', e=>{
+      if(state.targeting){ e.preventDefault(); handleTargetClick({obj: state.hand[idx], kind:'block'}); return; }
+      if(state.resolving || state.phase!=='playing') return;
+      startDrag(e, {origin:'hand', idx, block: state.hand[idx]});
+    });
+  }
+  function attachBoardBlockDrag(cellEl){
+    cellEl.addEventListener('pointerdown', e=>{
+      const r=+cellEl.dataset.r, c=+cellEl.dataset.c;
+      if(state.targeting){ e.preventDefault(); handleTargetClick({obj: state.cells[r][c].block, kind:'block'}); return; }
+      if(state.resolving || state.phase!=='playing') return;
+      startDrag(e, {origin:'board', r, c, block: state.cells[r][c].block});
+    });
+  }
+  function startDrag(e, info){
+    e.preventDefault();
+    drag = Object.assign(info, {startX:e.clientX, startY:e.clientY, moved:false, ghostEl:null});
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', onDragEnd);
+  }
+  function onDragMove(e){
+    if(!drag) return;
+    drag.targetX = e.clientX; drag.targetY = e.clientY;
+    const dx=e.clientX-drag.startX, dy=e.clientY-drag.startY;
+    if(!drag.moved && Math.hypot(dx,dy)>6){
+      drag.moved = true;
+      drag.ghostEl = document.createElement('div'); drag.ghostEl.className = 'drag-ghost';
+      renderBlockArms(drag.ghostEl, drag.block);
+      document.body.appendChild(drag.ghostEl);
+      drag.curX = e.clientX; drag.curY = e.clientY;
+      drag.sourceEl = drag.origin==='hand'
+        ? handEl.querySelector(`.hand-slot[data-idx="${drag.idx}"]`)
+        : boardEl.querySelector(`.cell[data-r="${drag.r}"][data-c="${drag.c}"]`);
+      if(drag.sourceEl) drag.sourceEl.classList.add('drag-source-fade');
+      dragLoop();
+    }
+    if(drag.moved) updateDropHover(e.clientX, e.clientY);
+  }
+  function dragLoop(){
+    if(!drag || !drag.moved) return;
+    const dx = drag.targetX - drag.curX, dy = drag.targetY - drag.curY;
+    drag.curX += dx*0.3; drag.curY += dy*0.3;
+    const tilt = Math.max(-16, Math.min(16, dx*0.15));
+    drag.ghostEl.style.left = drag.curX+'px'; drag.ghostEl.style.top = drag.curY+'px';
+    drag.ghostEl.style.transform = `translate(-50%,-50%) rotate(${tilt}deg) scale(1.12)`;
+    drag.raf = requestAnimationFrame(dragLoop);
+  }
+  function updateDropHover(x,y){
+    document.querySelectorAll('.cell.drop-hover,.hand-slot.drop-hover').forEach(c=>c.classList.remove('drop-hover'));
+    const el = document.elementFromPoint(x,y);
+    const handSlot = el && el.closest ? el.closest('.hand-slot.filled') : null;
+    if(handSlot && drag && drag.origin==='hand' && +handSlot.dataset.idx!==drag.idx){ handSlot.classList.add('drop-hover'); return; }
+    const cellEl = el && el.closest ? el.closest('.cell.empty:not(.hasblock)') : null;
+    if(cellEl) cellEl.classList.add('drop-hover');
+  }
+  function onDragEnd(e){
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', onDragEnd);
+    if(!drag) return;
+
+    if(drag.raf) cancelAnimationFrame(drag.raf);
+    if(drag.sourceEl) drag.sourceEl.classList.remove('drag-source-fade');
+
+    if(!drag.moved){
+      drag.block.rotation = (drag.block.rotation+1)%4;
+      const containerEl = drag.origin==='hand'
+        ? handEl.querySelector(`.hand-slot[data-idx="${drag.idx}"]`)
+        : boardEl.querySelector(`.cell[data-r="${drag.r}"][data-c="${drag.c}"]`);
+      const visual = containerEl && containerEl.querySelector('.block-visual');
+      if(visual){
+        const nextDeg = parseFloat(visual.dataset.deg||'0') + 90;
+        visual.dataset.deg = nextDeg;
+        visual.style.transform = `rotate(${nextDeg}deg)`;
+      }
+      syncHoleConnectionsForBlock(drag.r, drag.c);
+      drag = null;
+      return;
+    }
+
+    if(drag.ghostEl) drag.ghostEl.remove();
+    document.querySelectorAll('.cell.drop-hover').forEach(c=>c.classList.remove('drop-hover'));
+
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+
+    const handSlot = el && el.closest ? el.closest('.hand-slot.filled') : null;
+    if(handSlot && drag.origin==='hand'){
+      const targetIdx = +handSlot.dataset.idx;
+      if(targetIdx !== drag.idx){
+        [state.hand[drag.idx], state.hand[targetIdx]] = [state.hand[targetIdx], state.hand[drag.idx]];
+        render();
+      }
+      drag = null;
+      return;
+    }
+
+    const cellEl = el && el.closest ? el.closest('.cell.empty:not(.hasblock)') : null;
+
+    if(cellEl){
+      const r=+cellEl.dataset.r, c=+cellEl.dataset.c;
+      if(drag.origin==='hand'){
+        state.cells[r][c] = {type:'empty', block: drag.block};
+        state.hand.splice(drag.idx,1);
+        refillHand(true);
+      } else if(drag.origin==='board'){
+        state.cells[drag.r][drag.c].block = null;
+        state.cells[r][c].block = drag.block;
+      }
+      placeAnimCell = {r,c};
+    }
+    render();
+    drag = null;
+  }
+
+  function syncHoleConnectionsForBlock(r,c){
+    const block=state.cells[r]?.[c]?.block;
+    if(!block) return;
+    for(const d of [0,1,2,3]){
+      const [dx,dy]=DIR_VEC[d], hr=r+dy, hc=c+dx;
+      if(hr<0||hr>=state.rows||hc<0||hc>=state.cols||state.cells[hr][hc].type!=='hole') continue;
+      const key=`${hr},${hc},${opposite(d)}`;
+      const connected=openSides(block).includes(d);
+      const holeEl=boardEl.querySelector(`.cell.hole[data-r=\"${hr}\"][data-c=\"${hc}\"]`);
+      if(connected){
+        if(state.holeConnections.has(key)) continue;
+        const connector=document.createElement('div');
+        connector.className='hole-connector '+DIR_NAMES[opposite(d)];
+        if(holeEl) holeEl.appendChild(connector);
+        state.holeConnections.add(key);
+      } else if(state.holeConnections.has(key)){
+        const connector=holeEl?.querySelector(`.hole-connector.${DIR_NAMES[opposite(d)]}`);
+        if(connector){ connector.classList.add('retracting'); setTimeout(()=>connector.remove(),290); }
+        state.holeConnections.delete(key);
+      }
+    }
+  }
+
+  // ---------- firing / simulation ----------
+  function cellPercent(r,c){ return { left:((c+0.5)/state.cols)*100, top:((r+0.5)/state.rows)*100 }; }
+
+  function createBallEntity(r,c,ballState){
+    const ball = document.createElement('div'); ball.className='ball';
+    if(ballState.prop){ ball.dataset.prop=ballState.prop; ball.style.setProperty('--prop-color', PROP_COLOR[ballState.prop]); }
+    const p = cellPercent(r,c);
+    ball.style.left=p.left+'%'; ball.style.top=p.top+'%';
+    boardWrapEl.appendChild(ball);
+
+    const tip = document.createElement('div'); tip.className='ball-tooltip';
+    tip.style.left=p.left+'%'; tip.style.top=p.top+'%';
+    tip.textContent = Math.round(ballState.total)+'đ';
+    boardWrapEl.appendChild(tip);
+
+    return {ball, tip};
+  }
+  function moveEntityTo(ball,tip,r,c){
+    return new Promise(resolve=>{
+      void ball.offsetWidth; // force reflow so the browser commits the current position before we change it
+      const p=cellPercent(r,c);
+      ball.style.left=p.left+'%'; ball.style.top=p.top+'%';
+      tip.style.left=p.left+'%'; tip.style.top=p.top+'%';
+      setTimeout(resolve, 230);
+    });
+  }
+  function updateTip(tip, ballState){ tip.textContent = Math.round(ballState.total)+'đ'; }
+  function removeEntity(ball,tip){ ball.remove(); tip.remove(); }
+  function flashBlocked(r,c){
+    const cellEl = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    if(cellEl){ cellEl.classList.remove('blocked-flash'); void cellEl.offsetWidth; cellEl.classList.add('blocked-flash'); }
+  }
+  function breakBlockAt(r,c){
+    state.cells[r][c].block = null;
+    const cellEl = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    if(cellEl){
+      cellEl.classList.remove('hasblock');
+      cellEl.querySelectorAll('.block-visual,.prop-ring,.prop-badge,.enh-badge').forEach(n=>{ n.style.transition='opacity .3s'; n.style.opacity='0'; });
+      setTimeout(()=>{ cellEl.querySelectorAll('.block-visual,.prop-ring,.prop-badge,.enh-badge').forEach(n=>n.remove()); }, 300);
+    }
+  }
+  function wait(ms){ return new Promise(res=>setTimeout(res,ms)); }
+
+  // ballState: { total, rate, prop, enh, broke }
+  function blockExitEffects(block, ballState){
+    const prop = block.property, enh = block.enhancement;
+    const sparkX = (enh==='spark') ? 2 : 1;
+    let brokeBlock = false;
+
+    if(prop==='steel'){ for(let i=0;i<sparkX;i++) ballState.rate *= 2; }
+    if(prop==='stone'){ ballState.rate += 50*sparkX; }
+
+    ballState.total += ballState.rate; // base (*) gain
+
+    if(prop==='wood'){ ballState.total += 10*sparkX; }
+    if(prop==='glass'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; if(Math.random()<0.25) brokeBlock=true; }
+    if(prop==='gold'){ state.money += 3*sparkX; moneyValEl.textContent = `$${state.money}`; }
+
+    if(!prop && enh==='spark'){ ballState.total += ballState.rate; }
+    if(enh==='holo'){ ballState.total += 50; }
+
+    ballState.total += (state.typeBonus[block.type] || 0);
+    return brokeBlock;
+  }
+
+  function ballExitEffects(ballState){
+    const prop = ballState.prop, enh = ballState.enh;
+    const sparkX = (enh==='spark') ? 2 : 1;
+    if(prop==='striped'){ ballState.total += 10*sparkX; }
+    if(prop==='grid'){ ballState.total += 100*sparkX; }
+    if(prop==='glass'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; }
+    if(!prop && enh==='spark'){ ballState.total *= 2; }
+    if(enh==='holo'){ ballState.total += 50; }
+  }
+
+  function ballGoalEffects(ballState){
+    const prop = ballState.prop, enh = ballState.enh;
+    const sparkX = (enh==='spark') ? 2 : 1;
+    if(prop==='steel'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; }
+    if(prop==='gold'){ state.money += 5*sparkX; moneyValEl.textContent = `$${state.money}`; }
+    if(prop==='glass' && Math.random()<0.25){ ballState.broke = true; }
+  }
+
+  async function travel(ball, tip, row, col, dir, ballState, counter){
+    counter.launched++;
+    const [dx,dy] = DIR_VEC[dir];
+    const nr=row+dy, nc=col+dx;
+
+    if(nr<0||nr>=state.rows||nc<0||nc>=state.cols){
+      const p = cellPercent(row,col);
+      const L=(p.left+dx*40)+'%', T=(p.top+dy*40)+'%';
+      ball.style.left=L; ball.style.top=T; tip.style.left=L; tip.style.top=T;
+      await wait(230);
+      ball.classList.add('lost'); tip.style.opacity='0';
+      await wait(300); removeEntity(ball,tip);
+      return [];
+    }
+
+    await moveEntityTo(ball,tip,nr,nc);
+    const cellData = state.cells[nr][nc];
+
+    if(cellData.type==='hole'){
+      ballGoalEffects(ballState);
+      updateTip(tip, ballState);
+      await wait(150);
+      ball.classList.add('scored'); tip.style.opacity='0';
+      await wait(300); removeEntity(ball,tip);
+      counter.scored++;
+      if(ballState.broke){ counter.broke=(counter.broke||0)+1; return [0]; }
+      const points = Math.round(ballState.total);
+      state.score += points;
+      counter.points = (counter.points||0) + points;
+      scoreValEl.textContent = state.score;
+      return [points];
+    }
+
+    if(cellData.type==='node' || (cellData.type==='empty' && !cellData.block)){
+      flashBlocked(nr,nc);
+      ball.classList.add('lost'); tip.style.opacity='0';
+      await wait(300); removeEntity(ball,tip);
+      return [];
+    }
+
+    const entrySide = opposite(dir);
+    const blockRef = cellData.block;
+    const sides = openSides(blockRef);
+    if(!sides.includes(entrySide)){
+      flashBlocked(nr,nc);
+      ball.classList.add('lost'); tip.style.opacity='0';
+      await wait(300); removeEntity(ball,tip);
+      return [];
+    }
+
+    const brokeBlock = blockExitEffects(blockRef, ballState);
+    ballExitEffects(ballState);
+    updateTip(tip, ballState);
+    const invertBlock = blockRef.enhancement === 'invert';
+    if(brokeBlock) breakBlockAt(nr,nc);
+
+    // First pass in a shot: preserve the split. Later passes use one random exit.
+    const allExits = sides.filter(s=>s!==entrySide);
+    let exits;
+    if(blockRef._splitUsed){
+      exits = [pick(allExits)];
+    } else {
+      blockRef._splitUsed = true;
+      exits = allExits;
+    }
+    removeEntity(ball,tip);
+
+    const branches = [];
+    exits.forEach(exitDir=>{
+      const childState = { total: ballState.total, rate: ballState.rate, prop: ballState.prop, enh: ballState.enh };
+      const c1 = createBallEntity(nr,nc,childState);
+      branches.push(travel(c1.ball, c1.tip, nr, nc, exitDir, childState, counter));
+      if(invertBlock){
+        const cloneState = { total: ballState.total, rate: ballState.rate, prop: ballState.prop, enh: ballState.enh==='invert' ? null : ballState.enh };
+        const c2 = createBallEntity(nr,nc,cloneState);
+        branches.push(travel(c2.ball, c2.tip, nr, nc, exitDir, cloneState, counter));
+      }
+    });
+    const results = await Promise.all(branches);
+    return results.flat();
+  }
+
+  async function onNodeClick(){
+    if(state.resolving || state.phase!=='playing' || state.targeting) return;
+    if(state.ballsFired >= state.ballQueue.length) return;
+    state.resolving = true;
+
+    for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
+      const b = state.cells[r][c].block;
+      if(b) b._splitUsed = false;
+    }
+
+    const idx = state.ballsFired;
+    const queued = state.ballQueue[idx];
+    queued.fired = true;
+    state.ballsFired++;
+    renderBallQueue();
+    setStatus('Đang bắn…', '');
+
+    const counter = {launched:0, scored:0, broke:0};
+    function makeBallState(stripInvert){
+      return { total: 50+state.startBonus, rate: 10+state.baseRateBonus, prop: queued.property,
+        enh: (stripInvert && queued.enhancement==='invert') ? null : queued.enhancement, broke:false };
+    }
+    const initialStates = [makeBallState(false)];
+    if(queued.enhancement === 'invert') initialStates.push(makeBallState(true));
+
+    const branchPromises = initialStates.map(bs=>{
+      const ent = createBallEntity(state.node.r, state.node.c, bs);
+      return travel(ent.ball, ent.tip, state.node.r, state.node.c, state.node.dir, bs, counter);
+    });
+    const resultsArrays = await Promise.all(branchPromises);
+    const results = resultsArrays.flat();
+
+    const gained = counter.points || 0;
+
+    if(gained>0){
+      let msg = `${counter.scored}/${counter.launched} bóng về đích — +${gained} điểm`;
+      if(counter.broke) msg += ` (${counter.broke} bóng vỡ)`;
+      setStatus(msg, 'good');
+    } else {
+      setStatus('Bóng rơi mất — không có bóng nào về đích', 'bad');
+    }
+
+    state.resolving = false;
+    checkEndState();
+  }
+
+  function checkEndState(){
+    if(state.score >= state.target){
+      const unfired = state.ballQueue.length - state.ballsFired;
+      const interestCap = 5 + state.interestCapBonus;
+      const interest = Math.min(Math.floor(state.money/5), interestCap);
+      const ballBonus = unfired*3;
+      state.phase = 'reward';
+      showLevelReward({unfired, ballBonus, interest});
+    } else if(state.ballsFired >= state.ballQueue.length){
+      state.phase = 'gameover';
+      renderCardHand();
+      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${state.level}, đạt ${state.score}/${state.target} điểm. Tổng tiền tích luỹ: $${state.money}.`);
+    }
+  }
+
+  function showLevelReward(info){
+    shopOverlayEl.classList.add('hidden');
+    const total = info.ballBonus + info.interest;
+    const panel = document.createElement('div'); panel.className='overlay-panel';
+    panel.innerHTML = `<h2 class="win">QUA MÀN ${state.level}!</h2>
+      <p style="text-align:left;line-height:1.8">- ${info.unfired} bóng chưa bắn: <b>${info.ballBonus}$</b><br>- Lãi suất (Mỗi 5$ nhận được thêm 1$): <b>${info.interest}$</b></p>`;
+    const btn=document.createElement('button'); btn.className='gold'; btn.textContent=`Nhận tiền: ${total}$`;
+    btn.addEventListener('click',()=>{ state.money += total; state.phase='shop'; moneyValEl.textContent=`$${state.money}`; renderCardHand(); openShop(); });
+    panel.appendChild(btn);
+    shopOverlayEl.innerHTML=''; shopOverlayEl.appendChild(panel); shopOverlayEl.classList.remove('hidden');
+  }
+
+  // ---------- overlay ----------
+  const overlayEl = document.getElementById('overlay');
+  const overlayPanelEl = document.getElementById('overlayPanel');
+  const overlayTitleEl = document.getElementById('overlayTitle');
+  const overlayTextEl = document.getElementById('overlayText');
+  function showOverlay(kind, title, text){
+    overlayPanelEl.className = 'overlay-panel ' + kind;
+    overlayTitleEl.textContent = title; overlayTextEl.textContent = text;
+    overlayEl.classList.remove('hidden');
+  }
+  function hideOverlay(){ overlayEl.classList.add('hidden'); }
+  document.getElementById('overlayBtn').addEventListener('click', newRun);
+  document.getElementById('newGameBtn').addEventListener('click', newRun);
+
+  // ---------- inventory (bag contents) ----------
+  const inventoryOverlayEl = document.getElementById('inventoryOverlay');
+  document.getElementById('inventoryBtn').addEventListener('click', openInventory);
+
+  function collectOwnedBlocks(){
+    const owned = [];
+    for(const b of state.bag) owned.push({block:b,status:'available'});
+    for(const b of state.hand) owned.push({block:b,status:'hand'});
+    for(const b of state.discardPile) owned.push({block:b,status:'discarded'});
+    if(state.cells){
+      for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
+        const b=state.cells[r][c].block;
+        if(b) owned.push({block:b,status:'board'});
+      }
+    }
+    const propOrder={wood:0,stone:1,gold:2,steel:3,glass:4};
+    const enhOrder={holo:0,spark:1,invert:2};
+    owned.sort((a,b)=>{
+      const ba=a.block, bb=b.block;
+      return ({straight:0,L:1,T:2,plus:3}[ba.type]-{straight:0,L:1,T:2,plus:3}[bb.type])
+        || (!!ba.property-!!bb.property)
+        || (!!ba.enhancement-!!bb.enhancement)
+        || ((propOrder[ba.property]??99)-(propOrder[bb.property]??99))
+        || ((enhOrder[ba.enhancement]??99)-(enhOrder[bb.enhancement]??99));
+    });
+    return owned;
+  }
+
+  function openInventory(){
+    const list = collectOwnedBlocks();
+    const panel = document.createElement('div'); panel.className='overlay-panel inventory-panel';
+    const h2 = document.createElement('h2');
+    h2.textContent = `Kho đồ — ${list.length} khối`;
+    panel.appendChild(h2);
+
+    const grid = document.createElement('div'); grid.className='inventory-grid';
+    if(!list.length){
+      grid.innerHTML='<div class="tag-empty">Trống</div>';
+    } else {
+      list.forEach(({block,status})=>{
+        const item=document.createElement('div');
+        item.className='inventory-item' + (status==='discarded'||status==='board' ? ' grayed' : '');
+        renderBlockArms(item,block);
+        grid.appendChild(item);
+      });
+    }
+    panel.appendChild(grid);
+    const closeBtn=document.createElement('button'); closeBtn.className='gold'; closeBtn.textContent='Đóng';
+    closeBtn.addEventListener('click',()=>inventoryOverlayEl.classList.add('hidden'));
+    panel.appendChild(closeBtn);
+    inventoryOverlayEl.innerHTML=''; inventoryOverlayEl.appendChild(panel);
+    inventoryOverlayEl.classList.remove('hidden');
+  }
+
+  // ---------- shop ----------
+  const shopOverlayEl = document.getElementById('shopOverlay');
+  function hideShop(){ shopOverlayEl.classList.add('hidden'); shopOverlayEl.innerHTML=''; }
+
+  function genBlockOptions(tier){
+    const arr=[]; for(let i=0;i<tier.options;i++){ const type=pick(Object.keys(BASE_SIDES)); arr.push({type,property:rollProp(BLOCK_PROPS,0.5),enhancement:rollProp(ENHANCEMENTS,0.25),color:null}); }
+    return arr;
+  }
+  function genBallOptions(tier){
+    const arr=[]; for(let i=0;i<tier.options;i++){ const property=pick(BALL_PROPS); arr.push({property,enhancement:rollProp(ENHANCEMENTS,0.25),color:PROP_COLOR[property]}); }
+    return arr;
+  }
+  function genPowerOptions(tier){ const defs=shuffle(Object.values(POWER_CARD_DEFS)); return Array.from({length:tier.options},(_,i)=>({defId:defs[i%defs.length].id})); }
+  function genUpgradeOptions(tier){ return Array.from({length:tier.options},()=>({defId:pick(UPGRADE_POOL).id})); }
+
+  function specialBlock(){
+    let b={type:pick(Object.keys(BASE_SIDES)),rotation:0,property:null,enhancement:null};
+    while(!b.property&&!b.enhancement){ b.property=rollProp(BLOCK_PROPS,0.6); b.enhancement=rollProp(ENHANCEMENTS,0.35); }
+    return b;
+  }
+  function specialBall(){
+    return {property:pick(BALL_PROPS),enhancement:rollProp(ENHANCEMENTS,0.35)};
+  }
+  function blockPrice(b){
+    return ({straight:5,L:8,T:10,plus:15}[b.type]||0)
+      + ({wood:2,stone:3,gold:5,steel:10,glass:10}[b.property]||0)
+      + ({holo:8,spark:16,invert:25}[b.enhancement]||0);
+  }
+  function ballPrice(b){
+    return 25 + ({grid:2,striped:5,gold:8,steel:10,glass:10}[b.property]||0)
+      + ({holo:8,spark:16,invert:25}[b.enhancement]||0);
+  }
+
+  function makeCommonItem(){
+    const kind=pick(['upgrade','power','block','ball']);
+    if(kind==='upgrade'){ const def=pick(UPGRADE_POOL); return {kind,ref:{defId:def.id},name:def.name,desc:def.desc,price:def.cost}; }
+    if(kind==='power'){ const def=pick(Object.values(POWER_CARD_DEFS)); return {kind,ref:{defId:def.id},name:def.name,desc:def.desc,price:def.cost}; }
+    if(kind==='block'){ const b=specialBlock(); return {kind,ref:b,name:TYPE_LABEL[b.type],desc:(b.property?PROP_LABEL[b.property]:'')+(b.property&&b.enhancement?' · ':'')+(b.enhancement?ENH_LABEL[b.enhancement]:''),price:blockPrice(b)}; }
+    const b=specialBall(); return {kind,ref:b,name:'Bóng',desc:PROP_LABEL[b.property]+(b.enhancement?' · '+ENH_LABEL[b.enhancement]:''),price:ballPrice(b)};
+  }
+  function makeCommonStock(){ return Array.from({length:2+Math.floor(Math.random()*2)}, makeCommonItem); }
+  function makeGachaBox(){
+    const type=pick(['block','ball','power','upgrade']), tier=pick(GACHA_TIERS);
+    return {id:cardUid(),type,tier,options:null,selected:[],done:false};
+  }
+  function makeGachaStock(){ return Array.from({length:1+Math.floor(Math.random()*2)}, makeGachaBox); }
+
+  function applyCommonItem(item){
+    if(item.kind==='upgrade'){ const d=UPGRADE_POOL.find(x=>x.id===item.ref.defId); d.apply(); state.lastUpgrade=d; }
+    else if(item.kind==='power'){ if(state.cardHand.length>=5) return false; state.cardHand.push({id:cardUid(),defId:item.ref.defId}); }
+    else if(item.kind==='block') state.pendingBlocks.push({...item.ref});
+    else state.nextBallPreset={...item.ref};
+    return true;
+  }
+
+  function openShop(){
+    if(!state.commonItems) state.commonItems=makeCommonStock();
+    if(!state.gachaStock) state.gachaStock=makeGachaStock();
+    if(!state.shopBuff) state.shopBuff={...pick(BUFF_POOL),bought:false};
+    shopOverlayEl.classList.remove('hidden');
+
+    function reroll(){ if(state.money<state.commonRerollCost) return; state.money-=state.commonRerollCost; state.commonRerollCost++; state.commonItems=makeCommonStock(); renderShop(); }
+    function buyCommon(item){
+      if(item.bought||state.money<item.price) return;
+      if(!applyCommonItem(item)) return;
+      state.money-=item.price; item.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop();
+    }
+    function renderGachaBox(g){
+      const box=document.createElement('div'); box.className='gacha-box';
+      const names={block:'Gacha khối',ball:'Gacha bóng',power:'Gacha thẻ sức mạnh',upgrade:'Gacha thẻ nâng cấp'};
+      if(g.done){ box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} — ${g.tier.label}</span></div><div class="tag-done">Đã dùng</div>`; return box; }
+      if(!g.options){
+        box.innerHTML=`<div class="gacha-head"><span>${names[g.type]}</span><b>$${g.tier.cost}</b></div><div class="tag-done">${g.tier.label}</div>`;
+        const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<g.tier.cost; buy.addEventListener('click',()=>{ state.money-=g.tier.cost; moneyValEl.textContent=`$${state.money}`; g.options=g.type==='block'?genBlockOptions(g.tier):g.type==='ball'?genBallOptions(g.tier):g.type==='power'?genPowerOptions(g.tier):genUpgradeOptions(g.tier); renderShop(); });
+        box.appendChild(buy); return box;
+      }
+      const label=g.type==='block'?blockOptLabel:g.type==='ball'?ballOptLabel:g.type==='power'?powerOptLabel:upgradeOptLabel;
+      box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} — chọn ${g.tier.picks}/${g.options.length}</span></div>`;
+      const opts=document.createElement('div'); opts.className='gacha-options';
+      g.options.forEach((opt,i)=>{ const el=document.createElement('div'); el.className='gacha-opt'+(g.selected.includes(i)?' selected':''); el.innerHTML=label(opt); el.addEventListener('click',()=>{ if(g.selected.includes(i)) g.selected=g.selected.filter(x=>x!==i); else if(g.selected.length<g.tier.picks) g.selected.push(i); renderShop(); }); opts.appendChild(el); });
+      box.appendChild(opts);
+      const ok=document.createElement('button'); ok.textContent=`Nhận (${g.selected.length}/${g.tier.picks})`; ok.disabled=!g.selected.length; ok.addEventListener('click',()=>{ g.selected.forEach(i=>{ const o=g.options[i]; if(g.type==='block') applyBlockPick(o); else if(g.type==='ball') applyBallPick(o); else if(g.type==='power') applyPowerPick(o); else applyUpgradePick(o); }); g.done=true; renderShop(); });
+      box.appendChild(ok); return box;
+    }
+
+    function renderShop(){
+      shopOverlayEl.innerHTML='';
+      const panel=document.createElement('div'); panel.className='shop-panel';
+      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG — MÀN ${state.level}</h2><div class="shop-money">Tiền hiện có: $${state.money}</div>`;
+
+      const common=document.createElement('div'); common.className='shop-section'; common.innerHTML='<h3>Hàng hóa chung</h3>';
+      state.commonItems.forEach(item=>{ const row=document.createElement('div'); row.className='shop-card'; row.innerHTML=`<div class="desc"><span class="name">${item.name}</span>${item.desc}</div><div class="price">$${item.price}</div>`; const b=document.createElement('button'); b.textContent=item.bought?'Đã mua':'Mua'; b.disabled=item.bought||state.money<item.price||(item.kind==='power'&&state.cardHand.length>=5); b.addEventListener('click',()=>buyCommon(item)); row.appendChild(b); common.appendChild(row); });
+      const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;'; const rb=document.createElement('button'); rb.textContent=`Đổi hàng ($${state.commonRerollCost})`; rb.disabled=state.money<state.commonRerollCost; rb.addEventListener('click',reroll); rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
+
+      const lower=document.createElement('div'); lower.style.cssText='display:grid;grid-template-columns:1fr 1.35fr;gap:12px;';
+      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; br.innerHTML=`<div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div><div class="price">$${bo.cost}</div>`; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<bo.cost; bb.addEventListener('click',()=>{ state.money-=bo.cost; bo.apply(); bo.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop(); }); br.appendChild(bb); buff.appendChild(br); lower.appendChild(buff);
+      const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>'; state.gachaStock.forEach(g=>gach.appendChild(renderGachaBox(g))); lower.appendChild(gach); panel.appendChild(lower);
+
+      const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent='Tiếp tục →'; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
+      shopOverlayEl.appendChild(panel);
+    }
+    renderShop();
+  }
+
+  newRun();
+})();
+</script>
+</body>
+</html>

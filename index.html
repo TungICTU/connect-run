@@ -206,14 +206,17 @@
 
   .ball{
     position:absolute; width: 16px; height:16px; margin-left:-8px; margin-top:-8px; border-radius:50%;
-    background:var(--amber);
-    box-shadow:none;
+    background:radial-gradient(circle at 34% 28%, #fff8ec 0%, #ffe6c5 22%, var(--amber) 62%, #d9822b 100%);
+    box-shadow:0 2px 7px rgba(0,0,0,0.22), 0 0 8px var(--amber-dim);
     transition: left .22s linear, top .22s linear, opacity .3s ease;
     z-index: 5; pointer-events:none;
   }
   .ball.lost{ opacity:0; }
   .ball.scored{ opacity:0; transform: scale(0.3); }
-  .ball[data-prop]{ background:var(--prop-color); box-shadow:none; }
+  .ball[data-prop]{
+    background:radial-gradient(circle at 34% 28%, #ffffff 0%, #ffffff 18%, var(--prop-color) 66%, var(--prop-color) 100%);
+    box-shadow:0 2px 7px rgba(0,0,0,0.22), 0 0 8px var(--prop-color);
+  }
 
   .ball-tooltip{
     position:absolute; transform: translate(-50%, calc(-100% - 14px));
@@ -286,7 +289,17 @@
   .gacha-opt.selected{ border-color: var(--green); background: rgba(111,207,151,0.12); }
   .gacha-opt .swatch{ width:20px; height:20px; border-radius:50%; margin: 0 auto 6px; background: var(--prop-color, var(--cyan)); box-shadow: 0 0 8px var(--prop-color, var(--cyan)); }
   .gacha-opt .mini-block{ width:42px; height:42px; margin:0 auto 6px; position:relative; background:var(--bg-deep); border:1px solid var(--panel-line); border-radius:5px; }
-  .gacha-opt .mini-ball{ width:30px; height:30px; border-radius:50%; margin:0 auto 6px; background:var(--prop-color,var(--amber)); box-shadow:0 0 8px var(--prop-color,var(--amber)); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:#0a1a2c; }
+  .gacha-opt .mini-ball{ width:30px; height:30px; border-radius:50%; margin:0 auto 6px; background:radial-gradient(circle at 34% 28%, #fff8ec 0%, #ffe6c5 20%, var(--prop-color,var(--amber)) 64%, var(--prop-color,var(--amber)) 100%); box-shadow:0 2px 7px rgba(0,0,0,0.22),0 0 8px var(--prop-color,var(--amber)); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:#0a1a2c; }
+  .shop-ball-grid{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+  .shop-ball-item{ min-width:0; }
+  .shop-power-panel{ position:relative; z-index:3; margin:0 0 14px; background:var(--panel); border:1px solid var(--green); border-radius:10px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,0.35); }
+  .shop-power-panel h3{ margin:0 0 5px; text-align:center; color:var(--green); font-family:'JetBrains Mono',monospace; font-size:13px; }
+  .shop-power-panel p{ margin:0 0 12px; text-align:center; color:var(--ink-dim); font-size:11px; }
+  .shop-power-targets{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+  .shop-power-target{ min-width:0; background:rgba(255,255,255,0.04); border:1px solid var(--panel-line); border-radius:7px; padding:8px; text-align:center; cursor:pointer; font-size:10.5px; line-height:1.4; }
+  .shop-power-target:hover{ background:rgba(94,200,216,0.1); }
+  .shop-power-target.selected{ border-color:var(--green); background:rgba(111,207,151,0.12); }
+  .shop-power-actions{ display:flex; justify-content:center; gap:8px; margin-top:12px; }
   .gacha-opt .mini-card{ min-height:42px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; color:var(--cyan); font-weight:600; }
   .gacha-choice-panel{ background:var(--panel); border:1px solid var(--panel-line); border-radius:12px; padding:20px; width:100%; max-width:520px; margin:auto; }
   .gacha-choice-head{ text-align:center; margin-bottom:14px; }
@@ -1451,7 +1464,13 @@
   }
 
   function ballOptionLabel(b){
-    return `<div class="mini-ball" style="--prop-color:${PROP_COLOR[b.property]}">${PROP_INITIAL[b.property]}${b.enhancement?'·'+ENH_INITIAL[b.enhancement]:''}</div><div>Bóng</div><div>${PROP_LABEL[b.property]}${b.enhancement?' · '+ENH_LABEL[b.enhancement]:''}</div>`;
+    const property = b?.property || null;
+    const enhancement = b?.enhancement || null;
+    const color = property ? PROP_COLOR[property] : 'var(--amber)';
+    const initial = property ? PROP_INITIAL[property] : '';
+    const label = property ? PROP_LABEL[property] : 'Thường';
+    const enhLabel = enhancement ? ` · ${ENH_LABEL[enhancement]}` : '';
+    return `<div class="mini-ball" style="--prop-color:${color}">${initial}${enhancement?'·'+ENH_INITIAL[enhancement]:''}</div><div>Bóng</div><div>${label}${enhLabel}</div>`;
   }
 
   function powerOptionLabel(opt){
@@ -1539,10 +1558,9 @@
       g.options.forEach((opt,i)=>{
         const el=document.createElement('div'); el.className='gacha-opt'; el.innerHTML=upgradeOptionLabel(opt);
         el.addEventListener('click',()=>{
-          if(stateUi.selected.includes(i)) stateUi.selected=stateUi.selected.filter(x=>x!==i);
-          else if(stateUi.selected.length<g.tier.picks) stateUi.selected.push(i);
-          optionsWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.selected.includes(j)));
-          accept.disabled=!stateUi.selected.length; accept.textContent=`Nâng cấp (${stateUi.selected.length}/${g.tier.picks})`;
+          stateUi.selected = stateUi.selected.includes(i) ? [] : [i];
+          optionsWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',j===stateUi.selected[0]));
+          accept.disabled=!stateUi.selected.length; accept.textContent=`Nâng cấp${g.tier.picks>1?` (${(g.upgradesUsed||0)+1}/${g.tier.picks})`:''}`;
         });
         optionsWrap.appendChild(el);
       });
@@ -1623,8 +1641,14 @@
         stateUi.selected.forEach(i=>applyBlockPick(g.options[i]));
         finish();
       } else if(g.type==='upgrade'){
-        stateUi.selected.forEach(i=>applyUpgradePick(g.options[i]));
-        finish();
+        const opt = g.options[stateUi.selected[0]];
+        if(opt) applyUpgradePick(opt);
+        g.upgradesUsed=(g.upgradesUsed||0)+1;
+        if(g.upgradesUsed>=g.tier.picks){ finish(); return; }
+        stateUi.selected=[];
+        optionsWrap.querySelectorAll('.gacha-opt').forEach(n=>n.classList.remove('selected'));
+        accept.disabled=true;
+        accept.textContent=`Nâng cấp (${g.upgradesUsed}/${g.tier.picks})`;
       } else if(g.type==='ball'){
         if(state.ballPool.length < BASE_MAX_BALLS + state.maxBallsBonus){
           stateUi.selected.forEach(i=>addBallToPool(g.options[i]));
@@ -1683,8 +1707,81 @@
     shopOverlayEl.classList.remove('hidden');
 
     function reroll(){ if(state.money<state.commonRerollCost) return; state.money-=state.commonRerollCost; state.commonRerollCost++; state.commonItems=makeCommonStock(); renderShop(); }
+    function powerCanTargetBalls(def){
+      return !!def && (def.targetKind==='ball' || def.targetKind==='both' || def.targetKind==='swap') && def.targetCount>0;
+    }
+
+    function openShopPowerChoice(item){
+      const def=POWER_CARD_DEFS[item.ref.defId];
+      const panel=shopOverlayEl.querySelector('.shop-panel');
+      if(!panel || !def || !state.ballPool.length) return;
+
+      const old=panel.querySelector('.shop-power-panel');
+      if(old) old.remove();
+
+      const choice=document.createElement('div');
+      choice.className='shop-power-panel';
+      choice.innerHTML=`<h3>Dùng ${def.name}</h3><p>${def.desc}</p>`;
+      const targetsWrap=document.createElement('div');
+      targetsWrap.className='shop-power-targets';
+      const selected=[];
+
+      const renderSelected=()=>{
+        targetsWrap.querySelectorAll('.shop-power-target').forEach((el,i)=>el.classList.toggle('selected',selected.some(t=>t.obj===state.ballPool[i])));
+      };
+
+      state.ballPool.forEach((ball,index)=>{
+        const el=document.createElement('div');
+        el.className='shop-power-target';
+        el.innerHTML=ballOptionLabel(ball);
+        el.addEventListener('click',()=>{
+          const pos=selected.findIndex(t=>t.obj===ball);
+          if(pos>=0){
+            selected.splice(pos,1);
+          } else {
+            if(def.targetKind==='swap'){
+              if(selected.length>=2) selected.shift();
+              selected.push({obj:ball,kind:'ball'});
+            } else {
+              selected.length=0;
+              selected.push({obj:ball,kind:'ball'});
+            }
+          }
+          renderSelected();
+          accept.disabled = def.targetKind==='swap' ? selected.length!==2 : selected.length!==def.targetCount;
+        });
+        targetsWrap.appendChild(el);
+      });
+      choice.appendChild(targetsWrap);
+
+      const actions=document.createElement('div'); actions.className='shop-power-actions';
+      const cancel=document.createElement('button'); cancel.className='skip'; cancel.textContent='Huỷ';
+      cancel.addEventListener('click',()=>choice.remove());
+      const accept=document.createElement('button'); accept.className='gold'; accept.textContent='Dùng'; accept.disabled=true;
+      accept.addEventListener('click',()=>{
+        if(def.targetKind==='swap' && selected.length!==2) return;
+        if(def.targetKind!=='swap' && selected.length!==def.targetCount) return;
+        def.use(selected);
+        state.money-=item.price;
+        item.bought=true;
+        moneyValEl.textContent=`$${state.money}`;
+        choice.remove();
+        renderShop();
+      });
+      actions.appendChild(cancel); actions.appendChild(accept); choice.appendChild(actions);
+      panel.appendChild(choice);
+      choice.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+
     function buyCommon(item){
       if(item.bought||state.money<item.price) return;
+      if(item.kind==='power'){
+        const def=POWER_CARD_DEFS[item.ref.defId];
+        if(powerCanTargetBalls(def)){
+          openShopPowerChoice(item);
+          return;
+        }
+      }
       if(!applyCommonItem(item)) return;
       state.money-=item.price; item.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop();
     }
@@ -1696,6 +1793,7 @@
       const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<g.tier.cost; buy.addEventListener('click',()=>{
         state.money-=g.tier.cost; moneyValEl.textContent=`$${state.money}`;
         g.options=g.type==='block'?genBlockOptions(g.tier):g.type==='ball'?genBallOptions(g.tier):g.type==='power'?genPowerOptions(g.tier):genUpgradeOptions(g.tier);
+        renderShop();
         showGachaChoice(g);
       });
       box.appendChild(buy);
@@ -1708,8 +1806,26 @@
       panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG — MÀN ${state.level}</h2><div class="shop-money">Tiền hiện có: $${state.money}</div>`;
 
       const common=document.createElement('div'); common.className='shop-section'; common.innerHTML='<h3>Hàng hóa chung</h3>';
-      state.commonItems.forEach(item=>{ const row=document.createElement('div'); row.className='shop-card'; row.innerHTML=`<div class="desc"><span class="name">${item.name}</span>${item.desc}</div><div class="price">$${item.price}</div>`; const b=document.createElement('button'); b.textContent=item.bought?'Đã mua':'Mua'; b.disabled=item.bought||state.money<item.price||(item.kind==='power'&&state.cardHand.length>=5); b.addEventListener('click',()=>buyCommon(item)); row.appendChild(b); common.appendChild(row); });
+      state.commonItems.forEach(item=>{
+        const row=document.createElement('div'); row.className='shop-card'; row.innerHTML=`<div class="desc"><span class="name">${item.name}</span>${item.desc}</div><div class="price">$${item.price}</div>`;
+        const b=document.createElement('button'); b.textContent=item.bought?'Đã mua':'Mua';
+        const def=item.kind==='power'?POWER_CARD_DEFS[item.ref.defId]:null;
+        const directBallUse=item.kind==='power'&&powerCanTargetBalls(def);
+        b.disabled=item.bought||state.money<item.price||(item.kind==='power'&&!directBallUse&&state.cardHand.length>=5);
+        b.addEventListener('click',()=>buyCommon(item));
+        row.appendChild(b); common.appendChild(row);
+      });
       const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;'; const rb=document.createElement('button'); rb.textContent=`Đổi hàng ($${state.commonRerollCost})`; rb.disabled=state.money<state.commonRerollCost; rb.addEventListener('click',reroll); rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
+
+      const ballsSection=document.createElement('div'); ballsSection.className='shop-section';
+      ballsSection.innerHTML=`<h3>Bóng sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
+      const ballsWrap=document.createElement('div'); ballsWrap.className='shop-ball-grid';
+      state.ballPool.forEach(ball=>{
+        const el=document.createElement('div'); el.className='gacha-opt shop-ball-item'; el.innerHTML=ballOptionLabel(ball);
+        ballsWrap.appendChild(el);
+      });
+      ballsSection.appendChild(ballsWrap);
+      panel.appendChild(ballsSection);
 
       const lower=document.createElement('div'); lower.style.cssText='display:grid;grid-template-columns:1fr 1.35fr;gap:12px;';
       const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; br.innerHTML=`<div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div><div class="price">$${bo.cost}</div>`; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<bo.cost; bb.addEventListener('click',()=>{ state.money-=bo.cost; bo.apply(); bo.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop(); }); br.appendChild(bb); buff.appendChild(br); lower.appendChild(buff);

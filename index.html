@@ -89,8 +89,6 @@
   button.gold{ border-color: rgba(242,201,76,0.4); color: var(--gold); background: rgba(242,201,76,0.08); }
   button.gold:hover{ background: rgba(242,201,76,0.18); }
 
-  .instructions{ font-size: 12px; color: var(--ink-dim); text-align:center; line-height:1.5; max-width: 440px; }
-
   .ball-queue{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:center; }
   .ball-chip{
     width: 28px; height:28px; border-radius:50%;
@@ -112,7 +110,7 @@
   .ball-chip[data-prop=striped]:not(.fired){ background:#c94848; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px); box-shadow:0 0 7px rgba(255,255,255,.12); }
   .ball-chip[data-prop=grid]:not(.fired){ background:#3976b9; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:auto,6px 6px,6px 6px; box-shadow:0 0 7px rgba(255,255,255,.12); }
   .ball-chip[data-enh=holo]:not(.fired){ box-shadow:0 0 0 1px rgba(47,128,237,.7); }
-  .ball-chip[data-enh=holo]:not(.fired)::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:linear-gradient(120deg,rgba(0,110,255,.05) 25%,rgba(40,150,255,.6) 45%,rgba(255,255,255,.75) 50%,rgba(0,110,255,.05) 60%); }
+  .ball-chip[data-enh=holo]:not(.fired)::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
   .ball-chip[data-enh=spark]:not(.fired)::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
   .ball-chip::after{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.78) 0%,rgba(255,255,255,.32) 16%,transparent 42%); }
   .ball-chip[data-prop=glass]:not(.fired)::after{ background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.72) 45%,transparent 58%); }
@@ -178,6 +176,20 @@
 
   .block-visual{ position:absolute; inset:0; transition: transform .28s cubic-bezier(.34,1.56,.64,1); transform-origin: 50% 50%; }
   .arm{ position:absolute; background: var(--cyan); box-shadow: 0 0 7px var(--cyan-dim); border-radius: 3px; }
+
+  /* Mini-blocks use the same property/enhancement appearance as board blocks. */
+  .mini-block[data-prop=steel] .arm, .mini-block[data-prop=steel] .hub{ background:#c7cdd3; box-shadow:none; }
+  .mini-block[data-prop=stone] .arm, .mini-block[data-prop=stone] .hub{ background:#777; box-shadow:none; background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px); background-size:7px 6px,8px 7px; }
+  .mini-block[data-prop=gold] .arm, .mini-block[data-prop=gold] .hub{ background:#f2c94c; box-shadow:0 0 7px rgba(242,201,76,.3); }
+  .mini-block[data-prop=wood] .arm, .mini-block[data-prop=wood] .hub{ background:#b8895a; box-shadow:none; }
+  .mini-block[data-prop=glass] .arm, .mini-block[data-prop=glass] .hub{ background:transparent; box-shadow:none; border:1px solid rgba(255,255,255,.85); }
+  .mini-block[data-prop=striped] .arm, .mini-block[data-prop=striped] .hub{ background:#c94848; background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px); box-shadow:none; }
+  .mini-block[data-prop=grid] .arm, .mini-block[data-prop=grid] .hub{ background:#3976b9; background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:6px 6px; box-shadow:none; }
+  .mini-block[data-prop=glass] .arm::before, .mini-block[data-prop=glass] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.65) 45%,transparent 58%); opacity:.7; }
+  .mini-block[data-prop=stone] .arm::before, .mini-block[data-prop=stone] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px); background-size:7px 6px,8px 7px; }
+  .mini-block[data-enh=holo] .arm::after, .mini-block[data-enh=holo] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
+  .mini-block[data-enh=spark] .arm::after, .mini-block[data-enh=spark] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
+  .mini-block[data-enh=invert]{ filter:invert(1); }
   .block-visual[data-prop=steel] .arm, .block-visual[data-prop=steel] .hub{ background:#c7cdd3; box-shadow:none; }
   .block-visual[data-prop=stone] .arm, .block-visual[data-prop=stone] .hub{ background:#777; box-shadow:none; }
   .block-visual[data-prop=gold] .arm, .block-visual[data-prop=gold] .hub{ background:#f2c94c; box-shadow:0 0 7px rgba(242,201,76,.3); }
@@ -187,7 +199,7 @@
   .block-visual[data-prop=grid] .arm, .block-visual[data-prop=grid] .hub{ background:#3976b9; background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:6px 6px; box-shadow:none; }
   .block-visual[data-prop=glass] .arm::before, .block-visual[data-prop=glass] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.65) 45%,transparent 58%); opacity:.7; }
   .block-visual[data-prop=stone] .arm::before, .block-visual[data-prop=stone] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px); background-size:7px 6px,8px 7px; }
-  .block-visual[data-enh=holo] .arm::after, .block-visual[data-enh=holo] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,rgba(0,110,255,.05) 25%,rgba(40,150,255,.6) 45%,rgba(255,255,255,.75) 50%,rgba(0,110,255,.05) 60%); }
+  .block-visual[data-enh=holo] .arm::after, .block-visual[data-enh=holo] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
   .block-visual[data-enh=spark] .arm::after, .block-visual[data-enh=spark] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
   .block-visual[data-enh=invert]{ filter:invert(1); }
   .ball[data-prop=steel]{ background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3; box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 7px rgba(255,255,255,.15); }
@@ -199,7 +211,7 @@
   .ball[data-prop=striped]{ background:#c94848; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px); box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 6px rgba(255,255,255,.1); }
   .ball[data-prop=grid]{ background:#3976b9; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:auto,6px 6px,6px 6px; box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 6px rgba(255,255,255,.1); }
   .ball[data-enh=holo]{ box-shadow:0 0 5px rgba(47,128,237,.32); }
-  .ball[data-enh=holo]::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:linear-gradient(120deg,rgba(0,110,255,.05) 25%,rgba(40,150,255,.6) 45%,rgba(255,255,255,.75) 50%,rgba(0,110,255,.05) 60%); }
+  .ball[data-enh=holo]::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
   .ball[data-enh=spark]::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
   .ball[data-enh=invert]{ filter:invert(1); }
   .arm-N{ top:0; left:50%; width:24%; height:54%; transform:translateX(-50%); }
@@ -279,8 +291,9 @@
   .hover-tip .tip-title{ font-weight:700; color:var(--cyan); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
   .hover-tip .tip-level{ color:var(--ink); font-weight:700; margin-left:auto; }
 
-  .hand{ width:100%; display:flex; gap: 10px; justify-content:center; }
-  .hand-slot{ position:relative; width: 78px; height:78px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; touch-action:none; }
+  .hand-row{ width:100%; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .hand{ flex:0 1 auto; min-width:0; display:flex; gap:10px; justify-content:center; }
+  .hand-slot{ position:relative; width:78px; height:78px; flex:0 1 78px; min-width:0; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; touch-action:none; }
   .hand-slot.filled{ cursor: grab; }
   .hand-slot.filled:active{ cursor:grabbing; }
   .hand-slot.targetable{ cursor:pointer; }
@@ -340,7 +353,7 @@
   .gacha-opt:hover{ background: rgba(94,200,216,0.1); }
   .gacha-opt.selected{ border-color: var(--green); background: rgba(111,207,151,0.12); }
   .gacha-opt .swatch{ width:20px; height:20px; border-radius:50%; margin: 0 auto 6px; background: var(--prop-color, var(--cyan)); box-shadow: 0 0 8px var(--prop-color, var(--cyan)); }
-  .gacha-opt .mini-block{ width:42px; height:42px; margin:0 auto 6px; position:relative; background:var(--bg-deep); border:1px solid var(--panel-line); border-radius:5px; }
+  .gacha-opt .mini-block{ width:42px; height:42px; margin:0 auto 6px; position:relative; background:var(--bg-deep); border:1px solid var(--panel-line); border-radius:5px; overflow:visible; }
   .gacha-opt .mini-ball{ position:relative; width:30px; height:30px; border-radius:50%; margin:0 auto 6px; background:radial-gradient(circle at 34% 28%, #fff8ec 0%, #ffe6c5 20%, var(--prop-color,var(--amber)) 64%, var(--prop-color,var(--amber)) 100%); box-shadow:0 2px 7px rgba(0,0,0,0.22),0 0 8px var(--prop-color,var(--amber)); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:#0a1a2c; }
   .gacha-opt .mini-block .arm-wrap[data-prop=steel] .arm,.gacha-opt .mini-block .arm-wrap[data-prop=steel] .hub{background:#c7cdd3;box-shadow:none}
   .gacha-opt .mini-block .arm-wrap[data-prop=stone] .arm,.gacha-opt .mini-block .arm-wrap[data-prop=stone] .hub{background:#777;box-shadow:none}
@@ -393,12 +406,59 @@
   .shop-continue{ display:flex; justify-content:center; margin-top: 8px; }
   .tag-done{ font-size:11px; color: var(--ink-dim); text-align:center; padding: 6px; }
 
+  .debug-overlay{ position:fixed; inset:0; background:rgba(7,19,34,.78); display:flex; align-items:flex-start; justify-content:center; z-index:1000; overflow-y:auto; padding:24px 14px; }
+  .debug-overlay.hidden{ display:none; }
+  .debug-panel{ width:min(92vw,420px); background:var(--panel); border:1px solid var(--red); border-radius:12px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.55); }
+  .debug-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+  .debug-head h2{ margin:0; color:var(--red); font-family:'JetBrains Mono',monospace; font-size:15px; letter-spacing:1px; }
+  .debug-close{ border-color:rgba(232,93,78,.45); color:var(--red); }
+  .debug-section{ margin-top:12px; padding-top:12px; border-top:1px solid var(--panel-line); }
+  .debug-label{ display:block; margin-bottom:6px; color:var(--ink-dim); font-size:11px; }
+  .debug-money-row,.debug-select-row{ display:flex; gap:8px; align-items:center; }
+  .debug-money-row input,.debug-select{ flex:1; min-width:0; width:100%; background:var(--bg-deep); color:var(--ink); border:1px solid var(--panel-line); border-radius:7px; padding:8px 9px; font:12px 'JetBrains Mono',monospace; }
+  .debug-money-row input:focus,.debug-select:focus{ outline:1px solid var(--cyan); }
+  .debug-target{ min-height:42px; background:rgba(255,255,255,.03); border:1px solid var(--panel-line); border-radius:8px; padding:9px; font:11px/1.5 'JetBrains Mono',monospace; color:var(--ink-dim); }
+  .debug-target strong{ color:var(--cyan); }
+  .debug-actions{ display:flex; gap:8px; margin-top:10px; }
+  .debug-actions button{ flex:1 1 0; }
+  .debug-apply{ border-color:var(--green); color:var(--green); background:rgba(111,207,151,.08); }
+  .debug-apply:hover{ background:rgba(111,207,151,.16); }
+  .debug-hint{ margin:8px 0 0; color:var(--ink-dim); font-size:10px; text-align:center; }
+  .debug-none{ color:var(--ink-dim); }
+
   @media (prefers-reduced-motion: reduce){ .ball{ transition: none; } .ring{ animation: none; } }
 
   @media(max-width:620px){
     .shop-common-grid{ grid-template-columns:1fr; }
     .shop-lower{ grid-template-columns:1fr; }
+    body, body *{ -webkit-user-select:none; user-select:none; }
+    .hand-row{ gap:6px; }
+    .hand{ flex:1 1 auto; gap:6px; }
+    .hand-slot{ width:auto; height:auto; aspect-ratio:1; }
+    .discard-row{ flex:0 0 auto; }
+    .discard-btn{ padding:6px 9px; font-size:12px; white-space:nowrap; }
   }
+
+  /* Canonical ball appearance: keep queue/shop previews aligned with the in-board ball. */
+  .ball-chip{
+    background:radial-gradient(circle at 34% 28%, #fff8ec 0%, #ffe6c5 22%, var(--amber) 62%, #d9822b 100%);
+    box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 8px var(--amber-dim);
+    overflow:hidden;
+  }
+  .ball-chip::before{
+    content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.78) 0%,rgba(255,255,255,.30) 16%,transparent 44%); z-index:2;
+  }
+  .ball-chip[data-prop=steel]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3;box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 7px rgba(255,255,255,.15)}
+  .ball-chip[data-prop=striped]{background:#c94848;background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px);box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 6px rgba(255,255,255,.1)}
+  .ball-chip[data-prop=grid]{background:#3976b9;background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:auto,6px 6px,6px 6px;box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 6px rgba(255,255,255,.1)}
+  .ball-chip[data-prop=gold]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#f2c94c;box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 8px rgba(242,201,76,.3)}
+  .ball-chip[data-prop=glass]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.82) 0 2px,transparent 22%),transparent;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.22)}
+  .ball-chip[data-prop=glass]::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.7) 45%,transparent 58%)}
+  .ball-chip[data-enh=holo]{box-shadow:0 0 5px rgba(47,128,237,.32)}
+  .ball-chip[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:linear-gradient(120deg,rgba(0,110,255,.05) 25%,rgba(40,150,255,.6) 45%,rgba(255,255,255,.75) 50%,rgba(0,110,255,.05) 60%)}
+  .ball-chip[data-enh=spark]::before{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22))}
+  .ball-chip[data-enh=invert]{filter:invert(1)}
 
   /* enhancement/property appearance overrides are defined with the primary element styles above */
 
@@ -409,11 +469,9 @@
   .gacha-opt .mini-block[data-prop=glass] .arm,.gacha-opt .mini-block[data-prop=glass] .hub{background:transparent;border:1px solid rgba(255,255,255,.85);box-shadow:none}
   .gacha-opt .mini-block[data-prop=striped] .arm,.gacha-opt .mini-block[data-prop=striped] .hub{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}
   .gacha-opt .mini-block[data-prop=grid] .arm,.gacha-opt .mini-block[data-prop=grid] .hub{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
-  .gacha-opt .mini-block[data-enh=holo]::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(0,110,255,.05) 25%,rgba(40,150,255,.6) 45%,rgba(255,255,255,.7) 50%,rgba(0,110,255,.05) 60%);mix-blend-mode:screen}
-  .gacha-opt .mini-block[data-enh=spark]::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,70,90,.2),rgba(255,220,70,.2),rgba(60,220,140,.2),rgba(80,150,255,.2),rgba(190,90,230,.2));mix-blend-mode:screen}
   .gacha-opt .mini-block[data-enh=invert],.gacha-opt .mini-ball[data-enh=invert]{filter:invert(1)}
   .gacha-opt .mini-ball[data-prop=steel]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3;box-shadow:0 0 7px rgba(255,255,255,.15)}.gacha-opt .mini-ball[data-prop=stone]{background:#777;box-shadow:none;background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px);background-size:7px 6px,8px 7px}.gacha-opt .mini-ball[data-prop=gold]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#f2c94c}.gacha-opt .mini-ball[data-prop=wood]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),#b8895a;box-shadow:0 0 7px rgba(255,255,255,.12)}.gacha-opt .mini-ball[data-prop=glass]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.82) 0 2px,transparent 22%),transparent;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.22)}.gacha-opt .mini-ball[data-prop=striped]{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}.gacha-opt .mini-ball[data-prop=grid]{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
-  .gacha-opt .mini-ball[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(120deg,rgba(0,110,255,.05) 25%,rgba(40,150,255,.6) 45%,rgba(255,255,255,.75) 50%,rgba(0,110,255,.05) 60%);mix-blend-mode:screen}
+  .gacha-opt .mini-ball[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%);mix-blend-mode:screen}
   .gacha-opt .mini-ball[data-enh=spark]::before{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22));mix-blend-mode:screen}
 
   /* Borderless ball displays in shop/gacha: keep only the ball itself visible. */
@@ -436,10 +494,8 @@
       <div class="stat target"><span class="label">Mục tiêu</span><span class="value" id="targetVal">0</span></div>
       <div class="stat money"><span class="label">Tiền</span><span class="value" id="moneyVal">$0</span></div>
     </div>
-    <button id="newGameBtn">Chơi lại từ đầu</button>
+    <button id="newGameBtn">Chơi lại</button>
   </header>
-
-  <p class="instructions">Kéo khối từ khay xuống bảng để nối mạch từ <b style="color:var(--amber)">nút nguồn</b> tới <b style="color:var(--green)">đích</b>. Click khối để xoay 90°. Bấm nút nguồn để bắn bóng tiếp theo. Thẻ sức mạnh trong tay dùng được bất cứ lúc nào đang chơi.</p>
 
   <div class="ball-queue" id="ballQueue"></div>
 
@@ -447,9 +503,11 @@
     <div class="board" id="board"></div>
   </div>
 
-  <div class="hand" id="hand"></div>
-  <div class="discard-row">
-    <button class="discard-btn" id="discardBtn">Loại bỏ <span id="discardCount">(3/3)</span></button>
+  <div class="hand-row">
+    <div class="hand" id="hand"></div>
+    <div class="discard-row">
+      <button class="discard-btn" id="discardBtn">Loại bỏ <span id="discardCount">(3/3)</span></button>
+    </div>
   </div>
   <div class="bag-row">
     <div class="bag-count" id="bagCount"></div>
@@ -475,6 +533,35 @@
 <div class="overlay hidden" id="gachaOverlay"></div>
 
 <div class="overlay hidden" id="inventoryOverlay"></div>
+
+<div class="debug-overlay hidden" id="debugOverlay">
+  <div class="debug-panel">
+    <div class="debug-head">
+      <h2>DEBUG MENU</h2>
+      <button class="debug-close" id="debugCloseBtn">Đóng</button>
+    </div>
+    <div class="debug-section">
+      <span class="debug-label">Tiền</span>
+      <div class="debug-money-row">
+        <input id="debugMoneyInput" type="number" step="1" value="100">
+        <button class="debug-apply" id="debugAddMoneyBtn">+ Thêm</button>
+      </div>
+    </div>
+    <div class="debug-section">
+      <span class="debug-label">Đối tượng đang trỏ tới</span>
+      <div class="debug-target" id="debugTargetInfo"><span class="debug-none">Chưa có khối hoặc bóng nào dưới con trỏ.</span></div>
+    </div>
+    <div class="debug-section">
+      <span class="debug-label">Đặc điểm</span>
+      <div class="debug-select-row"><select class="debug-select" id="debugPropertySelect" disabled></select></div>
+      <span class="debug-label" style="margin-top:10px">Enhancement</span>
+      <div class="debug-select-row"><select class="debug-select" id="debugEnhSelect" disabled></select></div>
+      <div class="debug-actions"><button class="debug-apply" id="debugApplyTargetBtn" disabled>Áp dụng cho đối tượng</button></div>
+    </div>
+    <p class="debug-hint">Ctrl + Shift + D để mở / đóng menu</p>
+  </div>
+</div>
+
 
 <script>
 (function(){
@@ -558,6 +645,57 @@
 
   const hoverTipEl = document.createElement('div'); hoverTipEl.className='hover-tip hidden';
   document.body.appendChild(hoverTipEl);
+
+  let debugHoverTarget = null;
+  function markDebugTarget(el, obj, kind){ el.__debugTarget = {el, obj, kind}; return el; }
+  function debugDescribeTarget(target){
+    if(!target || !target.obj) return '<span class="debug-none">Chưa có khối hoặc bóng nào dưới con trỏ.</span>';
+    const obj=target.obj;
+    const label=target.kind==='block' ? (TYPE_LABEL[obj.type]||'Khối') : 'Bóng';
+    return `<strong>${label}</strong><br>Đặc điểm: ${obj.property ? PROP_LABEL[obj.property] : 'Không có'}<br>Enhancement: ${obj.enhancement ? ENH_LABEL[obj.enhancement] : 'Không có'}`;
+  }
+  function debugRefreshSelects(){
+    const ps=document.getElementById('debugPropertySelect'), es=document.getElementById('debugEnhSelect'), ab=document.getElementById('debugApplyTargetBtn');
+    ps.innerHTML=''; es.innerHTML='';
+    if(!debugHoverTarget){ ps.disabled=true; es.disabled=true; ab.disabled=true; return; }
+    const props=debugHoverTarget.kind==='block'?BLOCK_PROPS:BALL_PROPS;
+    const n=document.createElement('option'); n.value=''; n.textContent='Không có đặc điểm'; ps.appendChild(n);
+    props.forEach(x=>{const o=document.createElement('option');o.value=x;o.textContent=PROP_LABEL[x];ps.appendChild(o);});
+    const ne=document.createElement('option'); ne.value=''; ne.textContent='Không có enhancement'; es.appendChild(ne);
+    ENHANCEMENTS.forEach(x=>{const o=document.createElement('option');o.value=x;o.textContent=ENH_LABEL[x];es.appendChild(o);});
+    ps.value=debugHoverTarget.obj.property||''; es.value=debugHoverTarget.obj.enhancement||''; ps.disabled=false; es.disabled=false; ab.disabled=false;
+  }
+  function debugUpdateTargetVisual(target){
+    if(!target?.el?.isConnected) return;
+    const el=target.el;
+    if(target.kind==='block'){
+      if(el.matches('.cell,.hand-slot,.inventory-item')) renderBlockArms(el,target.obj);
+      else { const mini=el.querySelector('.mini-block'); if(mini) mini.outerHTML=renderMiniBlockMarkup(target.obj); }
+    } else {
+      if(el.classList.contains('ball-chip')){ el.dataset.prop=target.obj.property||''; el.dataset.enh=target.obj.enhancement||''; if(target.obj.property) el.style.setProperty('--prop-color',PROP_COLOR[target.obj.property]); else el.style.removeProperty('--prop-color'); }
+      else { const chip=el.querySelector('.ball-chip,.mini-ball'); if(chip) chip.outerHTML=ballChipMarkup(target.obj); }
+    }
+  }
+  function debugApplyTarget(){
+    const t=debugHoverTarget; if(!t?.obj) return;
+    const prop=document.getElementById('debugPropertySelect').value||null, enh=document.getElementById('debugEnhSelect').value||null;
+    t.obj.property=prop; t.obj.enhancement=enh;
+    if(t.kind==='ball'){
+      const pool=t.obj._id ? state.ballPool.find(b=>b._id===t.obj._id) : null;
+      const q=t.obj._id ? state.ballQueue.find(b=>b._id===t.obj._id) : null;
+      if(pool){ pool.property=prop; pool.enhancement=enh; }
+      if(q){ q.property=prop; q.enhancement=enh; }
+      if(pool || q){ syncBallMutationTargets([{obj:t.obj,kind:'ball'}]); }
+      renderBallQueue();
+      if(!shopOverlayEl.classList.contains('hidden')) renderShop();
+      debugUpdateTargetVisual(t);
+    } else {
+      render();
+      if(!shopOverlayEl.classList.contains('hidden')) renderShop();
+      if(!inventoryOverlayEl.classList.contains('hidden')) openInventory();
+    }
+    document.getElementById('debugTargetInfo').innerHTML=debugDescribeTarget(t); debugRefreshSelects();
+  }
   function showHoverTip(targetEl, {title, level, lines}){
     hoverTipEl.innerHTML = '';
     const t = document.createElement('div'); t.className='tip-title';
@@ -726,6 +864,7 @@
     state.hand = [];
     state.discardPile = [];
     if(state.pendingBlocks.length){ state.bag.push(...state.pendingBlocks); state.pendingBlocks = []; }
+    state.bag.forEach(block=>{ if(block) block.rotation=0; });
     shuffle(state.bag);
 
     const boardOptions = state.level===1
@@ -837,6 +976,7 @@
       visual.appendChild(arm);
     });
     container.appendChild(visual);
+    markDebugTarget(container, block, 'block');
     if(block.property) container.style.setProperty('--prop-color', PROP_COLOR[block.property]);
     if(block.enhancement) container.style.setProperty('--enh-color', ENH_COLOR[block.enhancement]);
     container.addEventListener('mouseenter', ()=> showHoverTip(container, blockTooltip(block)));
@@ -973,12 +1113,38 @@
   }
 
   function syncBallMutationTargets(targets){
-    const ballTargets = (targets||[]).filter(t=>t.kind==='ball').map(t=>t.obj);
+    const ballTargets = (targets||[]).filter(t=>t.kind==='ball').map(t=>t.obj).filter(Boolean);
     if(!ballTargets.length) return;
-    const fromPool = ballTargets.every(obj=>state.ballPool.some(b=>b===obj));
-    if(fromPool) syncBallQueueFromPool();
-    else { syncBallPoolFromQueue(); syncBallQueueFromPool(); }
+
+    // Sync by stable ball _id rather than object identity. Some game flows can
+    // rebuild/reorder state.ballPool or state.ballQueue, so comparing object
+    // references can miss a mutation even when it is the same logical ball.
+    const changedById = new Map();
+    ballTargets.forEach(ball=>{
+      if(!ball._id) return;
+      changedById.set(ball._id, {
+        property: ball.property || null,
+        enhancement: ball.enhancement || null,
+      });
+    });
+
+    state.ballPool.forEach(ball=>{
+      const changed = changedById.get(ball._id);
+      if(!changed) return;
+      ball.property = changed.property;
+      ball.enhancement = changed.enhancement;
+    });
+
+    state.ballQueue.forEach(q=>{
+      const changed = changedById.get(q._id);
+      if(!changed) return;
+      q.property = changed.property;
+      q.enhancement = changed.enhancement;
+    });
+
     renderBallQueue();
+    refreshOpenShop();
+    refreshOpenGachaBalls();
   }
 
   function syncBallQueueFromPool(){
@@ -1003,6 +1169,7 @@
       if(b.property) chip.dataset.prop = b.property;
       if(b.enhancement) chip.dataset.enh = b.enhancement;
       chip.textContent = '';
+      markDebugTarget(chip, b, 'ball');
 
       attachObjectTooltip(chip, b, 'ball');
 
@@ -1663,6 +1830,20 @@
 
   // ---------- inventory (bag contents) ----------
   const inventoryOverlayEl = document.getElementById('inventoryOverlay');
+  const debugOverlayEl=document.getElementById('debugOverlay');
+  const debugTargetInfoEl=document.getElementById('debugTargetInfo');
+  document.addEventListener('mousemove', e=>{
+    if(!debugOverlayEl.classList.contains('hidden') && debugOverlayEl.contains(e.target)) return;
+    let n=document.elementFromPoint(e.clientX,e.clientY), found=null;
+    while(n){ if(n.__debugTarget){found=n.__debugTarget;break;} if(n===document.body) break; n=n.parentElement; }
+    debugHoverTarget=found;
+    if(!debugOverlayEl.classList.contains('hidden')){ debugTargetInfoEl.innerHTML=debugDescribeTarget(found); debugRefreshSelects(); }
+  });
+  function toggleDebugMenu(){ debugOverlayEl.classList.toggle('hidden'); if(!debugOverlayEl.classList.contains('hidden')){debugTargetInfoEl.innerHTML=debugDescribeTarget(debugHoverTarget);debugRefreshSelects();} }
+  document.addEventListener('keydown', e=>{ if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='d'){e.preventDefault();toggleDebugMenu();} });
+  document.getElementById('debugCloseBtn').addEventListener('click',()=>debugOverlayEl.classList.add('hidden'));
+  document.getElementById('debugAddMoneyBtn').addEventListener('click',()=>{ const amount=Number(document.getElementById('debugMoneyInput').value)||0; state.money+=amount; moneyValEl.textContent=`$${state.money}`; if(!shopOverlayEl.classList.contains('hidden')) renderShop(); });
+  document.getElementById('debugApplyTargetBtn').addEventListener('click',debugApplyTarget);
   document.getElementById('inventoryBtn').addEventListener('click', openInventory);
 
   function collectOwnedBlocks(){
@@ -1718,8 +1899,16 @@
   // ---------- shop ----------
   const shopOverlayEl = document.getElementById('shopOverlay');
   const gachaOverlayEl = document.getElementById('gachaOverlay');
+  let activeRenderShop = null;
+  let activeRefreshGachaBalls = null;
+  function refreshOpenShop(){
+    if(activeRenderShop && !shopOverlayEl.classList.contains('hidden')) activeRenderShop();
+  }
+  function refreshOpenGachaBalls(){
+    if(activeRefreshGachaBalls && !gachaOverlayEl.classList.contains('hidden')) activeRefreshGachaBalls();
+  }
   function hideShop(){ shopOverlayEl.classList.add('hidden'); shopOverlayEl.innerHTML=''; hideGachaChoice(); }
-  function hideGachaChoice(){ gachaOverlayEl.classList.add('hidden'); gachaOverlayEl.innerHTML=''; }
+  function hideGachaChoice(){ activeRefreshGachaBalls=null; gachaOverlayEl.classList.add('hidden'); gachaOverlayEl.innerHTML=''; }
 
   function genBlockOptions(tier){
     const arr=[]; for(let i=0;i<tier.options;i++){ const type=pick(Object.keys(BASE_SIDES)); arr.push({type,property:rollProp(BLOCK_PROPS,0.5),enhancement:rollProp(ENHANCEMENTS,0.25),color:null}); }
@@ -1760,7 +1949,9 @@
     const sides = BASE_SIDES[block.type].map(side => DIR_NAMES[(side+deg)%4]);
     const prop = block.property || '';
     const enh = block.enhancement || '';
-    return `<div class="mini-block" data-prop="${prop}" data-enh="${enh}">${sides.map(side=>`<div class="arm arm-${side}"></div>`).join('')}<div class="hub"></div></div>`;
+    const propColor = prop ? PROP_COLOR[prop] : '';
+    const colorStyle = propColor ? ` style="--prop-color:${propColor}"` : '';
+    return `<div class="mini-block" data-prop="${prop}" data-enh="${enh}"${colorStyle}>${sides.map(side=>`<div class="arm arm-${side}"></div>`).join('')}<div class="hub"></div></div>`;
   }
 
   function ballOptionLabel(b){
@@ -1769,12 +1960,12 @@
 
   function powerOptionLabel(opt){
     const def=POWER_CARD_DEFS[opt.defId];
-    return `<div class="mini-card">${def.name}</div><div>${def.desc}</div>`;
+    return `<div class="mini-card">${def.name}</div>`;
   }
 
   function upgradeOptionLabel(opt){
     const def=UPGRADE_POOL.find(x=>x.id===opt.defId);
-    return `<div class="mini-card">${def.name}</div><div>${def.desc}</div>`;
+    return `<div class="mini-card">${def.name}</div>`;
   }
 
   function randomBagBlocks(count){
@@ -1796,6 +1987,8 @@
     if(state.ballPool.length >= max) return false;
     state.ballPool.push({_id:ballUid(),property:ball.property||null, enhancement:ball.enhancement||null});
     syncBallQueueFromPool();
+    refreshOpenShop();
+    refreshOpenGachaBalls();
     return true;
   }
 
@@ -1803,6 +1996,8 @@
     if(index<0 || index>=state.ballPool.length) return false;
     state.ballPool[index] = {_id:ballUid(), property:ball.property||null, enhancement:ball.enhancement||null};
     syncBallQueueFromPool();
+    refreshOpenShop();
+    refreshOpenGachaBalls();
     return true;
   }
 
@@ -1833,9 +2028,12 @@
 
     const stateUi={selected:[],ownedIndex:null,targeting:[],usedOptions:[]};
     const optionsWrap=document.createElement('div'); optionsWrap.className='gacha-choice-options';
+    const gachaBallViews=[];
+    const registerGachaBallView=(wrap,getBalls)=>{ gachaBallViews.push({wrap,getBalls}); };
 
     function finish(){
-      g.done=true; hideGachaChoice(); renderBallQueue(); renderShop();
+      syncBallQueueFromPool();
+      hideGachaChoice(); renderBallQueue(); renderShop();
     }
 
     function skip(){ finish(); }
@@ -1857,6 +2055,8 @@
     } else if(g.type==='upgrade'){
       g.options.forEach((opt,i)=>{
         const el=document.createElement('div'); el.className='gacha-opt'; el.innerHTML=upgradeOptionLabel(opt);
+        const def=UPGRADE_POOL.find(x=>x.id===opt.defId);
+        if(def) attachCardTooltip(el, def);
         el.addEventListener('click',()=>{
           stateUi.selected = stateUi.selected.includes(i) ? [] : [i];
           optionsWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',j===stateUi.selected[0]));
@@ -1871,12 +2071,14 @@
       if(state.ballPool.length < max){
         note.innerHTML=`<h3>Bóng hiện có (${state.ballPool.length}/${max})</h3>`;
         const ownedWrap=document.createElement('div'); ownedWrap.className='ball-choice-grid';
-        state.ballPool.forEach((b,i)=>{ const e=document.createElement('div'); e.className='ball-choice-item gacha-owned-ball'; e.innerHTML=ballOptionLabel(b); attachObjectTooltip(e,b,'ball'); ownedWrap.appendChild(e); });
+        state.ballPool.forEach((b,i)=>{ const e=document.createElement('div'); e.className='ball-choice-item gacha-owned-ball'; e.innerHTML=ballOptionLabel(b); markDebugTarget(e,b,'ball'); attachObjectTooltip(e,b,'ball'); ownedWrap.appendChild(e); });
         note.appendChild(ownedWrap);
+        registerGachaBallView(ownedWrap,()=>state.ballPool);
         panel.appendChild(note);
         const free=max-state.ballPool.length;
         g.options.forEach((opt,i)=>{
           const el=document.createElement('div'); el.className='ball-choice-item'; el.innerHTML=ballOptionLabel(opt);
+          markDebugTarget(el,opt,'ball');
           attachObjectTooltip(el, opt, 'ball');
           el.addEventListener('click',()=>{
             if(stateUi.selected.includes(i)) stateUi.selected=stateUi.selected.filter(x=>x!==i);
@@ -1890,11 +2092,13 @@
       } else {
         note.innerHTML=`<h3>Bóng hiện có (${state.ballPool.length}/${max}) — chọn 1 bóng để thay</h3>`;
         const ownedWrap=document.createElement('div'); ownedWrap.className='ball-choice-grid';
-        state.ballPool.forEach((b,i)=>{ const e=document.createElement('div'); e.className='ball-choice-item gacha-owned-ball'; e.innerHTML=ballOptionLabel(b); attachObjectTooltip(e,b,'ball'); e.addEventListener('click',()=>{ stateUi.ownedIndex=i; ownedWrap.querySelectorAll('.gacha-owned-ball').forEach((n,j)=>n.classList.toggle('selected',j===i)); accept.disabled=stateUi.selected.length!==1 || stateUi.ownedIndex===null; }); ownedWrap.appendChild(e); });
+        state.ballPool.forEach((b,i)=>{ const e=document.createElement('div'); e.className='ball-choice-item gacha-owned-ball'; e.innerHTML=ballOptionLabel(b); markDebugTarget(e,b,'ball'); attachObjectTooltip(e,b,'ball'); e.addEventListener('click',()=>{ stateUi.ownedIndex=i; ownedWrap.querySelectorAll('.gacha-owned-ball').forEach((n,j)=>n.classList.toggle('selected',j===i)); accept.disabled=stateUi.selected.length!==1 || stateUi.ownedIndex===null; }); ownedWrap.appendChild(e); });
         note.appendChild(ownedWrap);
+        registerGachaBallView(ownedWrap,()=>state.ballPool);
         panel.appendChild(note);
         g.options.forEach((opt,i)=>{
           const el=document.createElement('div'); el.className='ball-choice-item'; el.innerHTML=ballOptionLabel(opt);
+          markDebugTarget(el,opt,'ball');
           attachObjectTooltip(el, opt, 'ball');
           el.addEventListener('click',()=>{ stateUi.selected=[i]; optionsWrap.querySelectorAll('.ball-choice-item').forEach((n,j)=>n.classList.toggle('selected',j===i)); accept.disabled=stateUi.ownedIndex===null; });
           optionsWrap.appendChild(el);
@@ -1903,22 +2107,24 @@
       optionsWrap.className='ball-choice-grid';
       const h3=document.createElement('div'); h3.className='gacha-choice-section'; h3.innerHTML='<h3>Bóng trong hộp gacha</h3>';
       h3.appendChild(optionsWrap); panel.appendChild(h3);
+      registerGachaBallView(optionsWrap,()=>g.options);
     } else {
       const targets=randomBagBlocks(5);
       g.powerTargets=targets;
       const targetSec=document.createElement('div'); targetSec.className='gacha-choice-section'; targetSec.innerHTML='<h3>5 khối ngẫu nhiên từ kho đồ</h3>';
       const targetWrap=document.createElement('div'); targetWrap.className='gacha-choice-options';
-      targets.forEach((b,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=blockOptionLabel(b); attachObjectTooltip(e,b,'block'); e.addEventListener('click',()=>{ if(!stateUi.targeting.some(x=>x.obj===b)){ stateUi.targeting.push({obj:b,kind:'block'}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } targetWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j]))); updatePowerAccept(); }); targetWrap.appendChild(e); });
+      targets.forEach((b,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=blockOptionLabel(b); markDebugTarget(e,b,'block'); attachObjectTooltip(e,b,'block'); e.addEventListener('click',()=>{ if(!stateUi.targeting.some(x=>x.obj===b)){ stateUi.targeting.push({obj:b,kind:'block'}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } targetWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j]))); updatePowerAccept(); }); targetWrap.appendChild(e); });
       targetSec.appendChild(targetWrap); panel.appendChild(targetSec);
 
       const ballSec=document.createElement('div'); ballSec.className='gacha-choice-section'; ballSec.innerHTML=`<h3>Bóng đang sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
       const ballWrap=document.createElement('div'); ballWrap.className='ball-choice-grid';
       state.ballPool.forEach((b)=>{ const e=document.createElement('div'); e.className='ball-choice-item'; e.innerHTML=ballOptionLabel(b); attachObjectTooltip(e,b,'ball'); e.addEventListener('click',()=>{ if(!stateUi.targeting.some(x=>x.obj===b)){ stateUi.targeting.push({obj:b,kind:'ball'}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } ballWrap.querySelectorAll('.ball-choice-item').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===state.ballPool[j]))); updatePowerAccept(); }); ballWrap.appendChild(e); });
       ballSec.appendChild(ballWrap); panel.appendChild(ballSec);
+      registerGachaBallView(ballWrap,()=>state.ballPool);
 
       const cardSec=document.createElement('div'); cardSec.className='gacha-choice-section'; cardSec.innerHTML='<h3>Thẻ sức mạnh</h3>';
       const cardWrap=document.createElement('div'); cardWrap.className='gacha-choice-options';
-      g.options.forEach((opt,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=powerOptionLabel(opt); e.addEventListener('click',()=>{ if(stateUi.usedOptions?.includes(i)) return; stateUi.selected=[i]; stateUi.targeting=[]; targetWrap.querySelectorAll('.gacha-opt').forEach(n=>n.classList.remove('selected')); ballWrap.querySelectorAll('.ball-choice-item').forEach(n=>n.classList.remove('selected')); cardWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>{ n.classList.toggle('selected',j===i); n.classList.toggle('disabled',stateUi.usedOptions?.includes(j)); }); updatePowerAccept(); }); cardWrap.appendChild(e); });
+      g.options.forEach((opt,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=powerOptionLabel(opt); const def=POWER_CARD_DEFS[opt.defId]; if(def) attachCardTooltip(e, def); e.addEventListener('click',()=>{ if(stateUi.usedOptions?.includes(i)) return; stateUi.selected=[i]; stateUi.targeting=[]; targetWrap.querySelectorAll('.gacha-opt').forEach(n=>n.classList.remove('selected')); ballWrap.querySelectorAll('.ball-choice-item').forEach(n=>n.classList.remove('selected')); cardWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>{ n.classList.toggle('selected',j===i); n.classList.toggle('disabled',stateUi.usedOptions?.includes(j)); }); updatePowerAccept(); }); cardWrap.appendChild(e); });
       cardSec.appendChild(cardWrap); panel.appendChild(cardSec);
 
       function updatePowerAccept(){
@@ -1958,12 +2164,15 @@
         } else if(stateUi.selected.length===1 && stateUi.ownedIndex!==null){
           replaceBallInPool(stateUi.ownedIndex,g.options[stateUi.selected[0]]);
         }
+        syncBallQueueFromPool();
+        refreshOpenShop();
         finish();
       } else if(g.type==='power'){
         const opt=g.options[stateUi.selected[0]];
         const def=POWER_CARD_DEFS[opt.defId];
         if(def.targetCount===0) applyPowerPick(opt,[]);
         else applyPowerPick(opt,stateUi.targeting);
+        syncBallQueueFromPool();
         g.powerUsed=(g.powerUsed||0)+1;
         if(stateUi.selected.length) stateUi.usedOptions.push(stateUi.selected[0]);
         if(g.powerUsed>=g.tier.picks){ finish(); return; }
@@ -1976,8 +2185,24 @@
     });
     actions.appendChild(skipBtn); actions.appendChild(accept); panel.appendChild(actions);
 
+    activeRefreshGachaBalls=()=>{
+      gachaBallViews.forEach(({wrap,getBalls})=>{
+        const balls=getBalls();
+        [...wrap.children].forEach((el,i)=>{
+          const ball=balls[i];
+          if(!ball) return;
+          el.innerHTML=ballOptionLabel(ball);
+          el.__debugTarget={el,obj:ball,kind:'ball'};
+          if(!el.__gachaTooltipAttached){
+            attachObjectTooltip(el,ball,'ball');
+            el.__gachaTooltipAttached=true;
+          }
+        });
+      });
+    };
     if(g.type==='power' && panel._updatePowerAccept) panel._updatePowerAccept();
     gachaOverlayEl.appendChild(panel);
+    refreshOpenGachaBalls();
     gachaOverlayEl.classList.remove('hidden');
   }
 
@@ -2132,6 +2357,7 @@
       box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span><b>$${g.tier.cost}</b></div>`;
       const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<g.tier.cost; buy.addEventListener('click',()=>{
         state.money-=g.tier.cost; moneyValEl.textContent=`$${state.money}`;
+        g.done=true;
         g.options=g.type==='block'?genBlockOptions(g.tier):g.type==='ball'?genBallOptions(g.tier):g.type==='power'?genPowerOptions(g.tier):genUpgradeOptions(g.tier);
         renderShop();
         showGachaChoice(g);
@@ -2150,6 +2376,7 @@
         el.className='shop-ball-item';
         el.dataset.ballIndex=index;
         el.innerHTML=ballOptionLabel(ball);
+        markDebugTarget(el, ball, 'ball');
         attachObjectTooltip(el, ball, 'ball');
         el.addEventListener('pointerdown', e=>{
           if(e.button!==0) return;
@@ -2253,6 +2480,7 @@
     }
 
     function renderShop(){
+      syncBallQueueFromPool();
       shopOverlayEl.innerHTML='';
       const panel=document.createElement('div'); panel.className='shop-panel';
       panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG — MÀN ${state.level}</h2><div class="shop-money">Tiền hiện có: $${state.money}</div>`;
@@ -2275,6 +2503,7 @@
         const visual=document.createElement('div'); visual.className='shop-item-visual';
         if(item.kind==='block'){
           visual.innerHTML=renderMiniBlockMarkup(item.ref);
+          markDebugTarget(visual, item.ref, 'block');
           attachObjectTooltip(visual, item.ref, 'block');
         } else {
           const name=document.createElement('div'); name.className='shop-item-name'; name.textContent=item.name;
@@ -2308,6 +2537,7 @@
       const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent='Tiếp tục →'; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
       shopOverlayEl.appendChild(panel);
     }
+    activeRenderShop = renderShop;
     renderShop();
   }
 

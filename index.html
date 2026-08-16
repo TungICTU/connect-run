@@ -330,24 +330,29 @@
   .shop-section{ margin-bottom: 18px; }
   .shop-section h3{ font-size: 11px; letter-spacing:1px; text-transform:uppercase; color: var(--cyan); margin: 0 0 8px; border-bottom: 1px solid var(--panel-line); padding-bottom:6px; }
   .shop-card{ display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px; background: rgba(255,255,255,0.03); border: 1px solid var(--panel-line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .shop-price{ font-family:'JetBrains Mono', monospace; color:var(--gold); font-size:12px; line-height:1.2; text-align:center; white-space:nowrap; font-weight:700; }
   .shop-card .shop-price{ text-align:center; }
-  .shop-item-visual{ min-height:48px; display:flex; align-items:center; justify-content:center; text-align:center; }
+  .shop-item-visual{ min-height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px; }
   .shop-item-visual .mini-block{ width:42px; height:42px; transform:scale(.72); transform-origin:center; margin:-6px 0; }
-  .shop-item-name{ text-align:center; font-weight:600; font-size:12.5px; line-height:1.35; }
-  .shop-item-actions{ display:flex; justify-content:center; gap:6px; }
+  .shop-item-name{ text-align:center; font-weight:600; font-size:12px; line-height:1.35; min-height:32px; display:flex; align-items:center; justify-content:center; }
+  .shop-item-actions{ display:flex; justify-content:center; gap:6px; width:100%; margin-top:auto; }
   .shop-item-actions button{ flex:1 1 0; min-width:0; }
   .shop-item-actions .use-btn{ border-color:var(--green); color:var(--green); background:rgba(111,207,151,0.08); }
   .shop-item-actions .use-btn:hover{ background:rgba(111,207,151,0.16); }
   .shop-common-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
   .shop-common-grid .shop-card{ margin-bottom:0; min-width:0; }
-  .shop-lower{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:12px; align-items:start; }
-  .shop-gacha-grid{ display:flex; gap:8px; flex-wrap:wrap; align-items:stretch; }
-  .shop-gacha-grid .gacha-box{ flex:1 1 0; min-width:0; margin-bottom:0; }
-  .shop-card .desc{ font-size: 12.5px; line-height:1.4; }
+  .shop-lower{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:12px; align-items:stretch; }
+  .shop-lower > .shop-section{ display:flex; flex-direction:column; }
+  .shop-lower > .shop-section > .shop-card{ flex:1; margin-bottom:0; display:flex; flex-direction:column; }
+  .shop-gacha-grid{ display:flex; gap:8px; flex-wrap:wrap; align-items:stretch; flex:1; }
+  .shop-gacha-grid .gacha-box{ flex:1 1 0; min-width:0; margin-bottom:0; height:100%; display:flex; flex-direction:column; }
+  .shop-card .desc{ font-size: 12px; line-height:1.4; }
   .shop-card .desc .name{ font-weight:600; display:block; margin-bottom:2px; }
   .shop-card .price{ font-family:'JetBrains Mono', monospace; color:var(--gold); font-size:12px; white-space:nowrap; }
   .gacha-box{ background: rgba(255,255,255,0.03); border: 1px solid var(--panel-line); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-  .gacha-box .gacha-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:6px; }
+  .gacha-box .gacha-head{ display:flex; justify-content:center; align-items:center; margin-bottom:8px; gap:6px; }
+  .gacha-box .shop-item-name{ min-height:32px; }
+  .gacha-box .shop-item-actions{ margin-top:auto; }
   .gacha-options{ display:flex; gap:8px; flex-wrap:wrap; }
   .gacha-opt{ flex: 1 1 90px; min-width:0; background: rgba(255,255,255,0.04); border: 1px solid var(--panel-line); border-radius: 7px; padding: 8px; text-align:center; cursor:pointer; font-size: 10.5px; line-height:1.4; }
   .gacha-opt:hover{ background: rgba(94,200,216,0.1); }
@@ -1236,21 +1241,11 @@
       document.body.appendChild(ballDrag.ghostEl);
       if(ballDrag.sourceEl) ballDrag.sourceEl.classList.add('drag-source-fade');
       ballDrag.curX=e.clientX; ballDrag.curY=e.clientY;
-      ballDragLoop();
+      dragGhostLoop(ballDrag);
     }
     if(ballDrag.moved) updateBallDropHover(e.clientX,e.clientY);
   }
 
-  function ballDragLoop(){
-    if(!ballDrag || !ballDrag.moved) return;
-    const dx=ballDrag.targetX-ballDrag.curX, dy=ballDrag.targetY-ballDrag.curY;
-    ballDrag.curX += dx*0.3; ballDrag.curY += dy*0.3;
-    const tilt=Math.max(-16,Math.min(16,dx*0.15));
-    ballDrag.ghostEl.style.left=ballDrag.curX+'px';
-    ballDrag.ghostEl.style.top=ballDrag.curY+'px';
-    ballDrag.ghostEl.style.transform=`translate(-50%,-50%) rotate(${tilt}deg) scale(1.12)`;
-    ballDrag.raf=requestAnimationFrame(ballDragLoop);
-  }
 
   function updateBallDropHover(x,y){
     ballQueueEl.querySelectorAll('.ball-drop-hover').forEach(el=>el.classList.remove('ball-drop-hover'));
@@ -1260,15 +1255,6 @@
     if(targetIdx>=state.ballsFired && targetIdx!==ballDrag.idx) el.classList.add('ball-drop-hover');
   }
 
-  function animateBallDragReturn(info){
-    if(!info.ghostEl || !info.sourceEl){ if(info.sourceEl) info.sourceEl.classList.remove('drag-source-fade'); return; }
-    const src=info.sourceEl.getBoundingClientRect(), ghost=info.ghostEl.getBoundingClientRect();
-    const dx=(src.left+src.width/2)-(ghost.left+ghost.width/2);
-    const dy=(src.top+src.height/2)-(ghost.top+ghost.height/2);
-    info.ghostEl.style.transition='transform .24s cubic-bezier(.22,.8,.24,1), opacity .24s ease';
-    info.ghostEl.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(0deg) scale(1)`;
-    setTimeout(()=>{ info.ghostEl?.remove(); info.sourceEl?.classList.remove('drag-source-fade'); },250);
-  }
 
   function onBallDragEnd(e){
     window.removeEventListener('pointermove', onBallDragMove);
@@ -1301,7 +1287,7 @@
       renderBallQueue();
       return;
     }
-    animateBallDragReturn(info);
+    animateDragReturn(info);
   }
 
   function renderCardHand(){
@@ -1431,19 +1417,21 @@
         ? handEl.querySelector(`.hand-slot[data-idx="${drag.idx}"]`)
         : boardEl.querySelector(`.cell[data-r="${drag.r}"][data-c="${drag.c}"]`);
       if(drag.sourceEl) drag.sourceEl.classList.add('drag-source-fade');
-      dragLoop();
+      dragGhostLoop(drag);
     }
     if(drag.moved) updateDropHover(e.clientX, e.clientY);
   }
-  function dragLoop(){
-    if(!drag || !drag.moved) return;
-    const dx = drag.targetX - drag.curX, dy = drag.targetY - drag.curY;
-    drag.curX += dx*0.3; drag.curY += dy*0.3;
+
+  function dragGhostLoop(dragState){
+    if(!dragState || !dragState.moved) return;
+    const dx = dragState.targetX - dragState.curX, dy = dragState.targetY - dragState.curY;
+    dragState.curX += dx*0.3; dragState.curY += dy*0.3;
     const tilt = Math.max(-16, Math.min(16, dx*0.15));
-    drag.ghostEl.style.left = drag.curX+'px'; drag.ghostEl.style.top = drag.curY+'px';
-    drag.ghostEl.style.transform = `translate(-50%,-50%) rotate(${tilt}deg) scale(1.12)`;
-    drag.raf = requestAnimationFrame(dragLoop);
+    dragState.ghostEl.style.left = dragState.curX+'px'; dragState.ghostEl.style.top = dragState.curY+'px';
+    dragState.ghostEl.style.transform = `translate(-50%,-50%) rotate(${tilt}deg) scale(1.12)`;
+    dragState.raf = requestAnimationFrame(()=>dragGhostLoop(dragState));
   }
+
   // board-origin drags may land on an occupied cell (swap); hand-origin drags may only land on empty cells
   function dropTargetCell(el){
     const cellEl = el && el.closest ? el.closest('.cell') : null;
@@ -1460,9 +1448,13 @@
     const cellEl = dropTargetCell(el);
     if(cellEl) cellEl.classList.add('drop-hover');
   }
+
   function animateDragReturn(info){
-    if(!info.ghostEl || !info.sourceEl){ if(info.sourceEl) info.sourceEl.classList.remove('drag-source-fade'); return; }
-    const src=info.sourceEl.getBoundingClientRect();
+    if(!info.ghostEl || !info.sourceEl){
+      if(info.sourceEl) info.sourceEl.classList.remove('drag-source-fade');
+      return;
+    }
+    const src=info.sourceEl.querySelector('.ball-chip')?.getBoundingClientRect() || info.sourceEl.getBoundingClientRect();
     const ghost=info.ghostEl.getBoundingClientRect();
     const dx=(src.left+src.width/2)-(ghost.left+ghost.width/2);
     const dy=(src.top+src.height/2)-(ghost.top+ghost.height/2);
@@ -2354,7 +2346,8 @@
       const box=document.createElement('div'); box.className='gacha-box';
       const names={block:'Hộp khối',ball:'Hộp bóng',power:'Hộp thẻ sức mạnh',upgrade:'Hộp thẻ nâng cấp'};
       if(g.done){ box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span></div><div class="tag-done">Đã dùng</div>`; return box; }
-      box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span><b>$${g.tier.cost}</b></div>`;
+      box.innerHTML=`<div class="shop-price">$${g.tier.cost}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
+      const actions=document.createElement('div'); actions.className='shop-item-actions';
       const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<g.tier.cost; buy.addEventListener('click',()=>{
         state.money-=g.tier.cost; moneyValEl.textContent=`$${state.money}`;
         g.done=true;
@@ -2362,7 +2355,8 @@
         renderShop();
         showGachaChoice(g);
       });
-      box.appendChild(buy);
+      actions.appendChild(buy);
+      box.appendChild(actions);
       return box;
     }
 
@@ -2415,7 +2409,7 @@
         document.body.appendChild(shopBallDrag.ghostEl);
         shopBallDrag.sourceEl.classList.add('drag-source-fade');
         shopBallDrag.curX=e.clientX; shopBallDrag.curY=e.clientY;
-        shopBallDragLoop();
+        dragGhostLoop(shopBallDrag);
       }
       if(shopBallDrag.moved){
         ballsWrapForDrag?.querySelectorAll?.('.ball-drop-hover')?.forEach(n=>n.classList.remove('ball-drop-hover'));
@@ -2429,29 +2423,6 @@
     }
 
     let ballsWrapForDrag=null;
-    function shopBallDragLoop(){
-      if(!shopBallDrag || !shopBallDrag.moved) return;
-      const dx=shopBallDrag.targetX-shopBallDrag.curX, dy=shopBallDrag.targetY-shopBallDrag.curY;
-      shopBallDrag.curX += dx*0.3; shopBallDrag.curY += dy*0.3;
-      const tilt=Math.max(-16,Math.min(16,dx*0.15));
-      shopBallDrag.ghostEl.style.left=shopBallDrag.curX+'px'; shopBallDrag.ghostEl.style.top=shopBallDrag.curY+'px';
-      shopBallDrag.ghostEl.style.transform=`translate(-50%,-50%) rotate(${tilt}deg) scale(1.12)`;
-      shopBallDrag.raf=requestAnimationFrame(shopBallDragLoop);
-    }
-
-    function animateShopBallDragReturn(info){
-      if(!info.ghostEl || !info.sourceEl){
-        info.sourceEl?.classList.remove('drag-source-fade');
-        return;
-      }
-      const src=info.sourceEl.querySelector('.ball-chip')?.getBoundingClientRect() || info.sourceEl.getBoundingClientRect();
-      const ghost=info.ghostEl.getBoundingClientRect();
-      const dx=(src.left+src.width/2)-(ghost.left+ghost.width/2);
-      const dy=(src.top+src.height/2)-(ghost.top+ghost.height/2);
-      info.ghostEl.style.transition='transform .24s cubic-bezier(.22,.8,.24,1), opacity .24s ease';
-      info.ghostEl.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(0deg) scale(1)`;
-      setTimeout(()=>{ info.ghostEl?.remove(); info.sourceEl?.classList.remove('drag-source-fade'); },250);
-    }
 
     function onShopBallDragEnd(e){
       window.removeEventListener('pointermove', onShopBallDragMove);
@@ -2476,7 +2447,7 @@
         renderBallQueue();
         return;
       }
-      animateShopBallDragReturn(info);
+      animateDragReturn(info);
     }
 
     function renderShop(){
@@ -2501,16 +2472,17 @@
         row.appendChild(price);
 
         const visual=document.createElement('div'); visual.className='shop-item-visual';
+        const name=document.createElement('div'); name.className='shop-item-name'; name.textContent=item.name;
+        visual.appendChild(name);
         if(item.kind==='block'){
-          visual.innerHTML=renderMiniBlockMarkup(item.ref);
-          markDebugTarget(visual, item.ref, 'block');
-          attachObjectTooltip(visual, item.ref, 'block');
-        } else {
-          const name=document.createElement('div'); name.className='shop-item-name'; name.textContent=item.name;
-          visual.appendChild(name);
-          if(item.kind==='power') attachCardTooltip(visual, POWER_CARD_DEFS[item.ref.defId]);
-          if(item.kind==='upgrade') attachCardTooltip(visual, UPGRADE_POOL.find(x=>x.id===item.ref.defId));
+          const blockVisual=document.createElement('div');
+          blockVisual.innerHTML=renderMiniBlockMarkup(item.ref);
+          markDebugTarget(blockVisual, item.ref, 'block');
+          attachObjectTooltip(blockVisual, item.ref, 'block');
+          visual.appendChild(blockVisual);
         }
+        if(item.kind==='power') attachCardTooltip(visual, POWER_CARD_DEFS[item.ref.defId]);
+        if(item.kind==='upgrade') attachCardTooltip(visual, UPGRADE_POOL.find(x=>x.id===item.ref.defId));
         row.appendChild(visual);
 
         const actions=document.createElement('div'); actions.className='shop-item-actions';
@@ -2531,7 +2503,7 @@
       const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;'; const rb=document.createElement('button'); rb.textContent=`Đổi hàng ($${state.commonRerollCost})`; rb.disabled=state.money<state.commonRerollCost; rb.addEventListener('click',reroll); rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
 
       const lower=document.createElement('div'); lower.className='shop-lower';
-      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; br.innerHTML=`<div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div><div class="price">$${bo.cost}</div>`; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<bo.cost; bb.addEventListener('click',()=>{ state.money-=bo.cost; bo.apply(); bo.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop(); }); br.appendChild(bb); buff.appendChild(br); lower.appendChild(buff);
+      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; br.innerHTML=`<div class="shop-price">$${bo.cost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<bo.cost; bb.addEventListener('click',()=>{ state.money-=bo.cost; bo.apply(); bo.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
       const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>'; const gachGrid=document.createElement('div'); gachGrid.className='shop-gacha-grid'; state.gachaStock.forEach(g=>gachGrid.appendChild(renderGachaBox(g))); gach.appendChild(gachGrid); lower.appendChild(gach); panel.appendChild(lower);
 
       const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent='Tiếp tục →'; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);

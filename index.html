@@ -110,8 +110,7 @@
   .ball-chip[data-prop=striped]:not(.fired){ background:#c94848; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px); box-shadow:0 0 7px rgba(255,255,255,.12); }
   .ball-chip[data-prop=grid]:not(.fired){ background:#3976b9; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:auto,6px 6px,6px 6px; box-shadow:0 0 7px rgba(255,255,255,.12); }
   .ball-chip[data-enh=holo]:not(.fired){ box-shadow:0 0 0 1px rgba(47,128,237,.7); }
-  .ball-chip[data-enh=holo]:not(.fired)::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
-  .ball-chip[data-enh=spark]:not(.fired)::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
+  .ball-chip[data-enh=holo]:not(.fired)::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px); }
   .ball-chip::after{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.78) 0%,rgba(255,255,255,.32) 16%,transparent 42%); }
   .ball-chip[data-prop=glass]:not(.fired)::after{ background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.72) 45%,transparent 58%); }
   .ball-chip[data-enh=invert]:not(.fired){ filter:invert(1); }
@@ -119,6 +118,7 @@
   .ball-queue .ball-chip:not(.fired){ cursor:grab; }
   .ball-queue .ball-chip:not(.fired):active{ cursor:grabbing; }
   .ball-chip.ball-drop-hover,.shop-ball-item.ball-drop-hover .ball-chip{ box-shadow:0 0 0 2px var(--cyan),0 0 9px rgba(94,200,216,.55) !important; }
+  .ball-chip.click-selected{ box-shadow:0 0 0 2px var(--green),0 0 11px rgba(111,207,151,.6) !important; }
   .ball-chip.shop-ball-preview{ width:34px; height:34px; font-size:9px; }
   .gacha-opt .ball-chip.shop-ball-preview{ margin:0 auto 6px; }
   .ball-drag-ghost{ position:fixed; width:34px; height:34px; pointer-events:none; z-index:160; opacity:.95; transform:translate(-50%,-50%); filter:drop-shadow(0 16px 22px rgba(0,0,0,.5)); }
@@ -187,8 +187,7 @@
   .mini-block[data-prop=grid] .arm, .mini-block[data-prop=grid] .hub{ background:#3976b9; background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:6px 6px; box-shadow:none; }
   .mini-block[data-prop=glass] .arm::before, .mini-block[data-prop=glass] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.65) 45%,transparent 58%); opacity:.7; }
   .mini-block[data-prop=stone] .arm::before, .mini-block[data-prop=stone] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px); background-size:7px 6px,8px 7px; }
-  .mini-block[data-enh=holo] .arm::after, .mini-block[data-enh=holo] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
-  .mini-block[data-enh=spark] .arm::after, .mini-block[data-enh=spark] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
+  .mini-block[data-enh=holo] .arm::after, .mini-block[data-enh=holo] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px); }
   .mini-block[data-enh=invert]{ filter:invert(1); }
   .block-visual[data-prop=steel] .arm, .block-visual[data-prop=steel] .hub{ background:#c7cdd3; box-shadow:none; }
   .block-visual[data-prop=stone] .arm, .block-visual[data-prop=stone] .hub{ background:#777; box-shadow:none; }
@@ -199,8 +198,7 @@
   .block-visual[data-prop=grid] .arm, .block-visual[data-prop=grid] .hub{ background:#3976b9; background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:6px 6px; box-shadow:none; }
   .block-visual[data-prop=glass] .arm::before, .block-visual[data-prop=glass] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.65) 45%,transparent 58%); opacity:.7; }
   .block-visual[data-prop=stone] .arm::before, .block-visual[data-prop=stone] .hub::before{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px); background-size:7px 6px,8px 7px; }
-  .block-visual[data-enh=holo] .arm::after, .block-visual[data-enh=holo] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
-  .block-visual[data-enh=spark] .arm::after, .block-visual[data-enh=spark] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
+  .block-visual[data-enh=holo] .arm::after, .block-visual[data-enh=holo] .hub::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px); }
   .block-visual[data-enh=invert]{ filter:invert(1); }
   .ball[data-prop=steel]{ background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3; box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 7px rgba(255,255,255,.15); }
   .ball[data-prop=stone]{ background:#777; box-shadow:0 0 7px rgba(255,255,255,.12); background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px); background-size:auto,7px 6px,8px 7px; }
@@ -211,8 +209,7 @@
   .ball[data-prop=striped]{ background:#c94848; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px); box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 6px rgba(255,255,255,.1); }
   .ball[data-prop=grid]{ background:#3976b9; background-image:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px); background-size:auto,6px 6px,6px 6px; box-shadow:0 2px 7px rgba(0,0,0,.22),0 0 6px rgba(255,255,255,.1); }
   .ball[data-enh=holo]{ box-shadow:0 0 5px rgba(47,128,237,.32); }
-  .ball[data-enh=holo]::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%); }
-  .ball[data-enh=spark]::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22)); }
+  .ball[data-enh=holo]::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px); }
   .ball[data-enh=invert]{ filter:invert(1); }
   .arm-N{ top:0; left:50%; width:24%; height:54%; transform:translateX(-50%); }
   .arm-S{ bottom:0; left:50%; width:24%; height:54%; transform:translateX(-50%); }
@@ -275,7 +272,35 @@
     padding: 2px 6px; border-radius: 5px; white-space:nowrap;
     transition: left .22s linear, top .22s linear, opacity .2s ease;
     z-index: 6; pointer-events:none;
+    transform-origin:center center;
   }
+  @keyframes ballScorePop{
+    0%{ transform:translate(-50%, calc(-100% - 14px)) scale(.45); opacity:.12; }
+    40%{ transform:translate(-50%, calc(-100% - 52px)) scale(1.45); opacity:1; }
+    72%{ transform:translate(-50%, calc(-100% - 84px)) scale(.82); opacity:1; }
+    100%{ transform:translate(-50%, calc(-100% - 118px)) scale(.18); opacity:0; }
+  }
+  .ball-goal-popup{
+    position:absolute;
+    transform:translate(-50%, -50%) scale(.35);
+    font-family:'JetBrains Mono',monospace;
+    font-size:18px;
+    font-weight:700;
+    white-space:nowrap;
+    z-index:7;
+    pointer-events:none;
+    text-shadow:0 2px 8px rgba(0,0,0,.55), 0 0 8px currentColor;
+    transform-origin:center center;
+    opacity:0;
+  }
+  @keyframes ballGoalPopup{
+    0%{ transform:translate(-50%, -50%) scale(.35); opacity:0; }
+    30%{ transform:translate(-50%, -68%) scale(1.5); opacity:1; animation-timing-function:linear; }
+    75%{ transform:translate(-50%, -109%) scale(1.5); opacity:1; animation-timing-function:linear; }
+    100%{ transform:translate(-50%, -132%) scale(1.05); opacity:0; }
+  }
+  .ball-goal-popup.show{ animation:ballGoalPopup .7s cubic-bezier(.22,.8,.24,1) forwards; }
+  .ball-tooltip.score-pop{ animation:ballScorePop .28s cubic-bezier(.34,1.56,.64,1); }
   .ball-tooltip::after{
     content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:4px solid transparent; border-top-color: var(--amber-dim);
@@ -368,8 +393,7 @@
   .gacha-opt .mini-block .arm-wrap[data-prop=striped] .arm,.gacha-opt .mini-block .arm-wrap[data-prop=striped] .hub{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}
   .gacha-opt .mini-block .arm-wrap[data-prop=grid] .arm,.gacha-opt .mini-block .arm-wrap[data-prop=grid] .hub{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
   .gacha-opt .mini-ball[data-prop=steel]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3;box-shadow:0 0 7px rgba(255,255,255,.15)}.gacha-opt .mini-ball[data-prop=stone]{background:#777;box-shadow:none}.gacha-opt .mini-ball[data-prop=gold]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#f2c94c}.gacha-opt .mini-ball[data-prop=wood]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),#b8895a;box-shadow:0 0 7px rgba(255,255,255,.12)}.gacha-opt .mini-ball[data-prop=glass]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.82) 0 2px,transparent 22%),transparent;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.22)}.gacha-opt .mini-ball[data-prop=striped]{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}.gacha-opt .mini-ball[data-prop=grid]{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
-  .gacha-opt .mini-block .arm-wrap[data-enh=holo] .arm,.gacha-opt .mini-block .arm-wrap[data-enh=holo] .hub,.gacha-opt .mini-ball[data-enh=holo]{background:#2f80ed;background-image:linear-gradient(120deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.65) 48%,rgba(255,255,255,0) 65%)}
-  .gacha-opt .mini-block .arm-wrap[data-enh=spark] .arm,.gacha-opt .mini-block .arm-wrap[data-enh=spark] .hub,.gacha-opt .mini-ball[data-enh=spark]{background:linear-gradient(120deg,#ff5f6d,#ffd166,#6fcf97,#5b9bff,#bb6bd9)}
+  .gacha-opt .mini-block .arm-wrap[data-enh=holo] .arm,.gacha-opt .mini-block .arm-wrap[data-enh=holo] .hub,.gacha-opt .mini-ball[data-enh=holo]{background:#2f80ed;background-image:none}
   .gacha-opt .mini-block .arm-wrap[data-enh=invert],.gacha-opt .mini-ball[data-enh=invert]{filter:invert(1)}
   .shop-ball-grid{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; align-items:center; }
   .shop-ball-item{ min-width:34px; padding:2px; }
@@ -461,9 +485,55 @@
   .ball-chip[data-prop=glass]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.82) 0 2px,transparent 22%),transparent;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.22)}
   .ball-chip[data-prop=glass]::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.7) 45%,transparent 58%)}
   .ball-chip[data-enh=holo]{box-shadow:0 0 5px rgba(47,128,237,.32)}
-  .ball-chip[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:linear-gradient(120deg,rgba(0,110,255,.05) 25%,rgba(40,150,255,.6) 45%,rgba(255,255,255,.75) 50%,rgba(0,110,255,.05) 60%)}
-  .ball-chip[data-enh=spark]::before{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22))}
+  .ball-chip[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px)}
   .ball-chip[data-enh=invert]{filter:invert(1)}
+
+  /* Requested enhancement appearance adjustments. */
+  .ball[data-enh=holo]::before{
+    background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px);
+  }
+  .ball-chip[data-enh=holo]::before{
+    background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px);
+  }
+  .gacha-opt .mini-ball[data-enh=holo]::before{
+    background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px);
+    mix-blend-mode:screen;
+  }
+
+  /* Requested final enhancement appearance: Spark is a full-surface animated iridescent rainbow sheen (Balatro Polychrome-style oil-slick shimmer). */
+  .ball-chip[data-enh=spark]::before,
+  .ball[data-enh=spark]::before,
+  .mini-block[data-enh=spark] .arm::after,
+  .mini-block[data-enh=spark] .hub::after,
+  .block-visual[data-enh=spark] .arm::after,
+  .block-visual[data-enh=spark] .hub::after,
+  .gacha-opt .mini-block .arm-wrap[data-enh=spark] .arm::after,
+  .gacha-opt .mini-block .arm-wrap[data-enh=spark] .hub::after,
+  .gacha-opt .mini-ball[data-enh=spark]::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    pointer-events:none;
+    background:repeating-linear-gradient(120deg,
+      #ff1744 0%,
+      #ff7a00 12.5%,
+      #fff200 25%,
+      #27ff64 37.5%,
+      #00eaff 50%,
+      #2b7bff 62.5%,
+      #d900ff 75%,
+      #ff1744 87.5%,
+      #ff1744 100%);
+    background-size:320% 320%;
+    filter:saturate(3.2) brightness(1.5) contrast(1.15);
+    mix-blend-mode:screen;
+    animation:sparkShimmer 3.5s linear infinite;
+  }
+  @keyframes sparkShimmer{
+    0%{ background-position:0% 0%; }
+    100%{ background-position:100% 100%; }
+  }
 
   /* enhancement/property appearance overrides are defined with the primary element styles above */
 
@@ -476,8 +546,7 @@
   .gacha-opt .mini-block[data-prop=grid] .arm,.gacha-opt .mini-block[data-prop=grid] .hub{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
   .gacha-opt .mini-block[data-enh=invert],.gacha-opt .mini-ball[data-enh=invert]{filter:invert(1)}
   .gacha-opt .mini-ball[data-prop=steel]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3;box-shadow:0 0 7px rgba(255,255,255,.15)}.gacha-opt .mini-ball[data-prop=stone]{background:#777;box-shadow:none;background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.2) 0 1px,transparent 1px),radial-gradient(circle at 70% 65%,rgba(0,0,0,.22) 0 1px,transparent 1px);background-size:7px 6px,8px 7px}.gacha-opt .mini-ball[data-prop=gold]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#f2c94c}.gacha-opt .mini-ball[data-prop=wood]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),#b8895a;box-shadow:0 0 7px rgba(255,255,255,.12)}.gacha-opt .mini-ball[data-prop=glass]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.82) 0 2px,transparent 22%),transparent;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.22)}.gacha-opt .mini-ball[data-prop=striped]{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}.gacha-opt .mini-ball[data-prop=grid]{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
-  .gacha-opt .mini-ball[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px),linear-gradient(120deg,rgba(255,255,255,.02) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,.95) 48%,rgba(255,255,255,.14) 53%,rgba(255,255,255,.02) 68%);mix-blend-mode:screen}
-  .gacha-opt .mini-ball[data-enh=spark]::before{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(120deg,rgba(255,70,90,.22),rgba(255,220,70,.22),rgba(60,220,140,.22),rgba(80,150,255,.22),rgba(190,90,230,.22));mix-blend-mode:screen}
+  .gacha-opt .mini-ball[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px);mix-blend-mode:screen}
 
   /* Borderless ball displays in shop/gacha: keep only the ball itself visible. */
   .shop-power-targets .shop-power-target{ min-width:34px; padding:2px; display:flex; align-items:center; justify-content:center; background:transparent; border:0; border-radius:0; box-shadow:none; }
@@ -1164,6 +1233,48 @@
     });
   }
 
+  let ballClickSelection = null;
+  let suppressBallClickUntil = 0;
+
+  function clearBallClickSelection(){
+    ballClickSelection = null;
+    ballQueueEl.querySelectorAll('.ball-chip.click-selected').forEach(el=>el.classList.remove('click-selected'));
+  }
+
+  function handleBallQueueClick(idx){
+    if(state.targeting || state.resolving || state.phase!=='playing') return;
+    const ball = state.ballQueue[idx];
+    if(!ball || ball.fired || idx < state.ballsFired) return;
+
+    const chip = [...ballQueueEl.children][idx];
+    if(ballClickSelection===null){
+      ballClickSelection = idx;
+      chip?.classList.add('click-selected');
+      return;
+    }
+
+    if(ballClickSelection===idx){
+      clearBallClickSelection();
+      return;
+    }
+
+    const sourceIdx = ballClickSelection;
+    const targetIdx = idx;
+    const sourceEl = [...ballQueueEl.children][sourceIdx];
+    const targetEl = [...ballQueueEl.children][targetIdx];
+    const sourceRect = sourceEl?.getBoundingClientRect();
+    const targetRect = targetEl?.getBoundingClientRect();
+
+    [state.ballQueue[sourceIdx], state.ballQueue[targetIdx]] = [state.ballQueue[targetIdx], state.ballQueue[sourceIdx]];
+    syncBallPoolFromQueue();
+    clearBallClickSelection();
+
+    if(sourceRect && targetRect){
+      ballSwapAnim={source:sourceIdx,target:targetIdx,sourceRect,targetRect};
+    }
+    renderBallQueue();
+  }
+
   function renderBallQueue(){
     ballQueueEl.innerHTML = '';
     state.ballQueue.forEach((b, i)=>{
@@ -1181,6 +1292,12 @@
       if(!b.fired && state.targeting && targetKindMatches(state.targeting.def, 'ball')){
         chip.classList.add('targetable');
         chip.addEventListener('click', ()=> handleTargetClick({obj:b, kind:'ball'}));
+      }
+      if(!b.fired && !state.targeting){
+        chip.addEventListener('click', ()=>{
+          if(performance.now() < suppressBallClickUntil) return;
+          handleBallQueueClick(i);
+        });
       }
       if(!b.fired) attachBallDrag(chip, i);
       ballQueueEl.appendChild(chip);
@@ -1231,6 +1348,7 @@
     const dx=e.clientX-ballDrag.startX, dy=e.clientY-ballDrag.startY;
     if(!ballDrag.moved && Math.hypot(dx,dy)>6){
       ballDrag.moved=true;
+      suppressBallClickUntil = performance.now() + 120;
       ballDrag.sourceEl=ballQueueEl.querySelector(`.ball-chip[data-ball-index=\"${ballDrag.idx}\"]`);
       if(!ballDrag.sourceEl){
         ballDrag.sourceEl=[...ballQueueEl.children][ballDrag.idx];
@@ -1563,7 +1681,7 @@
 
     const tip = document.createElement('div'); tip.className='ball-tooltip';
     tip.style.left=p.left+'%'; tip.style.top=p.top+'%';
-    tip.textContent = Math.round(ballState.total)+'đ';
+    tip.textContent = Math.round(ballState.total);
     boardWrapEl.appendChild(tip);
 
     return {ball, tip};
@@ -1577,7 +1695,17 @@
       setTimeout(resolve, 230);
     });
   }
-  function updateTip(tip, ballState){ tip.textContent = Math.round(ballState.total)+'đ'; }
+  function updateTip(tip, ballState){
+    const nextTotal = Math.round(ballState.total);
+    const previousTotal = Number.isFinite(tip._lastTotal) ? tip._lastTotal : nextTotal;
+    tip.textContent = nextTotal;
+    if(nextTotal > previousTotal){
+      tip.classList.remove('score-pop');
+      void tip.offsetWidth;
+      tip.classList.add('score-pop');
+    }
+    tip._lastTotal = nextTotal;
+  }
   function removeEntity(ball,tip){ ball.remove(); tip.remove(); }
   function flashBlocked(r,c){
     const cellEl = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
@@ -1666,9 +1794,21 @@
     if(cellData.type==='hole'){
       ballGoalEffects(ballState);
       updateTip(tip, ballState);
-      await wait(150);
-      ball.classList.add('scored'); tip.style.opacity='0';
-      await wait(300); removeEntity(ball,tip);
+      const goalPopup = document.createElement('div');
+      goalPopup.className = 'ball-goal-popup';
+      goalPopup.textContent = Math.round(ballState.total);
+      const goalColor = ballState.enh ? ENH_COLOR[ballState.enh] : (ballState.prop ? PROP_COLOR[ballState.prop] : 'var(--amber)');
+      goalPopup.style.color = goalColor || 'var(--amber)';
+      const goalPos = cellPercent(nr,nc);
+      goalPopup.style.left = goalPos.left + '%';
+      goalPopup.style.top = goalPos.top + '%';
+      boardWrapEl.appendChild(goalPopup);
+      requestAnimationFrame(()=>goalPopup.classList.add('show'));
+      ball.classList.add('scored');
+      tip.style.opacity='0';
+      await wait(700);
+      goalPopup.remove();
+      removeEntity(ball,tip);
       counter.scored++;
       if(ballState.broke){ counter.broke=(counter.broke||0)+1; return [0]; }
       const points = Math.round(ballState.total);

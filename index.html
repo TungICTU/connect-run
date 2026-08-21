@@ -8,6 +8,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
   :root{
+    --anim-speed: 1;
     --bg: #0a1a2c;
     --bg-deep: #071322;
     --panel: #0f2440;
@@ -89,6 +90,16 @@
   button.gold{ border-color: rgba(242,201,76,0.4); color: var(--gold); background: rgba(242,201,76,0.08); }
   button.gold:hover{ background: rgba(242,201,76,0.18); }
 
+  .speed-control{ display:flex; align-items:center; gap:6px; }
+  .speed-control .speed-label{ font-size:9px; letter-spacing:1px; color:var(--ink-dim); text-transform:uppercase; }
+  .speed-control select{
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12px;
+    border-radius:7px; border:1px solid var(--cyan-dim);
+    background:rgba(94,200,216,0.08); color:var(--cyan);
+    padding:6px 8px; cursor:pointer;
+  }
+  .speed-control select:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+
   .ball-queue{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:center; }
   .ball-chip{
     width: 28px; height:28px; border-radius:50%;
@@ -114,7 +125,7 @@
   .ball-chip::after{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.78) 0%,rgba(255,255,255,.32) 16%,transparent 42%); }
   .ball-chip[data-prop=glass]:not(.fired)::after{ background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.72) 45%,transparent 58%); }
   .ball-chip[data-enh=invert]:not(.fired){ filter:invert(1); }
-  .ball-chip.targetable{ cursor:pointer; animation: targetPulse 1s ease-in-out infinite; }
+  .ball-chip.targetable{ cursor:pointer; animation: targetPulse calc(1s / var(--anim-speed)) ease-in-out infinite; }
   .ball-queue .ball-chip:not(.fired){ cursor:grab; }
   .ball-queue .ball-chip:not(.fired):active{ cursor:grabbing; }
   .ball-chip.ball-drop-hover,.shop-ball-item.ball-drop-hover .ball-chip{ box-shadow:0 0 0 2px var(--cyan),0 0 9px rgba(94,200,216,.55) !important; }
@@ -159,7 +170,7 @@
     65%{ transform: scale(1.15) rotate(var(--place-deg,0deg)); opacity:1; }
     100%{ transform: scale(1) rotate(var(--place-deg,0deg)); opacity:1; }
   }
-  .cell.just-placed .block-visual{ animation: placeIn .32s cubic-bezier(.34,1.56,.64,1); }
+  .cell.just-placed .block-visual{ animation: placeIn calc(.32s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
 
   .cell{
     position:relative; background: rgba(255,255,255,0.02);
@@ -168,13 +179,13 @@
   .cell.empty.drop-hover,.cell.hasblock.drop-hover{ background: rgba(94,200,216,0.14); border-color: var(--cyan); }
   .cell.hasblock{ cursor: grab; border-style: solid; border-color: rgba(94,200,216,0.08); }
   .cell.hasblock:active{ cursor: grabbing; }
-  .cell.targetable{ cursor:pointer; animation: cellTargetPulse 1s ease-in-out infinite; }
+  .cell.targetable{ cursor:pointer; animation: cellTargetPulse calc(1s / var(--anim-speed)) ease-in-out infinite; }
   @keyframes cellTargetPulse{ 0%,100%{ box-shadow:inset 0 0 0 2px var(--green);} 50%{ box-shadow:inset 0 0 0 2px var(--green), 0 0 10px var(--green);} }
 
-  .cell.blocked-flash{ animation: flashRed .4s ease; }
+  .cell.blocked-flash{ animation: flashRed calc(.4s / var(--anim-speed)) ease; }
   @keyframes flashRed{ 0%,100%{ background: rgba(255,255,255,0.02); } 40%{ background: rgba(232,93,78,0.35); } }
 
-  .block-visual{ position:absolute; inset:0; transition: transform .28s cubic-bezier(.34,1.56,.64,1); transform-origin: 50% 50%; }
+  .block-visual{ position:absolute; inset:0; transition: transform calc(.28s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); transform-origin: 50% 50%; }
   .arm{ position:absolute; background: var(--cyan); box-shadow: 0 0 7px var(--cyan-dim); border-radius: 3px; }
 
   /* Mini-blocks use the same property/enhancement appearance as board blocks. */
@@ -237,12 +248,12 @@
   @keyframes holeConnectorH{ from{ opacity:.15; transform:translateY(-50%) scaleX(0); } to{ opacity:1; transform:translateY(-50%) scaleX(1); } }
   .hole-connector.N,.hole-connector.S{ transform-origin:50% 50%; }
   .hole-connector.E,.hole-connector.W{ transform-origin:50% 50%; }
-  .hole-connector.forming.N,.hole-connector.forming.S{ animation:holeConnectorV .28s cubic-bezier(.34,1.56,.64,1); }
-  .hole-connector.forming.E,.hole-connector.forming.W{ animation:holeConnectorH .28s cubic-bezier(.34,1.56,.64,1); }
+  .hole-connector.forming.N,.hole-connector.forming.S{ animation:holeConnectorV calc(.28s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
+  .hole-connector.forming.E,.hole-connector.forming.W{ animation:holeConnectorH calc(.28s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
   @keyframes holeConnectorRetractV{ from{opacity:1;transform:translateX(-50%) scaleY(1)} to{opacity:.15;transform:translateX(-50%) scaleY(0)} }
   @keyframes holeConnectorRetractH{ from{opacity:1;transform:translateY(-50%) scaleX(1)} to{opacity:.15;transform:translateY(-50%) scaleX(0)} }
-  .hole-connector.retracting.N,.hole-connector.retracting.S{ animation:holeConnectorRetractV .28s ease; }
-  .hole-connector.retracting.E,.hole-connector.retracting.W{ animation:holeConnectorRetractH .28s ease; }
+  .hole-connector.retracting.N,.hole-connector.retracting.S{ animation:holeConnectorRetractV calc(.28s / var(--anim-speed)) ease; }
+  .hole-connector.retracting.E,.hole-connector.retracting.W{ animation:holeConnectorRetractH calc(.28s / var(--anim-speed)) ease; }
   .hole-connector{ position:absolute; background:var(--green); box-shadow:0 0 7px rgba(111,207,151,0.55); border-radius:3px; pointer-events:none; z-index:1; }
   .hole-connector.N{ top:0; left:50%; width:20%; height:54%; transform:translateX(-50%); }
   .hole-connector.S{ bottom:0; left:50%; width:20%; height:54%; transform:translateX(-50%); }
@@ -254,7 +265,7 @@
     background:radial-gradient(circle at 34% 28%, #fff8ec 0%, #ffe6c5 22%, var(--amber) 62%, #d9822b 100%);
     box-shadow:0 2px 7px rgba(0,0,0,0.22), 0 0 8px var(--amber-dim);
     overflow:hidden;
-    transition: left .22s linear, top .22s linear, opacity .3s ease;
+    transition: left calc(.22s / var(--anim-speed)) linear, top calc(.22s / var(--anim-speed)) linear, opacity calc(.3s / var(--anim-speed)) ease;
     z-index: 5; pointer-events:none;
   }
   .ball::before{ content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none; background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.78) 0%,rgba(255,255,255,.30) 16%,transparent 44%); z-index:2; }
@@ -270,15 +281,30 @@
     background: rgba(10,26,44,0.92); border: 1px solid var(--amber-dim); color: var(--amber);
     font-family:'JetBrains Mono',monospace; font-size: 11px; font-weight:700;
     padding: 2px 6px; border-radius: 5px; white-space:nowrap;
-    transition: left .22s linear, top .22s linear, opacity .2s ease;
+    transition: left calc(.22s / var(--anim-speed)) linear, top calc(.22s / var(--anim-speed)) linear, opacity calc(.2s / var(--anim-speed)) ease;
     z-index: 6; pointer-events:none;
+  }
+  .ball-tooltip-value{
+    display:inline-block;
+    transform:scale(var(--score-scale,1));
     transform-origin:center center;
+    will-change:transform;
   }
   @keyframes ballScorePop{
-    0%{ transform:translate(-50%, calc(-100% - 14px)) scale(.45); opacity:.12; }
-    40%{ transform:translate(-50%, calc(-100% - 52px)) scale(1.45); opacity:1; }
-    72%{ transform:translate(-50%, calc(-100% - 84px)) scale(.82); opacity:1; }
-    100%{ transform:translate(-50%, calc(-100% - 118px)) scale(.18); opacity:0; }
+    0%{ transform:scale(var(--score-scale)) rotate(0deg); }
+    16%{ transform:scale(var(--score-scale)) translateX(-1.5px) rotate(-4deg); }
+    32%{ transform:scale(var(--score-scale)) translateX(1.5px) rotate(4deg); }
+    48%{ transform:scale(var(--score-scale)) translateX(-1px) rotate(-3deg); }
+    64%{ transform:scale(var(--score-scale)) translateX(1px) rotate(2.5deg); }
+    80%{ transform:scale(var(--score-scale)) translateX(-.5px) rotate(-1deg); }
+    100%{ transform:scale(var(--score-scale)) translateX(0) rotate(0deg); }
+  }
+  @keyframes ballScoreGrow{
+    0%{ transform:scale(var(--score-scale-prev)) rotate(0deg); }
+    24%{ transform:scale(calc(var(--score-scale) * 1.12)) translateX(-1px) rotate(-2.5deg); }
+    50%{ transform:scale(calc(var(--score-scale) * .96)) translateX(1px) rotate(2.2deg); }
+    74%{ transform:scale(calc(var(--score-scale) * 1.03)) translateX(0) rotate(-1deg); }
+    100%{ transform:scale(var(--score-scale)) translateX(0) rotate(0deg); }
   }
   .ball-goal-popup{
     position:absolute;
@@ -299,8 +325,8 @@
     75%{ transform:translate(-50%, -109%) scale(1.5); opacity:1; animation-timing-function:linear; }
     100%{ transform:translate(-50%, -132%) scale(1.05); opacity:0; }
   }
-  .ball-goal-popup.show{ animation:ballGoalPopup .7s cubic-bezier(.22,.8,.24,1) forwards; }
-  .ball-tooltip.score-pop{ animation:ballScorePop .28s cubic-bezier(.34,1.56,.64,1); }
+  .ball-goal-popup.show{ animation:ballGoalPopup calc(.7s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1) forwards; }
+  .ball-tooltip{ --score-scale:1; }
   .ball-tooltip::after{
     content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:4px solid transparent; border-top-color: var(--amber-dim);
@@ -332,13 +358,13 @@
   .inventory-item{ position:relative; width:100%; aspect-ratio:1; min-width:0; background: var(--bg-deep); border: 1px solid var(--panel-line); border-radius: 6px; margin:0; overflow:hidden; }
   .inventory-item.grayed{ opacity:.28; filter:grayscale(1); }
   @keyframes handRefresh{ 0%{ transform:scale(.4); opacity:.2; } 65%{ transform:scale(1.15); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
-  .hand-slot.just-refreshed .block-visual{ animation:handRefresh .32s cubic-bezier(.34,1.56,.64,1); }
+  .hand-slot.just-refreshed .block-visual{ animation:handRefresh calc(.32s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
   .status-strip{ min-height: 20px; font-size: 13px; font-family:'JetBrains Mono', monospace; color: var(--ink-dim); text-align:center; }
   .status-strip.good{ color: var(--green); }
   .status-strip.bad{ color: var(--red); }
 
   .drag-ghost{ position:fixed; width:70px; height:70px; pointer-events:none; z-index: 50; opacity: 0.95; transform: translate(-50%,-50%); filter: drop-shadow(0 16px 22px rgba(0,0,0,0.5)); }
-  .drag-source-fade{ opacity: 0.3; transition: opacity .15s ease; }
+  .drag-source-fade{ opacity: 0.3; transition: opacity calc(.15s / var(--anim-speed)) ease; }
 
   .overlay{ position:fixed; inset:0; background: rgba(7,19,34,0.9); display:flex; align-items:flex-start; justify-content:center; z-index: 100; overflow-y:auto; padding: 30px 14px; }
   .overlay.hidden{ display:none; }
@@ -528,7 +554,7 @@
     background-size:320% 320%;
     filter:saturate(3.2) brightness(1.5) contrast(1.15);
     mix-blend-mode:screen;
-    animation:sparkShimmer 3.5s linear infinite;
+    animation:sparkShimmer calc(3.5s / var(--anim-speed)) linear infinite;
   }
   @keyframes sparkShimmer{
     0%{ background-position:0% 0%; }
@@ -567,6 +593,16 @@
       <div class="stat score"><span class="label">Điểm</span><span class="value" id="scoreVal">0</span></div>
       <div class="stat target"><span class="label">Mục tiêu</span><span class="value" id="targetVal">0</span></div>
       <div class="stat money"><span class="label">Tiền</span><span class="value" id="moneyVal">$0</span></div>
+    </div>
+    <div class="speed-control">
+      <span class="speed-label">Tốc độ</span>
+      <select id="animationSpeedSelect" aria-label="Tốc độ animation">
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+        <option value="3">3x</option>
+      </select>
     </div>
     <button id="newGameBtn">Chơi lại</button>
   </header>
@@ -641,6 +677,19 @@
 (function(){
   "use strict";
 
+  // ---------- animation speed ----------
+  let animationSpeed = 1;
+  const animationSpeedSelect = document.getElementById('animationSpeedSelect');
+  function setAnimationSpeed(value){
+    const next = Number(value);
+    if(!Number.isFinite(next) || next <= 0) return;
+    animationSpeed = next;
+    document.documentElement.style.setProperty('--anim-speed', String(next));
+  }
+  function scaledDuration(ms){ return ms / animationSpeed; }
+  animationSpeedSelect.addEventListener('change', ()=>setAnimationSpeed(animationSpeedSelect.value));
+  setAnimationSpeed(animationSpeedSelect.value);
+
   // ---------- constants ----------
   const N_DIR=0,E_DIR=1,S_DIR=2,W_DIR=3;
   const DIR_NAMES = ['N','E','S','W'];
@@ -655,7 +704,7 @@
   };
   function openSides(block){ return BASE_SIDES[block.type].map(s => (s + block.rotation) % 4); }
 
-  const BAG_RECIPE = { straight:7, L:7, T:4, plus:2 };
+  const BAG_RECIPE = { straight:8, L:8, T:6, plus:3 };
   const BASE_MAX_BALLS = 5;
   const HAND_SIZE = 3;
 
@@ -700,14 +749,14 @@
   };
 
   function blockTooltip(block){
-    const level = ((state.typeBonus[block.type]||0)/10) + 1;
+    const level = ((state.typeBonus[block.type]||0)/5) + 1;
     const lines = [`Số điểm cho khi bóng đi ra: ${(10+state.baseRateBonus)+(state.typeBonus[block.type]||0)}`];
     if(block.property) lines.push(`${PROP_LABEL[block.property]}: ${BLOCK_PROP_DESC[block.property]}`);
     if(block.enhancement) lines.push(`${ENH_LABEL[block.enhancement]}: ${BLOCK_ENH_DESC[block.enhancement]}`);
     return { title:TYPE_LABEL[block.type], level, lines };
   }
   function ballTooltip(b){
-    const level = ((state.baseRateBonus||0)/10) + 1;
+    const level = ((state.baseRateBonus||0)/2) + 1;
     const lines = [
       `Số điểm bóng chứa: ${50+state.startBonus}`,
       `Tỉ lệ cộng: 10${state.baseRateBonus>0?`(+${state.baseRateBonus})`:''}/khối`,
@@ -829,11 +878,11 @@
 
   // ---------- upgrade & buff & power card defs ----------
   const UPGRADE_POOL = [
-    { id:'base', name:'Nâng cấp bóng cơ bản', desc:'+10 điểm mỗi lần bóng thoát khối (mọi bóng)', cost:15, apply(){ state.baseRateBonus += 10; } },
-    { id:'straight', name:'Nâng cấp khối Thẳng', desc:'+10 điểm khi bóng thoát khối Thẳng', cost:12, apply(){ state.typeBonus.straight += 10; } },
-    { id:'L', name:'Nâng cấp khối chữ L', desc:'+10 điểm khi bóng thoát khối L', cost:12, apply(){ state.typeBonus.L += 10; } },
-    { id:'T', name:'Nâng cấp khối chữ T', desc:'+10 điểm khi bóng thoát khối T', cost:14, apply(){ state.typeBonus.T += 10; } },
-    { id:'plus', name:'Nâng cấp khối Dấu Cộng', desc:'+10 điểm khi bóng thoát khối +', cost:16, apply(){ state.typeBonus.plus += 10; } },
+    { id:'base', name:'Nâng cấp bóng cơ bản', desc:'+10 điểm bóng chứa ban đầu và +2 điểm mỗi lần bóng thoát block (mọi bóng)', cost:15, apply(){ state.startBonus += 10; state.baseRateBonus += 2; } },
+    { id:'straight', name:'Nâng cấp khối Thẳng', desc:'+5 điểm khi bóng thoát khối Thẳng', cost:12, apply(){ state.typeBonus.straight += 5; } },
+    { id:'L', name:'Nâng cấp khối chữ L', desc:'+5 điểm khi bóng thoát khối L', cost:12, apply(){ state.typeBonus.L += 5; } },
+    { id:'T', name:'Nâng cấp khối chữ T', desc:'+5 điểm khi bóng thoát khối T', cost:14, apply(){ state.typeBonus.T += 5; } },
+    { id:'plus', name:'Nâng cấp khối Dấu Cộng', desc:'+5 điểm khi bóng thoát khối +', cost:16, apply(){ state.typeBonus.plus += 5; } },
   ];
 
   const BUFF_POOL = [
@@ -1111,7 +1160,7 @@
             const connector=document.createElement('div');
             connector.className='hole-connector '+DIR_NAMES[d]+' retracting';
             el.appendChild(connector);
-            setTimeout(()=>connector.remove(),290);
+            setTimeout(()=>connector.remove(),scaledDuration(290));
             state.holeConnections.delete(key);
           }
           for(const key of nextConnections) state.holeConnections.add(key);
@@ -1137,8 +1186,8 @@
         if(sourceEl&&targetEl){
           const sFrom=anim.sourceRect, sTo=anim.targetRect, tFrom=anim.targetRect, tTo=anim.sourceRect;
           const sVis=sourceEl.querySelector('.block-visual'), tVis=targetEl.querySelector('.block-visual');
-          if(sVis){ sVis.style.setProperty('--from-x', `${sFrom.left-sTo.left}px`); sVis.style.setProperty('--from-y', `${sFrom.top-sTo.top}px`); sVis.style.setProperty('--block-deg', `${(state.cells[anim.source.r][anim.source.c].block.rotation||0)*90}deg`); sVis.style.animation='blockMoveIn .34s cubic-bezier(.22,.8,.24,1)'; }
-          if(tVis){ tVis.style.setProperty('--from-x', `${tFrom.left-tTo.left}px`); tVis.style.setProperty('--from-y', `${tFrom.top-tTo.top}px`); tVis.style.setProperty('--block-deg', `${(state.cells[anim.target.r][anim.target.c].block.rotation||0)*90}deg`); tVis.style.animation='blockMoveIn .34s cubic-bezier(.22,.8,.24,1)'; }
+          if(sVis){ sVis.style.setProperty('--from-x', `${sFrom.left-sTo.left}px`); sVis.style.setProperty('--from-y', `${sFrom.top-sTo.top}px`); sVis.style.setProperty('--block-deg', `${(state.cells[anim.source.r][anim.source.c].block.rotation||0)*90}deg`); sVis.style.animation='blockMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)'; }
+          if(tVis){ tVis.style.setProperty('--from-x', `${tFrom.left-tTo.left}px`); tVis.style.setProperty('--from-y', `${tFrom.top-tTo.top}px`); tVis.style.setProperty('--block-deg', `${(state.cells[anim.target.r][anim.target.c].block.rotation||0)*90}deg`); tVis.style.animation='blockMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)'; }
         }
       });
     }
@@ -1315,10 +1364,10 @@
         const tx=anim.targetRect.left-targetRect.left, ty=anim.targetRect.top-targetRect.top;
         sourceEl.style.setProperty('--from-x',`${sx}px`);
         sourceEl.style.setProperty('--from-y',`${sy}px`);
-        sourceEl.style.animation='ballMoveIn .34s cubic-bezier(.22,.8,.24,1)';
+        sourceEl.style.animation='ballMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
         targetEl.style.setProperty('--from-x',`${tx}px`);
         targetEl.style.setProperty('--from-y',`${ty}px`);
-        targetEl.style.animation='ballMoveIn .34s cubic-bezier(.22,.8,.24,1)';
+        targetEl.style.animation='ballMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
       });
     }
   }
@@ -1576,9 +1625,9 @@
     const ghost=info.ghostEl.getBoundingClientRect();
     const dx=(src.left+src.width/2)-(ghost.left+ghost.width/2);
     const dy=(src.top+src.height/2)-(ghost.top+ghost.height/2);
-    info.ghostEl.style.transition='transform .24s cubic-bezier(.22,.8,.24,1), opacity .24s ease';
+    info.ghostEl.style.transition='transform calc(.24s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1), opacity calc(.24s / var(--anim-speed)) ease';
     info.ghostEl.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(0deg) scale(1)`;
-    setTimeout(()=>{ if(info.ghostEl) info.ghostEl.remove(); if(info.sourceEl) info.sourceEl.classList.remove('drag-source-fade'); },250);
+    setTimeout(()=>{ if(info.ghostEl) info.ghostEl.remove(); if(info.sourceEl) info.sourceEl.classList.remove('drag-source-fade'); },scaledDuration(250));
   }
 
   function onDragEnd(e){
@@ -1662,7 +1711,7 @@
         state.holeConnections.add(key);
       } else if(state.holeConnections.has(key)){
         const connector=holeEl?.querySelector(`.hole-connector.${DIR_NAMES[opposite(d)]}`);
-        if(connector){ connector.classList.add('retracting'); setTimeout(()=>connector.remove(),290); }
+        if(connector){ connector.classList.add('retracting'); setTimeout(()=>connector.remove(),scaledDuration(290)); }
         state.holeConnections.delete(key);
       }
     }
@@ -1671,7 +1720,61 @@
   // ---------- firing / simulation ----------
   function cellPercent(r,c){ return { left:((c+0.5)/state.cols)*100, top:((r+0.5)/state.rows)*100 }; }
 
-  function createBallEntity(r,c,ballState){
+  function animateScoreTipValue(valueEl, nextTotal, previousTotal, initialTotal){
+    if(!valueEl) return;
+    const safeInitial = Number.isFinite(initialTotal) && initialTotal > 0 ? initialTotal : 50;
+    const prevTotal = Number.isFinite(previousTotal) ? previousTotal : nextTotal;
+    const step = safeInitial * 0.1;
+    const growthSteps = step > 0 ? Math.floor(Math.max(0, nextTotal - safeInitial) / step) : 0;
+    const nextScale = Math.min(3, 1 + growthSteps * 0.1);
+    const previousScale = Number.isFinite(valueEl._scoreScale) ? valueEl._scoreScale : 1;
+    const crossedGrowthStep = nextScale > previousScale;
+    if(nextTotal <= prevTotal) {
+      valueEl._scoreScale = nextScale;
+      valueEl.style.transform = `scale(${nextScale})`;
+      return;
+    }
+
+    if(valueEl._scoreAnim){
+      try{ valueEl._scoreAnim.cancel(); }catch{}
+      valueEl._scoreAnim = null;
+    }
+
+    valueEl._scoreScale = nextScale;
+    const duration = (crossedGrowthStep ? 420 : 280) / animationSpeed;
+    const fromScale = previousScale;
+    const keyframes = crossedGrowthStep
+      ? [
+          { transform:`scale(${fromScale}) translate3d(0px,0px,0) rotate(0deg)` },
+          { transform:`scale(${nextScale * 1.16}) translate3d(-2px,-1px,0) rotate(-4deg)`, offset:0.22 },
+          { transform:`scale(${nextScale * 0.96}) translate3d(2px,1px,0) rotate(3.5deg)`, offset:0.48 },
+          { transform:`scale(${nextScale * 1.04}) translate3d(-1px,0px,0) rotate(-1.5deg)`, offset:0.74 },
+          { transform:`scale(${nextScale}) translate3d(0px,0px,0) rotate(0deg)`, offset:1 }
+        ]
+      : [
+          { transform:`scale(${nextScale}) translate3d(0px,0px,0) rotate(0deg)` },
+          { transform:`scale(${nextScale}) translate3d(-3px,-1px,0) rotate(-6deg)`, offset:0.14 },
+          { transform:`scale(${nextScale}) translate3d(3px,1px,0) rotate(6deg)`, offset:0.28 },
+          { transform:`scale(${nextScale}) translate3d(-2.5px,0px,0) rotate(-4.5deg)`, offset:0.42 },
+          { transform:`scale(${nextScale}) translate3d(2.5px,0px,0) rotate(4.5deg)`, offset:0.56 },
+          { transform:`scale(${nextScale}) translate3d(-1.5px,0px,0) rotate(-2.5deg)`, offset:0.70 },
+          { transform:`scale(${nextScale}) translate3d(1.5px,0px,0) rotate(2.5deg)`, offset:0.84 },
+          { transform:`scale(${nextScale}) translate3d(0px,0px,0) rotate(0deg)`, offset:1 }
+        ];
+
+    valueEl._scoreAnim = valueEl.animate(keyframes, {
+      duration,
+      easing:'cubic-bezier(.34,1.56,.64,1)',
+      fill:'forwards',
+      composite:'replace'
+    });
+    valueEl._scoreAnim.onfinish = ()=>{
+      valueEl.style.transform = `scale(${nextScale})`;
+      valueEl._scoreAnim = null;
+    };
+  }
+
+  function createBallEntity(r,c,ballState,animateScore=false,previousTotal=null){
     const ball = document.createElement('div'); ball.className='ball';
     if(ballState.prop){ ball.dataset.prop=ballState.prop; ball.style.setProperty('--prop-color', PROP_COLOR[ballState.prop]); }
     if(ballState.enh) ball.dataset.enh = ballState.enh;
@@ -1681,8 +1784,29 @@
 
     const tip = document.createElement('div'); tip.className='ball-tooltip';
     tip.style.left=p.left+'%'; tip.style.top=p.top+'%';
-    tip.textContent = Math.round(ballState.total);
+    const tipValue = document.createElement('span');
+    tipValue.className='ball-tooltip-value';
+    const currentTotal = Math.round(ballState.total);
+    tipValue.textContent = currentTotal;
+    tipValue._initialTotal = ballState.initialTotal;
+    tipValue._scoreScale = 1;
+    tipValue._lastTotal = Number.isFinite(previousTotal) ? Math.round(previousTotal) : currentTotal;
+    tipValue.style.setProperty('--score-scale', '1');
+    tipValue.style.setProperty('--score-scale-prev', '1');
+    tip.appendChild(tipValue);
+    tip._valueEl = tipValue;
     boardWrapEl.appendChild(tip);
+
+    if(animateScore && currentTotal > tipValue._lastTotal){
+      requestAnimationFrame(()=>animateScoreTipValue(tipValue, currentTotal, tipValue._lastTotal, ballState.initialTotal));
+    } else {
+      const safeInitial = Number.isFinite(ballState.initialTotal) && ballState.initialTotal > 0 ? ballState.initialTotal : 50;
+      const step = safeInitial * 0.1;
+      const growthSteps = step > 0 ? Math.floor(Math.max(0, currentTotal - safeInitial) / step) : 0;
+      const scale = Math.min(3, 1 + growthSteps * 0.1);
+      tipValue._scoreScale = scale;
+      tipValue.style.transform = `scale(${scale})`;
+    }
 
     return {ball, tip};
   }
@@ -1692,19 +1816,18 @@
       const p=cellPercent(r,c);
       ball.style.left=p.left+'%'; ball.style.top=p.top+'%';
       tip.style.left=p.left+'%'; tip.style.top=p.top+'%';
-      setTimeout(resolve, 230);
+      setTimeout(resolve, scaledDuration(230));
     });
   }
   function updateTip(tip, ballState){
+    const valueEl = tip?._valueEl || tip;
     const nextTotal = Math.round(ballState.total);
-    const previousTotal = Number.isFinite(tip._lastTotal) ? tip._lastTotal : nextTotal;
-    tip.textContent = nextTotal;
+    const previousTotal = Number.isFinite(valueEl._lastTotal) ? valueEl._lastTotal : nextTotal;
+    valueEl.textContent = nextTotal;
     if(nextTotal > previousTotal){
-      tip.classList.remove('score-pop');
-      void tip.offsetWidth;
-      tip.classList.add('score-pop');
+      animateScoreTipValue(valueEl, nextTotal, previousTotal, ballState.initialTotal);
     }
-    tip._lastTotal = nextTotal;
+    valueEl._lastTotal = nextTotal;
   }
   function removeEntity(ball,tip){ ball.remove(); tip.remove(); }
   function flashBlocked(r,c){
@@ -1720,18 +1843,18 @@
       const holeEl=boardEl.querySelector(`.cell.hole[data-r=\"${hr}\"][data-c=\"${hc}\"]`);
       if(state.holeConnections.has(key)){
         const connector=holeEl?.querySelector(`.hole-connector.${DIR_NAMES[opposite(d)]}`);
-        if(connector){ connector.classList.add('retracting'); setTimeout(()=>connector.remove(),290); }
+        if(connector){ connector.classList.add('retracting'); setTimeout(()=>connector.remove(),scaledDuration(290)); }
         state.holeConnections.delete(key);
       }
     }
     const cellEl = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
     if(cellEl){
       cellEl.classList.remove('hasblock');
-      cellEl.querySelectorAll('.block-visual').forEach(n=>{ n.style.transition='opacity .3s'; n.style.opacity='0'; });
-      setTimeout(()=>{ cellEl.querySelectorAll('.block-visual').forEach(n=>n.remove()); }, 300);
+      cellEl.querySelectorAll('.block-visual').forEach(n=>{ n.style.transition='opacity calc(.3s / var(--anim-speed))'; n.style.opacity='0'; });
+      setTimeout(()=>{ cellEl.querySelectorAll('.block-visual').forEach(n=>n.remove()); }, scaledDuration(300));
     }
   }
-  function wait(ms){ return new Promise(res=>setTimeout(res,ms)); }
+  function wait(ms){ return new Promise(res=>setTimeout(res,scaledDuration(ms))); }
 
   // ballState: { total, rate, prop, enh, broke }
   function blockExitEffects(block, ballState){
@@ -1835,9 +1958,9 @@
       return [];
     }
 
+    const previousTotal = ballState.total;
     const brokeBlock = blockExitEffects(blockRef, ballState);
     ballExitEffects(ballState);
-    updateTip(tip, ballState);
     const invertBlock = blockRef.enhancement === 'invert';
     if(brokeBlock) breakBlockAt(nr,nc);
 
@@ -1854,12 +1977,12 @@
 
     const branches = [];
     exits.forEach(exitDir=>{
-      const childState = { total: ballState.total, rate: ballState.rate, prop: ballState.prop, enh: ballState.enh };
-      const c1 = createBallEntity(nr,nc,childState);
+      const childState = { total: ballState.total, rate: ballState.rate, prop: ballState.prop, enh: ballState.enh, initialTotal: ballState.initialTotal };
+      const c1 = createBallEntity(nr,nc,childState,true,previousTotal);
       branches.push(travel(c1.ball, c1.tip, nr, nc, exitDir, childState, counter));
       if(invertBlock){
-        const cloneState = { total: ballState.total, rate: ballState.rate, prop: ballState.prop, enh: ballState.enh==='invert' ? null : ballState.enh };
-        const c2 = createBallEntity(nr,nc,cloneState);
+        const cloneState = { total: ballState.total, rate: ballState.rate, prop: ballState.prop, enh: ballState.enh==='invert' ? null : ballState.enh, initialTotal: ballState.initialTotal };
+        const c2 = createBallEntity(nr,nc,cloneState,true,previousTotal);
         branches.push(travel(c2.ball, c2.tip, nr, nc, exitDir, cloneState, counter));
       }
     });
@@ -1892,7 +2015,8 @@
 
     const counter = {launched:0, scored:0, broke:0};
     function makeBallState(stripInvert){
-      return { total: 50+state.startBonus, rate: 10+state.baseRateBonus, prop: queued.property,
+      const initialTotal = 50+state.startBonus;
+      return { initialTotal, total: initialTotal, rate: 10+state.baseRateBonus, prop: queued.property,
         enh: (stripInvert && queued.enhancement==='invert') ? null : queued.enhancement, broke:false };
     }
     const initialStates = [makeBallState(false)];
@@ -2531,8 +2655,8 @@
           const src=srcWrap?.querySelector('.ball-chip'), dst=dstWrap?.querySelector('.ball-chip');
           if(!src||!dst) return;
           const sr=src.getBoundingClientRect(), tr=dst.getBoundingClientRect();
-          src.style.setProperty('--from-x',`${anim.sourceRect.left-sr.left}px`); src.style.setProperty('--from-y',`${anim.sourceRect.top-sr.top}px`); src.style.animation='ballMoveIn .34s cubic-bezier(.22,.8,.24,1)';
-          dst.style.setProperty('--from-x',`${anim.targetRect.left-tr.left}px`); dst.style.setProperty('--from-y',`${anim.targetRect.top-tr.top}px`); dst.style.animation='ballMoveIn .34s cubic-bezier(.22,.8,.24,1)';
+          src.style.setProperty('--from-x',`${anim.sourceRect.left-sr.left}px`); src.style.setProperty('--from-y',`${anim.sourceRect.top-sr.top}px`); src.style.animation='ballMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
+          dst.style.setProperty('--from-x',`${anim.targetRect.left-tr.left}px`); dst.style.setProperty('--from-y',`${anim.targetRect.top-tr.top}px`); dst.style.animation='ballMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
         });
       }
     }

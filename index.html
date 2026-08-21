@@ -76,6 +76,9 @@
   .stat.target .value{ color: var(--ink); }
   .stat.money .value{ color: var(--gold); }
   .stat.level .value{ color: var(--ink); }
+  .save-status{ font-size:9px; letter-spacing:.6px; color:var(--ink-dim); white-space:nowrap; min-width:58px; text-align:center; }
+  .save-status.saved{ color:var(--green); }
+  .save-status.error{ color:var(--red); }
 
   button{
     font-family:'Space Grotesk', sans-serif; font-weight:600; font-size: 13px;
@@ -184,6 +187,17 @@
 
   .cell.blocked-flash{ animation: flashRed calc(.4s / var(--anim-speed)) ease; }
   @keyframes flashRed{ 0%,100%{ background: rgba(255,255,255,0.02); } 40%{ background: rgba(232,93,78,0.35); } }
+  .cell.black-block{
+    background: #050505;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 0 16px rgba(0,0,0,.95);
+    cursor: not-allowed;
+  }
+  .cell.black-block::after{
+    content:""; position:absolute; inset:13%; border-radius:4px;
+    background:radial-gradient(circle,rgba(255,255,255,.035),transparent 68%);
+    pointer-events:none;
+  }
 
   .block-visual{ position:absolute; inset:0; transition: transform calc(.28s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); transform-origin: 50% 50%; }
   .arm{ position:absolute; background: var(--cyan); box-shadow: 0 0 7px var(--cyan-dim); border-radius: 3px; }
@@ -361,6 +375,7 @@
   .inventory-grid{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; width:100%; max-height:50vh; overflow-y:auto; overflow-x:hidden; margin-bottom:16px; padding:0 2px; }
   .inventory-item{ position:relative; width:100%; aspect-ratio:1; min-width:0; background: var(--bg-deep); border: 1px solid var(--panel-line); border-radius: 6px; margin:0; overflow:hidden; }
   .inventory-item.grayed{ opacity:.28; filter:grayscale(1); }
+  .inventory-item.targetable{ cursor:pointer; box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); opacity:1; filter:none; }
   @keyframes handRefresh{ 0%{ transform:scale(.4); opacity:.2; } 65%{ transform:scale(1.15); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
   .hand-slot.just-refreshed .block-visual{ animation:handRefresh calc(.32s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
   .status-strip{ min-height: 20px; font-size: 13px; font-family:'JetBrains Mono', monospace; color: var(--ink-dim); text-align:center; }
@@ -608,6 +623,7 @@
         <option value="3">3x</option>
       </select>
     </div>
+    <span class="save-status" id="saveStatus">Tự động lưu</span>
     <button id="newGameBtn">Chơi lại</button>
   </header>
 
@@ -711,6 +727,7 @@
   const BAG_RECIPE = { straight:8, L:8, T:6, plus:3 };
   const BASE_MAX_BALLS = 5;
   const HAND_SIZE = 3;
+  const MAX_CARD_HAND = 5;
 
   const BLOCK_PROPS = ['steel','stone','gold','wood','glass'];
   const BALL_PROPS  = ['steel','striped','grid','gold','glass'];
@@ -891,10 +908,28 @@
 
   const BUFF_POOL = [
     { id:'balls', name:'Tay nhanh', desc:'+1 giới hạn số bóng bắn mỗi màn, vĩnh viễn', cost:25, apply(){ state.maxBallsBonus += 1; } },
-    { id:'bag', name:'Túi lớn', desc:'+5 khối trong túi đồ mỗi màn, vĩnh viễn', cost:20, apply(){ state.bagBonus += 5; } },
     { id:'start', name:'Khởi động', desc:'Mọi bóng bắt đầu với +5 điểm nền, vĩnh viễn', cost:18, apply(){ state.startBonus += 5; } },
-    { id:'interest', name:'Tích luỹ', desc:'Trần lãi suất cuối màn +2$, vĩnh viễn', cost:22, apply(){ state.interestCapBonus += 2; } },
+    { id:'interest', name:'Giàu có', desc:'Tăng giới hạn số tiền lãi có thể nhận được +10$', cost:22, apply(){ state.interestCapBonus += 10; } },
+    { id:'trash', name:'Thùng rác', desc:'+1 giới hạn loại bỏ mỗi màn', cost:18, apply(){ state.discardBonus += 1; } },
+    { id:'big_hand', name:'Tay lớn', desc:'+1 khối có thể cầm trong tay', cost:22, apply(){ state.handSizeBonus += 1; } },
+    { id:'discount', name:'Hạ giá', desc:'Giảm 25% giá mua các vật phẩm trong cửa hàng', cost:24, apply(){ state.discountBonus = true; } },
+    { id:'empty', name:'Rỗng', desc:'Không có chức năng gì cả', cost:5, apply(){} },
   ];
+
+  function getOwnedBuffIds(){ return Array.isArray(state?.ownedBuffIds) ? state.ownedBuffIds : []; }
+  function getMaxHandSize(){ return HAND_SIZE + (state?.handSizeBonus || 0); }
+  function getMaxCardHand(){ return MAX_CARD_HAND; }
+  function getMaxDiscards(){ return 3 + (state?.discardBonus || 0); }
+  function isBuffOwned(id){ return getOwnedBuffIds().includes(id); }
+  function markBuffOwned(id){ if(id==='empty' || isBuffOwned(id)) return; state.ownedBuffIds.push(id); }
+  function pickAvailableBuff(){
+    const available=BUFF_POOL.filter(b=>b.id!=='empty' && !isBuffOwned(b.id));
+    return available.length ? pick(available) : BUFF_POOL.find(b=>b.id==='empty');
+  }
+  function shopPrice(base){
+    const n=Number(base)||0;
+    return state?.discountBonus ? Math.max(1,Math.round(n*0.75)) : n;
+  }
 
   const PROPERTY_CARD_TARGET_KIND = { steel:'both', stone:'block', gold:'both', wood:'block', glass:'both', striped:'ball', grid:'ball' };
   const POWER_CARD_DEFS = {};
@@ -916,8 +951,20 @@
     use(targets){ targets[0].obj.enhancement = pick(ENHANCEMENTS); } };
   POWER_CARD_DEFS['clone'] = { id:'clone', name:'Thẻ nhân bản', desc:'Chọn 1 khối, tạo thêm 1 khối giống hệt cho túi đồ màn sau', cost:18, targetKind:'block', targetCount:1,
     use(targets){ const o=targets[0].obj; state.pendingBlocks.push({type:o.type, rotation:0, property:o.property, enhancement:o.enhancement}); } };
-  POWER_CARD_DEFS['copy'] = { id:'copy', name:'Thẻ sao chép', desc:'Lặp lại hiệu ứng thẻ nâng cấp vừa dùng gần nhất', cost:12, targetKind:null, targetCount:0,
-    use(){ if(state.lastUpgrade){ state.lastUpgrade.apply(); } } };
+  POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn khỏi kho đồ', cost:18, targetKind:'bagBlock', targetCount:2, targetMinCount:1, manualConfirm:true,
+    use(targets){ targets.forEach(t=>{ const idx=state.bag.indexOf(t.obj); if(idx>=0) state.bag.splice(idx,1); }); } };
+  POWER_CARD_DEFS['breed'] = { id:'breed', name:'Thẻ sinh sản', desc:'Tạo ra 2 thẻ sức mạnh ngẫu nhiên và đưa vào tay', cost:20, targetKind:null, targetCount:0,
+    use(){
+      const defs=shuffle(Object.values(POWER_CARD_DEFS).filter(d=>d.id!=='copy'));
+      const free=Math.max(0,getMaxCardHand()-state.cardHand.length);
+      for(let i=0;i<Math.min(2,free);i++){ const d=defs[i%defs.length]; state.cardHand.push({id:cardUid(),kind:'power',defId:d.id}); }
+    } };
+  POWER_CARD_DEFS['copy'] = { id:'copy', name:'Thẻ sao chép', desc:'Đưa vào tay thẻ sức mạnh hoặc thẻ nâng cấp gần nhất đã dùng', cost:12, targetKind:null, targetCount:0,
+    use(){
+      const last=state.lastUsedCard;
+      if(!last || state.cardHand.length>=getMaxCardHand()) return;
+      state.cardHand.push({id:cardUid(),kind:last.kind,defId:last.defId});
+    } };
 
   // ---------- run / level state ----------
   let state = null;
@@ -925,14 +972,203 @@
   function ballUid(){ return 'b' + (_ballUid++); }
   function ensureBallIds(){ state.ballPool.forEach(b=>{ if(!b._id) b._id=ballUid(); }); }
 
+
+  // ---------- persistent save / load ----------
+  // Saves the current run locally in the browser. No account or server is required.
+  const SAVE_KEY = 'connect-run-save-v1';
+  const SAVE_VERSION = 1;
+  let saveStatusEl = null;
+  let saveTimer = null;
+  let savePending = false;
+
+  function setSaveStatus(text, kind=''){
+    if(!saveStatusEl) return;
+    saveStatusEl.textContent = text;
+    saveStatusEl.className = 'save-status' + (kind ? ' '+kind : '');
+  }
+
+  function snapshotGameState(){
+    if(!state) return null;
+
+    // Only copy gameplay data. Runtime/UI-only state such as targeting, drag data,
+    // functions, animation helpers and Sets are converted/omitted intentionally.
+    const save = JSON.parse(JSON.stringify(state, (key, value)=>{
+      if(typeof value === 'function') return undefined;
+      if(key === '_animateNewHoleConnections') return undefined;
+      if(key === '_splitUsed') return undefined;
+      if(key === 'resolving') return false;
+      if(key === 'targeting') return null;
+      if(key === 'lastUpgrade') return undefined;
+      if(key === 'shopBuff') return undefined;
+      if(key === 'holeConnections') return [...state.holeConnections];
+      return value;
+    }));
+
+    save.version = SAVE_VERSION;
+    save.lastUpgradeId = state.lastUpgrade?.id || null;
+    save.shopBuffId = state.shopBuff?.id || null;
+    save.shopBuffBought = !!state.shopBuffBought;
+    // targeting is intentionally not restored after a reload.
+    save.targeting = null;
+    return save;
+  }
+
+  function saveGame(options={}){
+    if(!state || state.resolving) return false;
+    try{
+      const save = snapshotGameState();
+      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+      savePending = false;
+      if(!options.silent) setSaveStatus('Đã lưu', 'saved');
+      return true;
+    }catch(err){
+      console.error('Không thể lưu game:', err);
+      setSaveStatus('Lỗi lưu', 'error');
+      return false;
+    }
+  }
+
+  function syncSaveCounters(){
+    let maxBall = 0;
+    const ballIds = [];
+    (state?.ballPool || []).forEach(b=>{ if(b?._id) ballIds.push(b._id); });
+    (state?.ballQueue || []).forEach(b=>{ if(b?._id) ballIds.push(b._id); });
+    ballIds.forEach(id=>{ const n=Number(String(id).replace(/^b/,'')); if(Number.isFinite(n)) maxBall=Math.max(maxBall,n); });
+    _ballUid = Math.max(_ballUid, maxBall+1);
+
+    let maxCard = 0;
+    const cardIds = [];
+    (state?.cardHand || []).forEach(c=>{ if(c?.id) cardIds.push(c.id); });
+    (state?.gachaStock || []).forEach(g=>{ if(g?.id) cardIds.push(g.id); });
+    cardIds.forEach(id=>{ const n=Number(String(id).replace(/^c/,'')); if(Number.isFinite(n)) maxCard=Math.max(maxCard,n); });
+    _uid = Math.max(_uid, maxCard+1);
+  }
+
+  function restoreKnownObjects(){
+    if(!state) return;
+
+    state.holeConnections = new Set(state.holeConnections || []);
+    state.targeting = null;
+    state.resolving = false;
+
+    state.lastUpgrade = state.lastUpgradeId
+      ? (UPGRADE_POOL.find(x=>x.id===state.lastUpgradeId) || null)
+      : null;
+    delete state.lastUpgradeId;
+
+    if(state.shopBuffId){
+      const def = BUFF_POOL.find(x=>x.id===state.shopBuffId);
+      if(def){
+        state.shopBuff = {...def, bought: !!state.shopBuffBought};
+      } else {
+        state.shopBuff = null;
+      }
+    } else {
+      state.shopBuff = null;
+    }
+    delete state.shopBuffId;
+
+    // Older/newer saves may omit fields; keep them compatible with this build.
+    state.typeBonus = {...{straight:0,L:0,T:0,plus:0}, ...(state.typeBonus||{})};
+    state.pendingBlocks = state.pendingBlocks || [];
+    state.ballPool = state.ballPool || [];
+    state.ballQueue = state.ballQueue || [];
+    state.cardHand = state.cardHand || [];
+    state.lastUsedCard = state.lastUsedCard || null;
+    state.discardBonus = Number.isFinite(state.discardBonus) ? state.discardBonus : 0;
+    state.handSizeBonus = Number.isFinite(state.handSizeBonus) ? state.handSizeBonus : 0;
+    state.discountBonus = !!state.discountBonus;
+    state.ownedBuffIds = Array.isArray(state.ownedBuffIds) ? state.ownedBuffIds : [];
+    state.bag = state.bag || [];
+    state.hand = state.hand || [];
+    state.discardPile = state.discardPile || [];
+    state.discardsLeft = Number.isFinite(state.discardsLeft) ? state.discardsLeft : 3;
+    state.commonRerollCost = Number.isFinite(state.commonRerollCost) ? state.commonRerollCost : 3;
+
+    ensureBallIds();
+    syncSaveCounters();
+  }
+
+  function loadGame(){
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(!raw) return false;
+      const save = JSON.parse(raw);
+      if(!save || typeof save !== 'object') return false;
+      if(save.version && save.version > SAVE_VERSION) return false;
+
+      state = save;
+      restoreKnownObjects();
+
+      if(state.phase === 'playing'){
+        render();
+        renderTargetBanner();
+        setStatus('', '');
+        hideOverlay();
+        hideShop();
+        return true;
+      }
+
+      if(state.phase === 'shop'){
+        render();
+        hideOverlay();
+        renderCardHand();
+        openShop();
+        return true;
+      }
+
+      if(state.phase === 'reward'){
+        render();
+        hideOverlay();
+        hideShop();
+        const unfired = Math.max(0, state.ballQueue.length - state.ballsFired);
+        const interestCap = 5 + state.interestCapBonus;
+        const interest = Math.min(Math.floor(state.money/5), interestCap);
+        showLevelReward({unfired, ballBonus:unfired*3, interest});
+        return true;
+      }
+
+      // gameover (or unknown terminal state): reconstruct the standard lose overlay.
+      render();
+      renderCardHand();
+      hideShop();
+      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${state.level}, đạt ${state.score}/${state.target} điểm. Tổng tiền tích luỹ: $${state.money}.`);
+      return true;
+    }catch(err){
+      console.error('Không thể tải save:', err);
+      setSaveStatus('Save hỏng', 'error');
+      return false;
+    }
+  }
+
+  function deleteSave(){
+    try{ localStorage.removeItem(SAVE_KEY); }catch(err){ console.error('Không thể xoá save:', err); }
+    setSaveStatus('Đã xoá save', 'saved');
+  }
+
+  function scheduleAutoSave(){
+    if(!state || state.resolving) return;
+    savePending = true;
+    if(saveTimer) return;
+    saveTimer = setTimeout(()=>{
+      saveTimer = null;
+      if(savePending) saveGame({silent:false});
+    }, 700);
+  }
+
+  function flushAutoSave(){
+    if(state && !state.resolving) saveGame({silent:true});
+  }
+
   function newRun(){
     state = {
       money: 10, level: 0,
       baseRateBonus: 0, typeBonus: { straight:0, L:0, T:0, plus:0 },
       maxBallsBonus: 0, bagBonus: 0, startBonus: 0, interestCapBonus: 0,
+      discardBonus: 0, handSizeBonus: 0, discountBonus: false, ownedBuffIds: [],
       pendingBlocks: [], nextBallPreset: null,
       ballPool: Array.from({length:BASE_MAX_BALLS}, ()=>({_id:ballUid(), property:null, enhancement:null})),
-      cardHand: [], lastUpgrade: null, targeting: null,
+      cardHand: [], lastUpgrade: null, lastUsedCard: null, targeting: null,
       phase: 'playing',
       shopBuff: null, shopBuffBought: false, commonItems: null, commonRerollCost: 3,
       bag: [], hand: [], discardPile: [], discardsLeft: 3, cells: null, holeConnections: new Set()
@@ -940,6 +1176,7 @@
     state.bag = makeInitialDeck();
     ensureBallIds();
     newLevel();
+    scheduleAutoSave();
   }
 
   function computeTarget(level){ return Math.round(300 * Math.pow(1.35, level-1)); }
@@ -968,6 +1205,31 @@
     return queue;
   }
 
+  function getBlackBlockCount(level){
+    if(level < 4) return 0;
+    return 1 + (level >= 6 ? 1 : 0) + (level >= 9 ? 1 : 0);
+  }
+
+  function getBlackBlockChance(level){
+    if(level < 4) return 0;
+    return Math.min(0.9, 0.2 + (level - 4) * 0.1);
+  }
+
+  function placeBlackBlocks(cells, rows, cols, nodeR, nodeC, holeR, holeC, level){
+    const count = getBlackBlockCount(level);
+    if(!count || Math.random() >= getBlackBlockChance(level)) return [];
+    const candidates=[];
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      if((r===nodeR && c===nodeC) || (r===holeR && c===holeC)) continue;
+      if(cells[r][c].type!=='empty') continue;
+      candidates.push([r,c]);
+    }
+    shuffle(candidates);
+    const placed=candidates.slice(0, Math.min(count, candidates.length));
+    for(const [r,c] of placed) cells[r][c]={type:'black',block:null};
+    return placed;
+  }
+
   function newLevel(){
     state.level += 1;
     state.target = computeTarget(state.level);
@@ -976,8 +1238,8 @@
     state.resolving = false;
     state.phase = 'playing';
     state.targeting = null;
-    state.discardsLeft = 3;
-    if(state.level===1 || (state.level>1 && (state.level-1)%3===0)){ state.shopBuff = {...pick(BUFF_POOL), bought:false}; state.shopBuffBought=false; }
+    state.discardsLeft = getMaxDiscards();
+    if(state.level===1 || (state.level>1 && (state.level-1)%3===0)){ state.shopBuff = {...pickAvailableBuff(), bought:false}; state.shopBuffBought=false; }
 
     // recycle everything from the previous level (board + hand + discards) back into the persistent bag
     if(state.cells){
@@ -1025,6 +1287,8 @@
     [holeR,holeC] = pick(holeCandidates);
     cells[holeR][holeC] = {type:'hole', block:null};
 
+    placeBlackBlocks(cells, rows, cols, nodeR, nodeC, holeR, holeC, state.level);
+
     state.rows = rows; state.cols = cols; state.cells = cells;
     state.node = {r:nodeR, c:nodeC, dir:nodeDir};
     state.hole = {r:holeR, c:holeC};
@@ -1052,7 +1316,7 @@
   function refillHand(animate=false){
     if(state.hand.some(Boolean)) return;
     state.hand = [];
-    while(state.hand.length < HAND_SIZE && state.bag.length > 0) state.hand.push(state.bag.shift());
+    while(state.hand.length < getMaxHandSize() && state.bag.length > 0) state.hand.push(state.bag.shift());
     if(animate && typeof refreshAnimSlots !== 'undefined') refreshAnimSlots = new Set(state.hand.map((_,i)=>i));
   }
 
@@ -1065,6 +1329,7 @@
     refreshAnimSlots = new Set(state.hand.map((_,i)=>i));
     setStatus(`Đã loại bỏ tay — còn ${state.discardsLeft} lần loại bỏ`, '');
     render();
+    scheduleAutoSave();
   }
 
   // ---------- DOM refs ----------
@@ -1168,6 +1433,9 @@
             state.holeConnections.delete(key);
           }
           for(const key of nextConnections) state.holeConnections.add(key);
+        } else if(cellData.type==='black'){
+          el.classList.add('black-block');
+          el.title = 'Ô triệt tiêu — bóng chạm vào sẽ bị mất';
         } else if(cellData.block){
           renderBlockArms(el, cellData.block);
           attachBoardBlockDrag(el);
@@ -1200,7 +1468,7 @@
     renderBallQueue();
     renderCardHand();
     bagCountEl.textContent = `Túi khối còn lại: ${state.bag.length}`;
-    discardCountEl.textContent = `(${state.discardsLeft}/3)`;
+    discardCountEl.textContent = `(${state.discardsLeft}/${getMaxDiscards()})`;
     discardBtnEl.disabled = state.discardsLeft<=0 || !state.hand.some(Boolean) || state.resolving || state.phase!=='playing' || !!state.targeting;
     refreshAnimSlots.clear();
     scoreValEl.textContent = state.score;
@@ -1211,7 +1479,7 @@
 
   function renderHand(){
     handEl.innerHTML = '';
-    for(let i=0;i<HAND_SIZE;i++){
+    for(let i=0;i<getMaxHandSize();i++){
       const slot = document.createElement('div');
       const block = state.hand[i];
       slot.className = 'hand-slot' + (block ? ' filled' : ' empty-slot');
@@ -1478,7 +1746,7 @@
       btn.disabled = state.phase!=='playing' || !!state.targeting;
       if(isUpgrade){
         btn.addEventListener('click', ()=>{
-          def.apply(); state.lastUpgrade=def; state.cardHand.splice(idx,1);
+          def.apply(); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id}; state.cardHand.splice(idx,1);
           setStatus(`Đã dùng: ${def.name}`, 'good');
           render(); renderTargetBanner();
         });
@@ -1495,6 +1763,7 @@
   // ---------- targeting mode (power cards) ----------
   function targetKindMatches(def, kind){
     if(def.targetKind === 'both') return true;
+    if(def.targetKind === 'bagBlock') return kind === 'bagBlock';
     if(def.targetKind === 'swap'){
       if(!state.targeting.targets.length) return true;
       return state.targeting.targets[0].kind === kind;
@@ -1502,17 +1771,28 @@
     return def.targetKind === kind;
   }
 
+  function rememberLastUsedCard(def){
+    if(!def || def.id==='copy') return;
+    state.lastUsedCard={kind:'power',defId:def.id};
+  }
+
+  function commitTargeting(){
+    const t=state.targeting; if(!t) return false;
+    const def=t.def, min=def.targetMinCount||def.targetCount, max=def.targetCount;
+    if(t.targets.length<min || t.targets.length>max) return false;
+    def.use(t.targets); rememberLastUsedCard(def); syncBallMutationTargets(t.targets); renderBallQueue();
+    state.cardHand.splice(t.handIdx,1); state.targeting=null;
+    setStatus(`Đã dùng: ${def.name}`, 'good'); render(); renderTargetBanner();
+    return true;
+  }
+
   function startTargeting(handIdx, def){
-    if(def.targetCount === 0){
-      def.use([]);
+    if(def.targetCount===0){
       state.cardHand.splice(handIdx,1);
-      setStatus(`Đã dùng: ${def.name}`, 'good');
-      render();
-      return;
+      def.use([]); rememberLastUsedCard(def);
+      setStatus(`Đã dùng: ${def.name}`, 'good'); render(); return;
     }
-    state.targeting = { handIdx, def, need: def.targetCount, targets: [] };
-    render();
-    renderTargetBanner();
+    state.targeting={handIdx,def,need:def.targetCount,targets:[]}; render(); renderTargetBanner();
   }
 
   function cancelTargeting(){ state.targeting = null; render(); renderTargetBanner(); }
@@ -1524,15 +1804,8 @@
     if(!targetKindMatches(def, target.kind)) return;
     if(t.targets.some(x=>x.obj===target.obj)) return;
     t.targets.push(target);
-    if(t.targets.length >= t.need){
-      def.use(t.targets);
-      syncBallMutationTargets(t.targets);
-      renderBallQueue();
-      state.cardHand.splice(t.handIdx,1);
-      state.targeting = null;
-      setStatus(`Đã dùng: ${def.name}`, 'good');
-      render();
-      renderTargetBanner();
+    if(t.targets.length >= t.need && !def.manualConfirm){
+      commitTargeting();
     } else {
       render();
       renderTargetBanner();
@@ -1547,7 +1820,13 @@
     const span = document.createElement('span'); span.textContent = `Chọn mục tiêu cho ${t.def.name} (${t.targets.length}/${t.need})`;
     const cancelBtn = document.createElement('button'); cancelBtn.textContent='Huỷ';
     cancelBtn.addEventListener('click', cancelTargeting);
-    targetBannerEl.appendChild(span); targetBannerEl.appendChild(cancelBtn);
+    targetBannerEl.appendChild(span);
+    if(t.def.manualConfirm){
+      const confirmBtn=document.createElement('button'); confirmBtn.className='gold'; confirmBtn.textContent='Xác nhận';
+      confirmBtn.disabled=t.targets.length<(t.def.targetMinCount||1); confirmBtn.addEventListener('click',commitTargeting);
+      targetBannerEl.appendChild(confirmBtn);
+    }
+    targetBannerEl.appendChild(cancelBtn);
   }
 
   // ---------- drag & rotate ----------
@@ -1606,7 +1885,7 @@
   // board-origin drags may land on an occupied cell (swap); hand-origin drags may only land on empty cells
   function dropTargetCell(el){
     const cellEl = el && el.closest ? el.closest('.cell') : null;
-    if(!cellEl || cellEl.classList.contains('node') || cellEl.classList.contains('hole')) return null;
+    if(!cellEl || cellEl.classList.contains('node') || cellEl.classList.contains('hole') || cellEl.classList.contains('black-block')) return null;
     if(drag.origin==='hand' && cellEl.classList.contains('hasblock')) return null;
     if(drag.origin==='board' && +cellEl.dataset.r===drag.r && +cellEl.dataset.c===drag.c) return null;
     return cellEl;
@@ -1957,6 +2236,13 @@
     await moveEntityTo(ball,tip,nr,nc);
     const cellData = state.cells[nr][nc];
 
+    if(cellData.type==='black'){
+      flashBlocked(nr,nc);
+      ball.classList.add('lost'); tip.style.opacity='0';
+      await wait(300); removeEntity(ball,tip);
+      return [];
+    }
+
     if(cellData.type==='hole'){
       ballGoalEffects(ballState);
       updateTip(tip, ballState);
@@ -2084,6 +2370,7 @@
 
     state.resolving = false;
     checkEndState();
+    saveGame({silent:true});
   }
 
   function checkEndState(){
@@ -2305,6 +2592,7 @@
     if(def.targetCount===0){ def.use([]); return true; }
     if(!targets || targets.length<def.targetCount) return false;
     def.use(targets);
+    rememberLastUsedCard(def);
     syncBallMutationTargets(targets);
     renderBallQueue();
     return true;
@@ -2313,7 +2601,7 @@
   function applyUpgradePick(opt){
     const def=UPGRADE_POOL.find(x=>x.id===opt.defId);
     if(!def) return false;
-    def.apply(); state.lastUpgrade=def;
+    def.apply(); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id};
     return true;
   }
 
@@ -2408,11 +2696,14 @@
       h3.appendChild(optionsWrap); panel.appendChild(h3);
       registerGachaBallView(optionsWrap,()=>g.options);
     } else {
-      const targets=randomBagBlocks(5);
+      const bagTargets=state.bag.slice().sort(()=>Math.random()-0.5).slice(0,5);
+      const otherTargets=randomBagBlocks(5);
+      const targets=shuffle([...bagTargets,...otherTargets.filter(b=>!bagTargets.includes(b))]);
       g.powerTargets=targets;
       const targetSec=document.createElement('div'); targetSec.className='gacha-choice-section'; targetSec.innerHTML='<h3>5 khối ngẫu nhiên từ kho đồ</h3>';
       const targetWrap=document.createElement('div'); targetWrap.className='gacha-choice-options';
-      targets.forEach((b,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=blockOptionLabel(b); markDebugTarget(e,b,'block'); attachObjectTooltip(e,b,'block'); e.addEventListener('click',()=>{ if(!stateUi.targeting.some(x=>x.obj===b)){ stateUi.targeting.push({obj:b,kind:'block'}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } targetWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j]))); updatePowerAccept(); }); targetWrap.appendChild(e); });
+      const currentTargetKind=POWER_CARD_DEFS[g.options[stateUi.selected[0]]?.defId]?.targetKind==='bagBlock' ? 'bagBlock' : 'block';
+      targets.forEach((b,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=blockOptionLabel(b); markDebugTarget(e,b,'block'); attachObjectTooltip(e,b,'block'); e.addEventListener('click',()=>{ if(currentTargetKind==='bagBlock' && !state.bag.includes(b)) return; if(!stateUi.targeting.some(x=>x.obj===b)){ stateUi.targeting.push({obj:b,kind:currentTargetKind}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } targetWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j]))); updatePowerAccept(); }); targetWrap.appendChild(e); });
       targetSec.appendChild(targetWrap); panel.appendChild(targetSec);
 
       const ballSec=document.createElement('div'); ballSec.className='gacha-choice-section'; ballSec.innerHTML=`<h3>Bóng đang sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
@@ -2434,7 +2725,7 @@
         if(def.targetKind==='swap'){
           accept.disabled=stateUi.targeting.length!==2 || stateUi.targeting[0].kind!==stateUi.targeting[1].kind;
         } else {
-          accept.disabled=stateUi.targeting.length!==def.targetCount || !stateUi.targeting.every(t=>targetKindMatches(def,t.kind));
+          accept.disabled=stateUi.targeting.length<(def.targetMinCount||def.targetCount) || stateUi.targeting.length>def.targetCount || !stateUi.targeting.every(t=>targetKindMatches(def,t.kind));
         }
         accept.textContent=`Dùng: ${def.name}`;
       }
@@ -2520,7 +2811,7 @@
 
   function applyCommonItem(item){
     if(item.kind==='upgrade'){ const d=UPGRADE_POOL.find(x=>x.id===item.ref.defId); d.apply(); state.lastUpgrade=d; }
-    else if(item.kind==='power'){ if(state.cardHand.length>=5) return false; state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId}); }
+    else if(item.kind==='power'){ if(state.cardHand.length>=getMaxCardHand()) return false; state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId}); }
     else if(item.kind==='block') state.pendingBlocks.push({...item.ref});
     else state.nextBallPreset={...item.ref};
     return true;
@@ -2529,7 +2820,7 @@
   function openShop(){
     if(!state.commonItems) state.commonItems=makeCommonStock();
     if(!state.gachaStock) state.gachaStock=makeGachaStock();
-    if(!state.shopBuff) state.shopBuff={...pick(BUFF_POOL),bought:false};
+    if(!state.shopBuff) state.shopBuff={...pickAvailableBuff(),bought:false};
     shopOverlayEl.classList.remove('hidden');
 
     function reroll(){ if(state.money<state.commonRerollCost) return; state.money-=state.commonRerollCost; state.commonRerollCost++; state.commonItems=makeCommonStock(); renderShop(); }
@@ -2553,6 +2844,7 @@
 
       const ownedBlocks=collectOwnedBlocks().map(x=>x.block);
       const targets=[];
+      if(def.targetKind==='bagBlock') state.bag.forEach(obj=>targets.push({obj,kind:'bagBlock'}));
       if(def.targetKind==='block' || def.targetKind==='both' || def.targetKind==='swap') ownedBlocks.forEach(obj=>targets.push({obj,kind:'block'}));
       if(def.targetKind==='ball' || def.targetKind==='both' || def.targetKind==='swap') state.ballPool.forEach(obj=>targets.push({obj,kind:'ball'}));
 
@@ -2577,7 +2869,7 @@
             selected.push(target);
           }
           renderSelected();
-          const valid = def.targetKind==='swap' ? selected.length===2 && selected[0].kind===selected[1].kind : selected.length===def.targetCount;
+          const valid = def.targetKind==='swap' ? selected.length===2 && selected[0].kind===selected[1].kind : (selected.length >= (def.targetMinCount||def.targetCount) && selected.length <= def.targetCount);
           accept.disabled=!valid;
         });
         targetsWrap.appendChild(el);
@@ -2591,10 +2883,10 @@
       if(def.targetCount===0){ accept.disabled=false; }
       accept.addEventListener('click',()=>{
         if(def.targetCount!==0){
-          const valid = def.targetKind==='swap' ? selected.length===2 && selected[0].kind===selected[1].kind : selected.length===def.targetCount;
+          const valid = def.targetKind==='swap' ? selected.length===2 && selected[0].kind===selected[1].kind : (selected.length >= (def.targetMinCount||def.targetCount) && selected.length <= def.targetCount);
           if(!valid) return;
         }
-        def.use(selected);
+        def.use(selected); rememberLastUsedCard(def);
         syncBallMutationTargets(selected);
         state.money-=item.price;
         item.bought=true;
@@ -2611,19 +2903,19 @@
     function buyCommon(item){
       if(item.bought||state.money<item.price) return;
       if(item.kind==='upgrade'){
-        if(state.cardHand.length>=5) return;
+        if(state.cardHand.length>=getMaxCardHand()) return;
         state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
-        state.money-=item.price; item.bought=true; moneyValEl.textContent=`$${state.money}`; render(); renderShop();
+        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`; render(); renderShop();
         return;
       }
       if(item.kind==='power'){
-        if(state.cardHand.length>=5) return;
+        if(state.cardHand.length>=getMaxCardHand()) return;
         state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
-        state.money-=item.price; item.bought=true; moneyValEl.textContent=`$${state.money}`; render(); renderShop();
+        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`; render(); renderShop();
         return;
       }
       if(!applyCommonItem(item)) return;
-      state.money-=item.price; item.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop();
+      state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop();
     }
 
     function useCommon(item){
@@ -2631,8 +2923,8 @@
       if(item.kind==='upgrade'){
         const def=UPGRADE_POOL.find(x=>x.id===item.ref.defId);
         if(!def) return;
-        def.apply(); state.lastUpgrade=def;
-        state.money-=item.price; item.bought=true; moneyValEl.textContent=`$${state.money}`;
+        def.apply(); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id};
+        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`;
         render(); renderShop();
         return;
       }
@@ -2643,8 +2935,8 @@
           return;
         }
         if(def.targetCount===0){
-          def.use([]);
-          state.money-=item.price; item.bought=true; moneyValEl.textContent=`$${state.money}`;
+          def.use([]); rememberLastUsedCard(def);
+          state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`;
           render(); renderShop();
         }
       }
@@ -2653,10 +2945,11 @@
       const box=document.createElement('div'); box.className='gacha-box';
       const names={block:'Hộp khối',ball:'Hộp bóng',power:'Hộp thẻ sức mạnh',upgrade:'Hộp thẻ nâng cấp'};
       if(g.done){ box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span></div><div class="tag-done">Đã dùng</div>`; return box; }
-      box.innerHTML=`<div class="shop-price">$${g.tier.cost}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
+      box.innerHTML=`<div class="shop-price">$${shopPrice(g.tier.cost)}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
       const actions=document.createElement('div'); actions.className='shop-item-actions';
-      const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<g.tier.cost; buy.addEventListener('click',()=>{
-        state.money-=g.tier.cost; moneyValEl.textContent=`$${state.money}`;
+      const gachaCost=shopPrice(g.tier.cost);
+      const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<gachaCost; buy.addEventListener('click',()=>{
+        state.money-=gachaCost; moneyValEl.textContent=`$${state.money}`;
         g.done=true;
         g.options=g.type==='block'?genBlockOptions(g.tier):g.type==='ball'?genBallOptions(g.tier):g.type==='power'?genPowerOptions(g.tier):genUpgradeOptions(g.tier);
         renderShop();
@@ -2775,7 +3068,7 @@
       const commonGrid=document.createElement('div'); commonGrid.className='shop-common-grid';
       state.commonItems.forEach(item=>{
         const row=document.createElement('div'); row.className='shop-card';
-        const price=document.createElement('div'); price.className='shop-price price'; price.textContent=`$${item.price}`;
+        const price=document.createElement('div'); price.className='shop-price price'; price.textContent=`$${shopPrice(item.price)}`;
         row.appendChild(price);
 
         const visual=document.createElement('div'); visual.className='shop-item-visual';
@@ -2794,12 +3087,12 @@
 
         const actions=document.createElement('div'); actions.className='shop-item-actions';
         const buy=document.createElement('button'); buy.textContent=item.bought?'Đã mua':'Mua';
-        buy.disabled=item.bought||state.money<item.price||((item.kind==='power'||item.kind==='upgrade')&&state.cardHand.length>=5);
+        buy.disabled=item.bought||state.money<shopPrice(item.price)||((item.kind==='power'||item.kind==='upgrade')&&state.cardHand.length>=getMaxCardHand());
         buy.addEventListener('click',()=>buyCommon(item));
         actions.appendChild(buy);
         if(item.kind==='power'||item.kind==='upgrade'){
           const use=document.createElement('button'); use.className='use-btn'; use.textContent='Dùng';
-          use.disabled=item.bought||state.money<item.price;
+          use.disabled=item.bought||state.money<shopPrice(item.price);
           use.addEventListener('click',()=>useCommon(item));
           actions.appendChild(use);
         }
@@ -2810,7 +3103,7 @@
       const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;'; const rb=document.createElement('button'); rb.textContent=`Đổi hàng ($${state.commonRerollCost})`; rb.disabled=state.money<state.commonRerollCost; rb.addEventListener('click',reroll); rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
 
       const lower=document.createElement('div'); lower.className='shop-lower';
-      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; br.innerHTML=`<div class="shop-price">$${bo.cost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<bo.cost; bb.addEventListener('click',()=>{ state.money-=bo.cost; bo.apply(); bo.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
+      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; const buffCost=bo.id==='discount'?bo.cost:shopPrice(bo.cost); br.innerHTML=`<div class="shop-price">$${buffCost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<buffCost; bb.addEventListener('click',()=>{ state.money-=buffCost; bo.apply(); bo.bought=true; markBuffOwned(bo.id); state.shopBuffBought=true; moneyValEl.textContent=`$${state.money}`; renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
       const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>'; const gachGrid=document.createElement('div'); gachGrid.className='shop-gacha-grid'; state.gachaStock.forEach(g=>gachGrid.appendChild(renderGachaBox(g))); gach.appendChild(gachGrid); lower.appendChild(gach); panel.appendChild(lower);
 
       const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent='Tiếp tục →'; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
@@ -2820,7 +3113,24 @@
     renderShop();
   }
 
-  newRun();
+  // ---------- persistence boot / lifecycle ----------
+  saveStatusEl = document.getElementById('saveStatus');
+  window.addEventListener('pagehide', flushAutoSave);
+  window.addEventListener('beforeunload', flushAutoSave);
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'hidden') flushAutoSave();
+  });
+
+  // Catch state mutations that use renderShop()/render() paths we don't explicitly hook.
+  setInterval(()=>{
+    if(state && !state.resolving) saveGame({silent:true});
+  }, 2500);
+
+  if(!loadGame()){
+    newRun();
+  } else {
+    setSaveStatus('Đã tải save', 'saved');
+  }
 })();
 </script>
 </body>

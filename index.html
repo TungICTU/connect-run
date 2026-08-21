@@ -277,12 +277,16 @@
   }
 
   .ball-tooltip{
-    position:absolute; transform: translate(-50%, calc(-100% - 14px));
+    --tooltip-scale:1;
+    --score-scale:1;
+    position:absolute;
+    transform: translate(-50%, calc(-100% - 14px)) scale(var(--tooltip-scale));
+    transform-origin:center bottom;
     background: rgba(10,26,44,0.92); border: 1px solid var(--amber-dim); color: var(--amber);
     font-family:'JetBrains Mono',monospace; font-size: 11px; font-weight:700;
     padding: 2px 6px; border-radius: 5px; white-space:nowrap;
     transition: left calc(.22s / var(--anim-speed)) linear, top calc(.22s / var(--anim-speed)) linear, opacity calc(.2s / var(--anim-speed)) ease;
-    z-index: 6; pointer-events:none;
+    z-index: 6; pointer-events:none; will-change:transform;
   }
   .ball-tooltip-value{
     display:inline-block;
@@ -1720,18 +1724,28 @@
   // ---------- firing / simulation ----------
   function cellPercent(r,c){ return { left:((c+0.5)/state.cols)*100, top:((r+0.5)/state.rows)*100 }; }
 
-  function animateScoreTipValue(valueEl, nextTotal, previousTotal, initialTotal){
+  function computeScoreTooltipScale(currentTotal, initialTotal, targetTotal){
+    const start = Number.isFinite(initialTotal) && initialTotal > 0 ? initialTotal : 50;
+    const target = Number.isFinite(targetTotal) && targetTotal > start ? targetTotal : start + 1;
+    const progress = Math.max(0, (currentTotal - start) / (target - start));
+    const steps = Math.floor(progress * 10 + 1e-9);
+    return Math.min(3, 1 + steps * 0.05);
+  }
+
+  function animateScoreTipValue(valueEl, nextTotal, previousTotal, initialTotal, targetTotal, tip){
     if(!valueEl) return;
-    const safeInitial = Number.isFinite(initialTotal) && initialTotal > 0 ? initialTotal : 50;
     const prevTotal = Number.isFinite(previousTotal) ? previousTotal : nextTotal;
-    const step = safeInitial * 0.1;
-    const growthSteps = step > 0 ? Math.floor(Math.max(0, nextTotal - safeInitial) / step) : 0;
-    const nextScale = Math.min(3, 1 + growthSteps * 0.1);
+    const nextScale = computeScoreTooltipScale(nextTotal, initialTotal, targetTotal);
     const previousScale = Number.isFinite(valueEl._scoreScale) ? valueEl._scoreScale : 1;
     const crossedGrowthStep = nextScale > previousScale;
-    if(nextTotal <= prevTotal) {
+
+    if(nextTotal <= prevTotal){
       valueEl._scoreScale = nextScale;
       valueEl.style.transform = `scale(${nextScale})`;
+      if(tip){
+        tip._tooltipScale = nextScale;
+        tip.style.setProperty('--tooltip-scale', String(nextScale));
+      }
       return;
     }
 
@@ -1739,10 +1753,15 @@
       try{ valueEl._scoreAnim.cancel(); }catch{}
       valueEl._scoreAnim = null;
     }
+    if(tip?._tooltipAnim){
+      try{ tip._tooltipAnim.cancel(); }catch{}
+      tip._tooltipAnim = null;
+    }
 
     valueEl._scoreScale = nextScale;
     const duration = (crossedGrowthStep ? 420 : 280) / animationSpeed;
     const fromScale = previousScale;
+
     const keyframes = crossedGrowthStep
       ? [
           { transform:`scale(${fromScale}) translate3d(0px,0px,0) rotate(0deg)` },
@@ -1772,6 +1791,31 @@
       valueEl.style.transform = `scale(${nextScale})`;
       valueEl._scoreAnim = null;
     };
+
+    // The frame itself zooms, but never shakes. Only the number above it receives
+    // the lateral/rotational motion.
+    if(tip && nextScale !== (tip._tooltipScale ?? 1)){
+      const previousTooltipScale = Number.isFinite(tip._tooltipScale) ? tip._tooltipScale : 1;
+      tip._tooltipScale = nextScale;
+      tip.style.setProperty('--tooltip-scale', String(previousTooltipScale));
+      const tooltipFrom = `translate(-50%, calc(-100% - 14px)) scale(${previousTooltipScale})`;
+      const tooltipTo = `translate(-50%, calc(-100% - 14px)) scale(${nextScale})`;
+      tip._tooltipAnim = tip.animate([
+        { transform:tooltipFrom },
+        { transform:`translate(-50%, calc(-100% - 14px)) scale(${nextScale * 1.06})`, offset:0.28 },
+        { transform:`translate(-50%, calc(-100% - 14px)) scale(${nextScale * 0.98})`, offset:0.55 },
+        { transform:tooltipTo, offset:1 }
+      ], {
+        duration:420 / animationSpeed,
+        easing:'cubic-bezier(.34,1.56,.64,1)',
+        fill:'forwards',
+        composite:'replace'
+      });
+      tip._tooltipAnim.onfinish=()=>{
+        tip.style.setProperty('--tooltip-scale', String(nextScale));
+        tip._tooltipAnim=null;
+      };
+    }
   }
 
   function createBallEntity(r,c,ballState,animateScore=false,previousTotal=null){
@@ -1798,14 +1842,13 @@
     boardWrapEl.appendChild(tip);
 
     if(animateScore && currentTotal > tipValue._lastTotal){
-      requestAnimationFrame(()=>animateScoreTipValue(tipValue, currentTotal, tipValue._lastTotal, ballState.initialTotal));
+      requestAnimationFrame(()=>animateScoreTipValue(tipValue, currentTotal, tipValue._lastTotal, ballState.initialTotal, state.target, tip));
     } else {
-      const safeInitial = Number.isFinite(ballState.initialTotal) && ballState.initialTotal > 0 ? ballState.initialTotal : 50;
-      const step = safeInitial * 0.1;
-      const growthSteps = step > 0 ? Math.floor(Math.max(0, currentTotal - safeInitial) / step) : 0;
-      const scale = Math.min(3, 1 + growthSteps * 0.1);
+      const scale = computeScoreTooltipScale(currentTotal, ballState.initialTotal, state.target);
       tipValue._scoreScale = scale;
       tipValue.style.transform = `scale(${scale})`;
+      tip.style.setProperty('--tooltip-scale', String(scale));
+      tip._tooltipScale = scale;
     }
 
     return {ball, tip};
@@ -1825,7 +1868,7 @@
     const previousTotal = Number.isFinite(valueEl._lastTotal) ? valueEl._lastTotal : nextTotal;
     valueEl.textContent = nextTotal;
     if(nextTotal > previousTotal){
-      animateScoreTipValue(valueEl, nextTotal, previousTotal, ballState.initialTotal);
+      animateScoreTipValue(valueEl, nextTotal, previousTotal, ballState.initialTotal, state.target, tip);
     }
     valueEl._lastTotal = nextTotal;
   }

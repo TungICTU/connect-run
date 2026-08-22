@@ -146,6 +146,9 @@
     padding:6px 10px; font-size:12px;
   }
   .power-card-chip .name{ color:var(--cyan); font-weight:600; }
+  .power-card-chip .card-actions{ display:flex; align-items:center; gap:6px; }
+  .power-card-chip .sell-card-btn{ border-color:rgba(232,93,78,.45); color:var(--red); background:rgba(232,93,78,.08); }
+  .power-card-chip .sell-card-btn:hover{ background:rgba(232,93,78,.16); }
   .card-hand .tag-empty{ font-size:11px; color:var(--ink-dim); }
 
   .target-banner{
@@ -365,7 +368,9 @@
   .hand-slot{ position:relative; width:78px; height:78px; flex:0 1 78px; min-width:0; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; touch-action:none; }
   .hand-slot.filled{ cursor: grab; }
   .hand-slot.filled:active{ cursor:grabbing; }
-  .hand-slot.targetable{ cursor:pointer; }
+  .hand-slot.targetable{ cursor:pointer; animation: cellTargetPulse calc(1s / var(--anim-speed)) ease-in-out infinite; }
+  .hand-slot.targetable.target-selected{ box-shadow: inset 0 0 0 2px var(--green), 0 0 10px rgba(111,207,151,.65); border-color: var(--green); }
+  .cell.target-selected{ box-shadow: inset 0 0 0 2px var(--green), 0 0 10px rgba(111,207,151,.65); }
   .hand-slot.empty-slot::after{ content:"—"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color: var(--ink-dim); font-size:12px; }
 
   .bag-row{ display:flex; align-items:center; gap:10px; }
@@ -375,6 +380,9 @@
   .inventory-grid{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; width:100%; max-height:50vh; overflow-y:auto; overflow-x:hidden; margin-bottom:16px; padding:0 2px; }
   .inventory-item{ position:relative; width:100%; aspect-ratio:1; min-width:0; background: var(--bg-deep); border: 1px solid var(--panel-line); border-radius: 6px; margin:0; overflow:hidden; }
   .inventory-item.grayed{ opacity:.28; filter:grayscale(1); }
+  .inventory-item.targetable{ cursor:pointer; border-color:var(--green); box-shadow:0 0 0 1px rgba(111,207,151,.18); }
+  .inventory-item.targetable:hover{ background:rgba(111,207,151,.08); }
+  .inventory-item.target-selected{ border-color:var(--green); background:rgba(111,207,151,.15); box-shadow:0 0 0 2px var(--green),0 0 12px rgba(111,207,151,.35); }
   .inventory-item.targetable{ cursor:pointer; box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); opacity:1; filter:none; }
   @keyframes handRefresh{ 0%{ transform:scale(.4); opacity:.2; } 65%{ transform:scale(1.15); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
   .hand-slot.just-refreshed .block-visual{ animation:handRefresh calc(.32s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
@@ -678,6 +686,23 @@
       </div>
     </div>
     <div class="debug-section">
+      <span class="debug-label">Số màn</span>
+      <div class="debug-money-row">
+        <input id="debugLevelInput" type="number" step="1" min="1" value="1">
+        <button class="debug-apply" id="debugSetLevelBtn">Đặt màn</button>
+      </div>
+    </div>
+    <div class="debug-section">
+      <span class="debug-label">Thẻ nâng cấp → tay</span>
+      <div class="debug-select-row"><select class="debug-select" id="debugUpgradeSelect"></select></div>
+      <div class="debug-actions"><button class="debug-apply" id="debugAddUpgradeBtn">+ Thêm thẻ nâng cấp</button></div>
+    </div>
+    <div class="debug-section">
+      <span class="debug-label">Thẻ sức mạnh → tay</span>
+      <div class="debug-select-row"><select class="debug-select" id="debugPowerSelect"></select></div>
+      <div class="debug-actions"><button class="debug-apply" id="debugAddPowerBtn">+ Thêm thẻ sức mạnh</button></div>
+    </div>
+    <div class="debug-section">
       <span class="debug-label">Đối tượng đang trỏ tới</span>
       <div class="debug-target" id="debugTargetInfo"><span class="debug-none">Chưa có khối hoặc bóng nào dưới con trỏ.</span></div>
     </div>
@@ -864,6 +889,24 @@
     el.addEventListener('mouseleave', hideHoverTip);
   }
 
+  function blackBlockTooltip(el){
+    el.addEventListener('mouseenter', ()=>{
+      hoverTipEl.innerHTML = '';
+      const title=document.createElement('div');
+      title.className='tip-title';
+      title.textContent='Vật cản';
+      hoverTipEl.appendChild(title);
+      const line=document.createElement('div');
+      line.textContent='Không thể đặt khối lên ô này';
+      hoverTipEl.appendChild(line);
+      const rect=el.getBoundingClientRect();
+      hoverTipEl.style.left=(rect.left+rect.width/2)+'px';
+      hoverTipEl.style.top=rect.top+'px';
+      hoverTipEl.classList.remove('hidden');
+    });
+    el.addEventListener('mouseleave', hideHoverTip);
+  }
+
   function attachCardTooltip(el, def){
     el.addEventListener('mouseenter', ()=>{
       hoverTipEl.innerHTML='';
@@ -943,16 +986,25 @@
       use(targets){ targets[0].obj.property = p; }
     };
   });
-  POWER_CARD_DEFS['money'] = { id:'money', name:'Thẻ tiền', desc:'Nhân đôi số tiền (tối đa 25$)', cost:20, targetKind:null, targetCount:0,
-    use(){ state.money = Math.min(state.money*2, 25); moneyValEl.textContent=`$${state.money}`; } };
+  POWER_CARD_DEFS['money'] = { id:'money', name:'Thẻ tiền', desc:'Nhận thêm một lượng tiền bằng số tiền hiện có, tối đa +25$', cost:20, targetKind:null, targetCount:0,
+    use(){ const bonus=Math.min(Math.max(0,state.money),25); state.money += bonus; moneyValEl.textContent=`$${state.money}`; } };
   POWER_CARD_DEFS['swap'] = { id:'swap', name:'Thẻ hoán đổi', desc:'Chọn 2 khối HOẶC 2 bóng, hoán đổi thuộc tính + enhancement', cost:16, targetKind:'swap', targetCount:2,
     use(targets){ const a=targets[0].obj, b=targets[1].obj; const pa=a.property, ea=a.enhancement; a.property=b.property; a.enhancement=b.enhancement; b.property=pa; b.enhancement=ea; } };
   POWER_CARD_DEFS['magic'] = { id:'magic', name:'Thẻ ma thuật', desc:'Chọn 1 khối hoặc bóng, thêm enhancement ngẫu nhiên', cost:16, targetKind:'both', targetCount:1,
     use(targets){ targets[0].obj.enhancement = pick(ENHANCEMENTS); } };
   POWER_CARD_DEFS['clone'] = { id:'clone', name:'Thẻ nhân bản', desc:'Chọn 1 khối, tạo thêm 1 khối giống hệt cho túi đồ màn sau', cost:18, targetKind:'block', targetCount:1,
     use(targets){ const o=targets[0].obj; state.pendingBlocks.push({type:o.type, rotation:0, property:o.property, enhancement:o.enhancement}); } };
-  POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn khỏi kho đồ', cost:18, targetKind:'bagBlock', targetCount:2, targetMinCount:1, manualConfirm:true,
-    use(targets){ targets.forEach(t=>{ const idx=state.bag.indexOf(t.obj); if(idx>=0) state.bag.splice(idx,1); }); } };
+  POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn trên tay hoặc bảng chơi', cost:18, targetKind:'block', targetCount:2, targetMinCount:1, manualConfirm:true,
+    use(targets){
+      const selected = new Set(targets.map(t=>t.obj));
+      state.hand = state.hand.filter(block=>!selected.has(block));
+      if(state.cells){
+        for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
+          if(selected.has(state.cells[r][c].block)) state.cells[r][c].block = null;
+        }
+      }
+      refillHand();
+    } };
   POWER_CARD_DEFS['breed'] = { id:'breed', name:'Thẻ sinh sản', desc:'Tạo ra 2 thẻ sức mạnh ngẫu nhiên và đưa vào tay', cost:20, targetKind:null, targetCount:0,
     use(){
       const defs=shuffle(Object.values(POWER_CARD_DEFS).filter(d=>d.id!=='copy'));
@@ -1215,13 +1267,32 @@
     return Math.min(0.9, 0.2 + (level - 4) * 0.1);
   }
 
-  function placeBlackBlocks(cells, rows, cols, nodeR, nodeC, holeR, holeC, level){
+  function placeBlackBlocks(cells, rows, cols, nodeR, nodeC, nodeDir, holeR, holeC, level){
     const count = getBlackBlockCount(level);
     if(!count || Math.random() >= getBlackBlockChance(level)) return [];
+
+    // Never place a black block directly in the node's initial firing lane.
+    // The shot starts from the node and travels in state.node.dir until it
+    // meets a redirecting block/hole or leaves the board. Blocking that
+    // straight line would make the stage spawn with an unfair forced loss.
+    const blockedRay = new Set();
+    if(Number.isInteger(nodeDir)){
+      const [dx,dy]=DIR_VEC[nodeDir];
+      let r=nodeR+dy, c=nodeC+dx;
+      while(r>=0 && r<rows && c>=0 && c<cols){
+        blockedRay.add(`${r},${c}`);
+        if(cells[r][c].type==='hole' || cells[r][c].type==='node') break;
+        const occupied = cells[r][c].block;
+        if(occupied) break;
+        r+=dy; c+=dx;
+      }
+    }
+
     const candidates=[];
     for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
       if((r===nodeR && c===nodeC) || (r===holeR && c===holeC)) continue;
       if(cells[r][c].type!=='empty') continue;
+      if(blockedRay.has(`${r},${c}`)) continue;
       candidates.push([r,c]);
     }
     shuffle(candidates);
@@ -1287,20 +1358,12 @@
     [holeR,holeC] = pick(holeCandidates);
     cells[holeR][holeC] = {type:'hole', block:null};
 
-    placeBlackBlocks(cells, rows, cols, nodeR, nodeC, holeR, holeC, state.level);
+    placeBlackBlocks(cells, rows, cols, nodeR, nodeC, nodeDir, holeR, holeC, state.level);
 
     state.rows = rows; state.cols = cols; state.cells = cells;
     state.node = {r:nodeR, c:nodeC, dir:nodeDir};
     state.hole = {r:holeR, c:holeC};
     state.holeConnections.clear();
-
-    // top up the bag only if it's short of what's needed to fill this board, plus the permanent bag-size buff
-    // ponytail: bagBonus folded into the top-up step rather than added unconditionally every level, since the bag is now a fixed run-long pool
-    const neededCells = rows*cols - 2;
-    const topUp = Math.max(0, neededCells - state.bag.length) + state.bagBonus;
-    for(let i=0;i<topUp;i++){
-      state.bag.push({ type: pick(Object.keys(BASE_SIDES)), rotation:0, property:null, enhancement:null });
-    }
 
     state.hand = [];
     refillHand();
@@ -1435,11 +1498,14 @@
           for(const key of nextConnections) state.holeConnections.add(key);
         } else if(cellData.type==='black'){
           el.classList.add('black-block');
-          el.title = 'Ô triệt tiêu — bóng chạm vào sẽ bị mất';
+          blackBlockTooltip(el);
         } else if(cellData.block){
           renderBlockArms(el, cellData.block);
           attachBoardBlockDrag(el);
-          if(state.targeting && targetKindMatches(state.targeting.def, 'block')) el.classList.add('targetable');
+          if(state.targeting && targetKindMatches(state.targeting.def, 'block')){
+            el.classList.add('targetable');
+            if(state.targeting.targets.some(t=>t.obj===cellData.block)) el.classList.add('target-selected');
+          }
           if(placeAnimCell && placeAnimCell.r===r && placeAnimCell.c===c){
             el.classList.add('just-placed');
             const visual = el.querySelector('.block-visual');
@@ -1488,7 +1554,10 @@
         renderBlockArms(slot, block);
         if(refreshAnimSlots.has(i)) slot.classList.add('just-refreshed');
         attachHandBlockDrag(slot, i);
-        if(state.targeting && targetKindMatches(state.targeting.def, 'block')) slot.classList.add('targetable');
+        if(state.targeting && targetKindMatches(state.targeting.def, 'block')){
+          slot.classList.add('targetable');
+          if(state.targeting.targets.some(t=>t.obj===block)) slot.classList.add('target-selected');
+        }
       }
       handEl.appendChild(slot);
     }
@@ -1729,6 +1798,10 @@
     animateDragReturn(info);
   }
 
+  function getCardSellPrice(def){
+    return Math.floor((Number(def?.cost)||0) / 2);
+  }
+
   function renderCardHand(){
     cardHandEl.innerHTML = '';
     if(!state.cardHand.length){
@@ -1742,18 +1815,44 @@
       const chip = document.createElement('div'); chip.className='power-card-chip';
       const nameSpan = document.createElement('span'); nameSpan.className='name'; nameSpan.textContent = def.name;
       attachCardTooltip(chip, def);
+
+      const actions = document.createElement('div'); actions.className='card-actions';
       const btn = document.createElement('button'); btn.textContent='Dùng';
       btn.disabled = state.phase!=='playing' || !!state.targeting;
       if(isUpgrade){
         btn.addEventListener('click', ()=>{
-          def.apply(); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id}; state.cardHand.splice(idx,1);
+          def.apply();
+          state.lastUpgrade=def;
+          state.lastUsedCard={kind:'upgrade',defId:def.id};
+          state.cardHand.splice(idx,1);
           setStatus(`Đã dùng: ${def.name}`, 'good');
           render(); renderTargetBanner();
+          scheduleAutoSave();
         });
       } else {
         btn.addEventListener('click', ()=> startTargeting(idx, def));
       }
-      chip.appendChild(nameSpan); chip.appendChild(btn);
+
+      const sellPrice = getCardSellPrice(def);
+      const sellBtn = document.createElement('button');
+      sellBtn.className='sell-card-btn';
+      sellBtn.textContent=`Bán $${sellPrice}`;
+      sellBtn.disabled = state.phase!=='playing' || !!state.targeting || sellPrice<=0;
+      sellBtn.addEventListener('click', ()=>{
+        if(state.phase!=='playing' || state.targeting || sellPrice<=0) return;
+        state.cardHand.splice(idx,1);
+        state.money += sellPrice;
+        moneyValEl.textContent=`$${state.money}`;
+        setStatus(`Đã bán: ${def.name} (+$${sellPrice})`, 'good');
+        render();
+        renderTargetBanner();
+        scheduleAutoSave();
+      });
+
+      actions.appendChild(btn);
+      actions.appendChild(sellBtn);
+      chip.appendChild(nameSpan);
+      chip.appendChild(actions);
       cardHandEl.appendChild(chip);
     });
   }
@@ -1763,7 +1862,6 @@
   // ---------- targeting mode (power cards) ----------
   function targetKindMatches(def, kind){
     if(def.targetKind === 'both') return true;
-    if(def.targetKind === 'bagBlock') return kind === 'bagBlock';
     if(def.targetKind === 'swap'){
       if(!state.targeting.targets.length) return true;
       return state.targeting.targets[0].kind === kind;
@@ -1792,18 +1890,31 @@
       def.use([]); rememberLastUsedCard(def);
       setStatus(`Đã dùng: ${def.name}`, 'good'); render(); return;
     }
-    state.targeting={handIdx,def,need:def.targetCount,targets:[]}; render(); renderTargetBanner();
+    state.targeting={handIdx,def,need:def.targetCount,targets:[]};
+    render();
+    renderTargetBanner();
   }
 
-  function cancelTargeting(){ state.targeting = null; render(); renderTargetBanner(); }
+  function cancelTargeting(){
+    state.targeting = null;
+    inventoryOverlayEl.classList.add('hidden');
+    inventoryOverlayEl.innerHTML='';
+    render();
+    renderTargetBanner();
+  }
 
   function handleTargetClick(target){
     const t = state.targeting;
     if(!t) return;
     const def = t.def;
     if(!targetKindMatches(def, target.kind)) return;
-    if(t.targets.some(x=>x.obj===target.obj)) return;
-    t.targets.push(target);
+    const existing = t.targets.findIndex(x=>x.obj===target.obj);
+    if(existing>=0){
+      t.targets.splice(existing,1);
+    } else {
+      if(t.targets.length>=t.need) return;
+      t.targets.push(target);
+    }
     if(t.targets.length >= t.need && !def.manualConfirm){
       commitTargeting();
     } else {
@@ -2249,6 +2360,15 @@
       const goalPopup = document.createElement('div');
       goalPopup.className = 'ball-goal-popup';
       goalPopup.textContent = Math.round(ballState.total);
+      // Keep the goal score readable when the tooltip score has grown larger.
+      // Tooltip values use a base 11px font and a dynamic score scale; the goal
+      // popup uses a base 18px font. Only enlarge the popup when the tooltip's
+      // rendered score would otherwise be larger.
+      const tooltipScoreScale = Number.isFinite(tip?._valueEl?._scoreScale) ? tip._valueEl._scoreScale : 1;
+      const goalBaseFontSize = 18;
+      const tooltipBaseFontSize = 11;
+      const matchedGoalFontSize = Math.max(goalBaseFontSize, tooltipBaseFontSize * tooltipScoreScale);
+      goalPopup.style.fontSize = `${matchedGoalFontSize}px`;
       const goalColor = ballState.enh ? ENH_COLOR[ballState.enh] : (ballState.prop ? PROP_COLOR[ballState.prop] : 'var(--amber)');
       goalPopup.style.color = goalColor || 'var(--amber)';
       const goalPos = cellPercent(nr,nc);
@@ -2425,10 +2545,64 @@
     debugHoverTarget=found;
     if(!debugOverlayEl.classList.contains('hidden')){ debugTargetInfoEl.innerHTML=debugDescribeTarget(found); debugRefreshSelects(); }
   });
-  function toggleDebugMenu(){ debugOverlayEl.classList.toggle('hidden'); if(!debugOverlayEl.classList.contains('hidden')){debugTargetInfoEl.innerHTML=debugDescribeTarget(debugHoverTarget);debugRefreshSelects();} }
+  const debugLevelInput=document.getElementById('debugLevelInput');
+  const debugUpgradeSelect=document.getElementById('debugUpgradeSelect');
+  const debugPowerSelect=document.getElementById('debugPowerSelect');
+  function populateDebugCardSelects(){
+    debugUpgradeSelect.innerHTML='';
+    UPGRADE_POOL.forEach(def=>{
+      const o=document.createElement('option'); o.value=def.id; o.textContent=def.name; debugUpgradeSelect.appendChild(o);
+    });
+    debugPowerSelect.innerHTML='';
+    Object.values(POWER_CARD_DEFS).forEach(def=>{
+      const o=document.createElement('option'); o.value=def.id; o.textContent=def.name; debugPowerSelect.appendChild(o);
+    });
+  }
+  function refreshDebugMenuValues(){
+    if(state){ debugLevelInput.value=state.level||1; }
+    populateDebugCardSelects();
+  }
+  function debugSetLevel(){
+    const level=Math.max(1,Math.floor(Number(debugLevelInput.value)||1));
+    if(!state) return;
+    state.level=level;
+    state.target=computeTarget(level);
+    levelValEl.textContent=state.level;
+    targetValEl.textContent=state.target;
+    setStatus(`DEBUG: Đã đặt màn ${level}`, 'good');
+    render();
+    renderTargetBanner();
+    refreshOpenShop();
+    scheduleAutoSave();
+  }
+  function debugAddCard(kind, defId){
+    if(!state) return;
+    if(state.cardHand.length>=getMaxCardHand()){
+      setStatus(`Tay thẻ đã đầy (${getMaxCardHand()}/${getMaxCardHand()})`, 'bad');
+      return;
+    }
+    const def=kind==='upgrade' ? UPGRADE_POOL.find(x=>x.id===defId) : POWER_CARD_DEFS[defId];
+    if(!def) return;
+    state.cardHand.push({id:cardUid(),kind,defId:def.id});
+    setStatus(`DEBUG: Đã thêm ${def.name} vào tay`, 'good');
+    render();
+    renderTargetBanner();
+    scheduleAutoSave();
+  }
+  function toggleDebugMenu(){
+    debugOverlayEl.classList.toggle('hidden');
+    if(!debugOverlayEl.classList.contains('hidden')){
+      refreshDebugMenuValues();
+      debugTargetInfoEl.innerHTML=debugDescribeTarget(debugHoverTarget);
+      debugRefreshSelects();
+    }
+  }
   document.addEventListener('keydown', e=>{ if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='d'){e.preventDefault();toggleDebugMenu();} });
   document.getElementById('debugCloseBtn').addEventListener('click',()=>debugOverlayEl.classList.add('hidden'));
-  document.getElementById('debugAddMoneyBtn').addEventListener('click',()=>{ const amount=Number(document.getElementById('debugMoneyInput').value)||0; state.money+=amount; moneyValEl.textContent=`$${state.money}`; if(!shopOverlayEl.classList.contains('hidden')) renderShop(); });
+  document.getElementById('debugAddMoneyBtn').addEventListener('click',()=>{ const amount=Number(document.getElementById('debugMoneyInput').value)||0; state.money+=amount; moneyValEl.textContent=`$${state.money}`; if(!shopOverlayEl.classList.contains('hidden')) renderShop(); scheduleAutoSave(); });
+  document.getElementById('debugSetLevelBtn').addEventListener('click',debugSetLevel);
+  document.getElementById('debugAddUpgradeBtn').addEventListener('click',()=>debugAddCard('upgrade',debugUpgradeSelect.value));
+  document.getElementById('debugAddPowerBtn').addEventListener('click',()=>debugAddCard('power',debugPowerSelect.value));
   document.getElementById('debugApplyTargetBtn').addEventListener('click',debugApplyTarget);
   document.getElementById('inventoryBtn').addEventListener('click', openInventory);
 
@@ -2696,14 +2870,11 @@
       h3.appendChild(optionsWrap); panel.appendChild(h3);
       registerGachaBallView(optionsWrap,()=>g.options);
     } else {
-      const bagTargets=state.bag.slice().sort(()=>Math.random()-0.5).slice(0,5);
-      const otherTargets=randomBagBlocks(5);
-      const targets=shuffle([...bagTargets,...otherTargets.filter(b=>!bagTargets.includes(b))]);
+      const targets=randomBagBlocks(5);
       g.powerTargets=targets;
       const targetSec=document.createElement('div'); targetSec.className='gacha-choice-section'; targetSec.innerHTML='<h3>5 khối ngẫu nhiên từ kho đồ</h3>';
       const targetWrap=document.createElement('div'); targetWrap.className='gacha-choice-options';
-      const currentTargetKind=POWER_CARD_DEFS[g.options[stateUi.selected[0]]?.defId]?.targetKind==='bagBlock' ? 'bagBlock' : 'block';
-      targets.forEach((b,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=blockOptionLabel(b); markDebugTarget(e,b,'block'); attachObjectTooltip(e,b,'block'); e.addEventListener('click',()=>{ if(currentTargetKind==='bagBlock' && !state.bag.includes(b)) return; if(!stateUi.targeting.some(x=>x.obj===b)){ stateUi.targeting.push({obj:b,kind:currentTargetKind}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } targetWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j]))); updatePowerAccept(); }); targetWrap.appendChild(e); });
+      targets.forEach((b,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=blockOptionLabel(b); markDebugTarget(e,b,'block'); attachObjectTooltip(e,b,'block'); e.addEventListener('click',()=>{ if(!stateUi.targeting.some(x=>x.obj===b)){ if(stateUi.targeting.length>=2) return; stateUi.targeting.push({obj:b,kind:'block'}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } targetWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j]))); updatePowerAccept(); }); targetWrap.appendChild(e); });
       targetSec.appendChild(targetWrap); panel.appendChild(targetSec);
 
       const ballSec=document.createElement('div'); ballSec.className='gacha-choice-section'; ballSec.innerHTML=`<h3>Bóng đang sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
@@ -2844,7 +3015,6 @@
 
       const ownedBlocks=collectOwnedBlocks().map(x=>x.block);
       const targets=[];
-      if(def.targetKind==='bagBlock') state.bag.forEach(obj=>targets.push({obj,kind:'bagBlock'}));
       if(def.targetKind==='block' || def.targetKind==='both' || def.targetKind==='swap') ownedBlocks.forEach(obj=>targets.push({obj,kind:'block'}));
       if(def.targetKind==='ball' || def.targetKind==='both' || def.targetKind==='swap') state.ballPool.forEach(obj=>targets.push({obj,kind:'ball'}));
 

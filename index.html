@@ -296,20 +296,23 @@
   .ball-tooltip{
     --tooltip-scale:1;
     --score-scale:1;
+    --score-font-size:11px;
     position:absolute;
-    transform: translate(-50%, calc(-100% - 14px)) scale(var(--tooltip-scale));
+    transform:translate(-50%, calc(-100% - 14px));
     transform-origin:center bottom;
-    background: rgba(10,26,44,0.92); border: 1px solid var(--amber-dim); color: var(--amber);
-    font-family:'JetBrains Mono',monospace; font-size: 11px; font-weight:700;
-    padding: 2px 6px; border-radius: 5px; white-space:nowrap;
-    transition: left calc(.22s / var(--anim-speed)) linear, top calc(.22s / var(--anim-speed)) linear, opacity calc(.2s / var(--anim-speed)) ease;
-    z-index: 6; pointer-events:none; will-change:transform;
+    background:rgba(10,26,44,0.92); border:1px solid var(--amber-dim); color:var(--amber);
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    padding:2px 6px; border-radius:5px; white-space:nowrap;
+    transition:left calc(.22s / var(--anim-speed)) linear, top calc(.22s / var(--anim-speed)) linear, opacity calc(.2s / var(--anim-speed)) ease;
+    z-index:6; pointer-events:none; will-change:transform;
   }
   .ball-tooltip-value{
     display:inline-block;
-    transform:scale(var(--score-scale,1));
+    font-size:var(--score-font-size);
+    line-height:1;
+    transform:scale(1);
     transform-origin:center center;
-    will-change:transform;
+    will-change:transform,font-size;
   }
   @keyframes ballScorePop{
     0%{ transform:scale(var(--score-scale)) rotate(0deg); }
@@ -342,12 +345,11 @@
   }
   @keyframes ballGoalPopup{
     0%{ transform:translate(-50%, -50%) scale(.35); opacity:0; }
-    30%{ transform:translate(-50%, -68%) scale(1.5); opacity:1; animation-timing-function:linear; }
-    75%{ transform:translate(-50%, -109%) scale(1.5); opacity:1; animation-timing-function:linear; }
-    100%{ transform:translate(-50%, -132%) scale(1.05); opacity:0; }
+    30%{ transform:translate(-50%, -68%) scale(1.15); opacity:1; animation-timing-function:linear; }
+    75%{ transform:translate(-50%, -109%) scale(1.15); opacity:1; animation-timing-function:linear; }
+    100%{ transform:translate(-50%, -132%) scale(1); opacity:0; }
   }
   .ball-goal-popup.show{ animation:ballGoalPopup calc(.7s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1) forwards; }
-  .ball-tooltip{ --score-scale:1; }
   .ball-tooltip::after{
     content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:4px solid transparent; border-top-color: var(--amber-dim);
@@ -355,13 +357,57 @@
 
   .hover-tip{
     position:fixed; transform:translate(-50%, calc(-100% - 10px));
-    background: rgba(10,26,44,0.96); border:1px solid var(--panel-line); border-radius:8px;
-    padding:7px 10px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink);
-    z-index:200; pointer-events:none; white-space:nowrap; line-height:1.65;
+    display:flex; flex-direction:row; align-items:flex-start; gap:6px;
+    z-index:200; pointer-events:none; white-space:nowrap;
   }
   .hover-tip.hidden{ display:none; }
-  .hover-tip .tip-title{ font-weight:700; color:var(--cyan); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
-  .hover-tip .tip-level{ color:var(--ink); font-weight:700; margin-left:auto; }
+  .hover-tip-main, .hover-tip-details{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink);
+    line-height:1.65;
+  }
+  .hover-tip-main{
+    min-width:0; background:rgba(10,26,44,0.96); border:1px solid var(--panel-line); border-radius:8px;
+    padding:7px 10px; box-shadow:0 4px 18px rgba(0,0,0,.3);
+  }
+  .hover-tip-details{
+    display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start;
+    gap:6px; max-width:260px; min-width:0;
+  }
+  .hover-tip-detail{
+    display:flex; flex-direction:column; align-items:stretch; gap:3px; min-width:0;
+    background:rgba(10,26,44,0.96); border:1px solid var(--panel-line); border-radius:8px;
+    padding:7px 10px; box-shadow:0 4px 18px rgba(0,0,0,.3);
+  }
+  .hover-tip .tip-title{ font-weight:700; color:var(--cyan); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .hover-tip .tip-title-left{ display:flex; align-items:center; gap:5px; min-width:0; }
+  .hover-tip .tip-title-base{ flex:0 0 auto; }
+  .hover-tip .tip-level{ color:var(--ink); font-weight:700; margin-left:auto; flex:0 0 auto; }
+  .hover-tip-pill{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:1px 6px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
+    font-size:10px; line-height:1.45; font-weight:700; color:#071322;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 1px 5px rgba(0,0,0,.2);
+  }
+  .hover-tip-pill.enh-holo{
+    color:#fff; border-color:rgba(199,146,234,.7);
+    background:linear-gradient(120deg,#7c5ac7,#2f80ed,#5ec8d8,#c792ea);
+    background-size:220% 220%;
+    animation:tooltipHolo 1.8s linear infinite;
+  }
+  .hover-tip-pill.enh-spark{
+    color:#4b3200; border-color:rgba(255,209,102,.8);
+    background:linear-gradient(120deg,#ffd166,#fff2b0,#ffd166);
+    background-size:220% 220%;
+    animation:tooltipSpark 1.1s ease-in-out infinite;
+  }
+  .hover-tip-pill.enh-invert{
+    color:#fff; border-color:rgba(255,107,157,.75);
+    background:linear-gradient(120deg,#ff6b9d,#8d4de8,#252f6b);
+  }
+  .hover-tip-detail-title{ font-weight:700; display:flex; align-items:center; gap:5px; }
+  .hover-tip-detail-desc{ color:var(--ink); white-space:normal; }
+  @keyframes tooltipHolo{ 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
+  @keyframes tooltipSpark{ 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.35);} }
 
   .hand-row{ width:100%; display:flex; align-items:center; justify-content:center; gap:10px; }
   .hand{ flex:0 1 auto; min-width:0; display:flex; gap:10px; justify-content:center; }
@@ -624,6 +670,7 @@
     <div class="speed-control">
       <span class="speed-label">Tốc độ</span>
       <select id="animationSpeedSelect" aria-label="Tốc độ animation">
+        <option value="0.25">0.25x</option>
         <option value="0.5">0.5x</option>
         <option value="1" selected>1x</option>
         <option value="1.5">1.5x</option>
@@ -724,8 +771,8 @@
 
   // ---------- number formatting ----------
   // Hiển thị số với dấu phân cách hàng nghìn: 1,000 / 1,000,000 / ...
-  // Khi vượt quá 999.999.999.999, chuyển sang dạng khoa học: 1.0e+12, ...
-  const NUMBER_FORMAT_LIMIT = 999_999_999_999;
+  // Khi vượt quá 999,999,999, chuyển sang dạng khoa học: 1.0e+9, ...
+  const NUMBER_FORMAT_LIMIT = 999_999_999;
   const numberFormatter = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 0,
     useGrouping: true
@@ -786,9 +833,9 @@
   const PROP_COLOR = { steel:'#b8c4cf', stone:'#9c8768', gold:'#f2c94c', wood:'#c98a4b', glass:'#8fe3e0', striped:'#e26fa6', grid:'#7c8cf8' };
   const PROP_LABEL = { steel:'Thép', stone:'Đá', gold:'Vàng', wood:'Gỗ', glass:'Kính', striped:'Sọc', grid:'Kẻ' };
   const PROP_INITIAL = { steel:'T', stone:'Đ', gold:'V', wood:'G', glass:'K', striped:'S', grid:'K' };
-  const ENH_LABEL = { holo:'Đa sắc', spark:'Lấp lánh', invert:'Âm bản' };
+  const ENH_LABEL = { holo:'Lấp lánh', spark:'Đa sắc', invert:'Âm bản' };
   const ENH_COLOR = { holo:'#c792ea', spark:'#ffd166', invert:'#ff6b9d' };
-  const ENH_INITIAL = { holo:'Đ', spark:'L', invert:'Â' };
+  const ENH_INITIAL = { holo:'L', spark:'Đ', invert:'Â' };
   const TYPE_LABEL = { straight:'Thẳng', L:'Chữ L', T:'Chữ T', plus:'Dấu Cộng' };
 
   // ---------- hover tooltip content ----------
@@ -821,20 +868,26 @@
 
   function blockTooltip(block){
     const level = ((state.typeBonus[block.type]||0)/5) + 1;
-    const lines = [`Số điểm cho khi bóng đi ra: ${formatNumber((10+state.baseRateBonus)+(state.typeBonus[block.type]||0))}`];
-    if(block.property) lines.push(`${PROP_LABEL[block.property]}: ${BLOCK_PROP_DESC[block.property]}`);
-    if(block.enhancement) lines.push(`${ENH_LABEL[block.enhancement]}: ${BLOCK_ENH_DESC[block.enhancement]}`);
-    return { title:TYPE_LABEL[block.type], level, lines };
+    return {
+      title:TYPE_LABEL[block.type],
+      level,
+      lines:[`Số điểm cho khi bóng đi ra: ${formatNumber((10+state.baseRateBonus)+(state.typeBonus[block.type]||0))}`],
+      property:block.property ? { label:PROP_LABEL[block.property], color:PROP_COLOR[block.property], desc:BLOCK_PROP_DESC[block.property] } : null,
+      enhancement:block.enhancement ? { label:ENH_LABEL[block.enhancement], id:block.enhancement, color:ENH_COLOR[block.enhancement], desc:BLOCK_ENH_DESC[block.enhancement] } : null
+    };
   }
   function ballTooltip(b){
     const level = ((state.baseRateBonus||0)/2) + 1;
-    const lines = [
-      `Số điểm bóng chứa: ${formatNumber(50+state.startBonus)}`,
-      `Tỉ lệ cộng: ${formatNumber(10)}${state.baseRateBonus>0?`(+${formatNumber(state.baseRateBonus)})`:''}/khối`,
-    ];
-    if(b.property) lines.push(`${PROP_LABEL[b.property]}: ${BALL_PROP_DESC[b.property]}`);
-    if(b.enhancement) lines.push(`${ENH_LABEL[b.enhancement]}: ${BALL_ENH_DESC[b.enhancement]}`);
-    return { title:'Bóng', level, lines };
+    return {
+      title:'Bóng',
+      level,
+      lines:[
+        `Số điểm bóng chứa: ${formatNumber(50+state.startBonus)}`,
+        `Tỉ lệ cộng: ${formatNumber(10)}${state.baseRateBonus>0?`(+${formatNumber(state.baseRateBonus)})`:''}/khối`,
+      ],
+      property:b.property ? { label:PROP_LABEL[b.property], color:PROP_COLOR[b.property], desc:BALL_PROP_DESC[b.property] } : null,
+      enhancement:b.enhancement ? { label:ENH_LABEL[b.enhancement], id:b.enhancement, color:ENH_COLOR[b.enhancement], desc:BALL_ENH_DESC[b.enhancement] } : null
+    };
   }
 
   const hoverTipEl = document.createElement('div'); hoverTipEl.className='hover-tip hidden';
@@ -890,18 +943,73 @@
     }
     document.getElementById('debugTargetInfo').innerHTML=debugDescribeTarget(t); debugRefreshSelects();
   }
-  function showHoverTip(targetEl, {title, level, lines}){
+  function createTooltipPill(info, type){
+    const pill = document.createElement('span');
+    pill.className = 'hover-tip-pill' + (type==='enhancement' ? ` enh-${info.id}` : '');
+    pill.textContent = info.label;
+    if(type==='property'){
+      pill.style.background = info.color || 'var(--cyan)';
+    } else {
+      pill.style.setProperty('--enh-color', info.color || 'var(--cyan)');
+    }
+    return pill;
+  }
+
+  function createTooltipDetail(info, type){
+    const detail = document.createElement('div');
+    detail.className='hover-tip-detail';
+    const title = document.createElement('div');
+    title.className='hover-tip-detail-title';
+    title.appendChild(createTooltipPill(info, type));
+    detail.appendChild(title);
+    const desc = document.createElement('div');
+    desc.className='hover-tip-detail-desc';
+    desc.textContent=info.desc;
+    detail.appendChild(desc);
+    return detail;
+  }
+
+  function showHoverTip(targetEl, info){
     hoverTipEl.innerHTML = '';
-    const t = document.createElement('div'); t.className='tip-title';
-    const titleEl=document.createElement('span'); titleEl.textContent=title; t.appendChild(titleEl);
-    const levelEl=document.createElement('span'); levelEl.className='tip-level'; levelEl.textContent=`Lv.${level}`; levelEl.style.color=levelColor(level); t.appendChild(levelEl);
-    hoverTipEl.appendChild(t);
-    lines.forEach(line=>{
+
+    const main = document.createElement('div');
+    main.className='hover-tip-main';
+
+    const t = document.createElement('div');
+    t.className='tip-title';
+    const titleLeft = document.createElement('div');
+    titleLeft.className='tip-title-left';
+    const baseTitle = document.createElement('span');
+    baseTitle.className='tip-title-base';
+    baseTitle.textContent=info.title;
+    titleLeft.appendChild(baseTitle);
+    if(info.property) titleLeft.appendChild(createTooltipPill(info.property, 'property'));
+    if(info.enhancement) titleLeft.appendChild(createTooltipPill(info.enhancement, 'enhancement'));
+    t.appendChild(titleLeft);
+
+    const levelEl=document.createElement('span');
+    levelEl.className='tip-level';
+    levelEl.textContent=`Lv.${info.level}`;
+    levelEl.style.color=levelColor(info.level);
+    t.appendChild(levelEl);
+    main.appendChild(t);
+
+    info.lines.forEach(line=>{
       const d = document.createElement('div');
       if(typeof line === 'string') d.textContent = line;
       else { d.textContent = line.text; d.style.color = line.color; }
-      hoverTipEl.appendChild(d);
+      main.appendChild(d);
     });
+    hoverTipEl.appendChild(main);
+
+    if(info.property || info.enhancement){
+      const details=document.createElement('div');
+      details.className='hover-tip-details';
+      if(info.property) details.appendChild(createTooltipDetail(info.property, 'property'));
+      if(info.enhancement) details.appendChild(createTooltipDetail(info.enhancement, 'enhancement'));
+      hoverTipEl.appendChild(details);
+    }
+
     const rect = targetEl.getBoundingClientRect();
     hoverTipEl.style.left = (rect.left+rect.width/2)+'px';
     hoverTipEl.style.top = rect.top+'px';
@@ -914,36 +1022,32 @@
     el.addEventListener('mouseleave', hideHoverTip);
   }
 
+  function showSimpleHoverTip(targetEl, titleText, bodyText){
+    hoverTipEl.innerHTML='';
+    const panel=document.createElement('div');
+    panel.className='hover-tip-main';
+    const title=document.createElement('div');
+    title.className='tip-title';
+    title.textContent=titleText;
+    panel.appendChild(title);
+    const line=document.createElement('div');
+    line.textContent=bodyText;
+    panel.appendChild(line);
+    hoverTipEl.appendChild(panel);
+    const rect=targetEl.getBoundingClientRect();
+    hoverTipEl.style.left=(rect.left+rect.width/2)+'px';
+    hoverTipEl.style.top=rect.top+'px';
+    hoverTipEl.classList.remove('hidden');
+  }
+
   function blackBlockTooltip(el){
-    el.addEventListener('mouseenter', ()=>{
-      hoverTipEl.innerHTML = '';
-      const title=document.createElement('div');
-      title.className='tip-title';
-      title.textContent='Vật cản';
-      hoverTipEl.appendChild(title);
-      const line=document.createElement('div');
-      line.textContent='Không thể đặt khối lên ô này';
-      hoverTipEl.appendChild(line);
-      const rect=el.getBoundingClientRect();
-      hoverTipEl.style.left=(rect.left+rect.width/2)+'px';
-      hoverTipEl.style.top=rect.top+'px';
-      hoverTipEl.classList.remove('hidden');
-    });
+    el.addEventListener('mouseenter', ()=>showSimpleHoverTip(el, 'Vật cản', 'Không thể đặt khối lên ô này'));
     el.addEventListener('mouseleave', hideHoverTip);
   }
 
   function attachCardTooltip(el, def){
-    el.addEventListener('mouseenter', ()=>{
-      hoverTipEl.innerHTML='';
-      const title=document.createElement('div'); title.className='tip-title'; title.textContent=def.name;
-      hoverTipEl.appendChild(title);
-      const line=document.createElement('div'); line.textContent=def.desc;
-      hoverTipEl.appendChild(line);
-      const rect=el.getBoundingClientRect();
-      hoverTipEl.style.left=(rect.left+rect.width/2)+'px';
-      hoverTipEl.style.top=rect.top+'px';
-      hoverTipEl.classList.remove('hidden');
-    });
+    if(!def) return;
+    el.addEventListener('mouseenter', ()=>showSimpleHoverTip(el, def.name, def.desc));
     el.addEventListener('mouseleave', hideHoverTip);
   }
 
@@ -2144,7 +2248,7 @@
     const target = Number.isFinite(targetTotal) && targetTotal > start ? targetTotal : start + 1;
     const progress = Math.max(0, (currentTotal - start) / (target - start));
     const steps = Math.floor(progress * 10 + 1e-9);
-    return Math.min(3, 1 + steps * 0.05);
+    return Math.min(4, 1 + steps * 0.05);
   }
 
   function animateScoreTipValue(valueEl, nextTotal, previousTotal, initialTotal, targetTotal, tip){
@@ -2154,83 +2258,37 @@
     const previousScale = Number.isFinite(valueEl._scoreScale) ? valueEl._scoreScale : 1;
     const crossedGrowthStep = nextScale > previousScale;
 
+    if(valueEl._scoreAnim){ try{ valueEl._scoreAnim.cancel(); }catch{} valueEl._scoreAnim=null; }
+    valueEl._scoreScale = nextScale;
+    if(tip) tip.style.setProperty('--score-font-size', `${11 * nextScale}px`);
+
     if(nextTotal <= prevTotal){
-      valueEl._scoreScale = nextScale;
-      valueEl.style.transform = `scale(${nextScale})`;
-      if(tip){
-        tip._tooltipScale = nextScale;
-        tip.style.setProperty('--tooltip-scale', String(nextScale));
-      }
+      valueEl.style.transform='scale(1)';
       return;
     }
 
-    if(valueEl._scoreAnim){
-      try{ valueEl._scoreAnim.cancel(); }catch{}
-      valueEl._scoreAnim = null;
-    }
-    if(tip?._tooltipAnim){
-      try{ tip._tooltipAnim.cancel(); }catch{}
-      tip._tooltipAnim = null;
-    }
-
-    valueEl._scoreScale = nextScale;
-    const duration = (crossedGrowthStep ? 420 : 280) / animationSpeed;
-    const fromScale = previousScale;
-
-    const keyframes = crossedGrowthStep
+    const duration=(crossedGrowthStep ? 420 : 280) / animationSpeed;
+    const keyframes=crossedGrowthStep
       ? [
-          { transform:`scale(${fromScale}) translate3d(0px,0px,0) rotate(0deg)` },
-          { transform:`scale(${nextScale * 1.16}) translate3d(-2px,-1px,0) rotate(-4deg)`, offset:0.22 },
-          { transform:`scale(${nextScale * 0.96}) translate3d(2px,1px,0) rotate(3.5deg)`, offset:0.48 },
-          { transform:`scale(${nextScale * 1.04}) translate3d(-1px,0px,0) rotate(-1.5deg)`, offset:0.74 },
-          { transform:`scale(${nextScale}) translate3d(0px,0px,0) rotate(0deg)`, offset:1 }
+          {transform:'scale(1)'},
+          {transform:'scale(1.16) translate3d(-2px,-1px,0) rotate(-4deg)',offset:.22},
+          {transform:'scale(.96) translate3d(2px,1px,0) rotate(3.5deg)',offset:.48},
+          {transform:'scale(1.04) translate3d(-1px,0,0) rotate(-1.5deg)',offset:.74},
+          {transform:'scale(1) translate3d(0,0,0) rotate(0deg)',offset:1}
         ]
       : [
-          { transform:`scale(${nextScale}) translate3d(0px,0px,0) rotate(0deg)` },
-          { transform:`scale(${nextScale}) translate3d(-3px,-1px,0) rotate(-6deg)`, offset:0.14 },
-          { transform:`scale(${nextScale}) translate3d(3px,1px,0) rotate(6deg)`, offset:0.28 },
-          { transform:`scale(${nextScale}) translate3d(-2.5px,0px,0) rotate(-4.5deg)`, offset:0.42 },
-          { transform:`scale(${nextScale}) translate3d(2.5px,0px,0) rotate(4.5deg)`, offset:0.56 },
-          { transform:`scale(${nextScale}) translate3d(-1.5px,0px,0) rotate(-2.5deg)`, offset:0.70 },
-          { transform:`scale(${nextScale}) translate3d(1.5px,0px,0) rotate(2.5deg)`, offset:0.84 },
-          { transform:`scale(${nextScale}) translate3d(0px,0px,0) rotate(0deg)`, offset:1 }
+          {transform:'scale(1) translate3d(0,0,0) rotate(0deg)'},
+          {transform:'scale(1) translate3d(-3px,-1px,0) rotate(-6deg)',offset:.14},
+          {transform:'scale(1) translate3d(3px,1px,0) rotate(6deg)',offset:.28},
+          {transform:'scale(1) translate3d(-2.5px,0,0) rotate(-4.5deg)',offset:.42},
+          {transform:'scale(1) translate3d(2.5px,0,0) rotate(4.5deg)',offset:.56},
+          {transform:'scale(1) translate3d(-1.5px,0,0) rotate(-2.5deg)',offset:.70},
+          {transform:'scale(1) translate3d(1.5px,0,0) rotate(2.5deg)',offset:.84},
+          {transform:'scale(1) translate3d(0,0,0) rotate(0deg)',offset:1}
         ];
 
-    valueEl._scoreAnim = valueEl.animate(keyframes, {
-      duration,
-      easing:'cubic-bezier(.34,1.56,.64,1)',
-      fill:'forwards',
-      composite:'replace'
-    });
-    valueEl._scoreAnim.onfinish = ()=>{
-      valueEl.style.transform = `scale(${nextScale})`;
-      valueEl._scoreAnim = null;
-    };
-
-    // The frame itself zooms, but never shakes. Only the number above it receives
-    // the lateral/rotational motion.
-    if(tip && nextScale !== (tip._tooltipScale ?? 1)){
-      const previousTooltipScale = Number.isFinite(tip._tooltipScale) ? tip._tooltipScale : 1;
-      tip._tooltipScale = nextScale;
-      tip.style.setProperty('--tooltip-scale', String(previousTooltipScale));
-      const tooltipFrom = `translate(-50%, calc(-100% - 14px)) scale(${previousTooltipScale})`;
-      const tooltipTo = `translate(-50%, calc(-100% - 14px)) scale(${nextScale})`;
-      tip._tooltipAnim = tip.animate([
-        { transform:tooltipFrom },
-        { transform:`translate(-50%, calc(-100% - 14px)) scale(${nextScale * 1.06})`, offset:0.28 },
-        { transform:`translate(-50%, calc(-100% - 14px)) scale(${nextScale * 0.98})`, offset:0.55 },
-        { transform:tooltipTo, offset:1 }
-      ], {
-        duration:420 / animationSpeed,
-        easing:'cubic-bezier(.34,1.56,.64,1)',
-        fill:'forwards',
-        composite:'replace'
-      });
-      tip._tooltipAnim.onfinish=()=>{
-        tip.style.setProperty('--tooltip-scale', String(nextScale));
-        tip._tooltipAnim=null;
-      };
-    }
+    valueEl._scoreAnim=valueEl.animate(keyframes,{duration,easing:'cubic-bezier(.34,1.56,.64,1)',fill:'forwards',composite:'replace'});
+    valueEl._scoreAnim.onfinish=()=>{ valueEl.style.transform='scale(1)'; valueEl._scoreAnim=null; };
   }
 
   function createBallEntity(r,c,ballState,animateScore=false,previousTotal=null){
@@ -2252,6 +2310,8 @@
     tipValue._lastTotal = Number.isFinite(previousTotal) ? Math.round(previousTotal) : currentTotal;
     tipValue.style.setProperty('--score-scale', '1');
     tipValue.style.setProperty('--score-scale-prev', '1');
+    tipValue.style.transform='scale(1)';
+    tip.style.setProperty('--score-font-size', '11px');
     tip.appendChild(tipValue);
     tip._valueEl = tipValue;
     boardWrapEl.appendChild(tip);
@@ -2261,7 +2321,8 @@
     } else {
       const scale = computeScoreTooltipScale(currentTotal, ballState.initialTotal, state.target);
       tipValue._scoreScale = scale;
-      tipValue.style.transform = `scale(${scale})`;
+      tipValue.style.transform = 'scale(1)';
+      tip.style.setProperty('--score-font-size', `${11 * scale}px`);
       tip.style.setProperty('--tooltip-scale', String(scale));
       tip._tooltipScale = scale;
     }
@@ -2390,10 +2451,10 @@
       // popup uses a base 18px font. Only enlarge the popup when the tooltip's
       // rendered score would otherwise be larger.
       const tooltipScoreScale = Number.isFinite(tip?._valueEl?._scoreScale) ? tip._valueEl._scoreScale : 1;
-      const goalBaseFontSize = 18;
-      const tooltipBaseFontSize = 11;
-      const matchedGoalFontSize = Math.max(goalBaseFontSize, tooltipBaseFontSize * tooltipScoreScale);
-      goalPopup.style.fontSize = `${matchedGoalFontSize}px`;
+      const tooltipFontSize = 11 * tooltipScoreScale;
+      // The goal popup uses the same rendered font size as the score in the tooltip.
+      // This keeps both score readouts visually matched at every growth stage.
+      goalPopup.style.fontSize = `${tooltipFontSize}px`;
       const goalColor = ballState.enh ? ENH_COLOR[ballState.enh] : (ballState.prop ? PROP_COLOR[ballState.prop] : 'var(--amber)');
       goalPopup.style.color = goalColor || 'var(--amber)';
       const goalPos = cellPercent(nr,nc);

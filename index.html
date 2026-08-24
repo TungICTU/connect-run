@@ -1388,17 +1388,47 @@
 
   function getBlackBlockCount(level){
     if(level < 4) return 0;
-    return 1 + (level >= 6 ? 1 : 0) + (level >= 9 ? 1 : 0);
-  }
 
-  function getBlackBlockChance(level){
-    if(level < 4) return 0;
-    return Math.min(0.9, 0.2 + (level - 4) * 0.1);
+    // Exact obstacle-count distribution requested by stage.
+    const roll = Math.random();
+
+    if(level === 4) return roll < 0.40 ? 1 : 0;
+    if(level === 5) return roll < 0.60 ? 1 : 0;
+    if(level === 6) return roll < 0.80 ? 1 : 0;
+
+    if(level >= 7 && level <= 9){
+      return roll < 0.20 ? 2 : 1;
+    }
+
+    if(level >= 10 && level <= 12){
+      const twoChance = (level - 10) * 0.20 + 0.40; // 40/60/80%
+      return roll < twoChance ? 2 : 1;
+    }
+
+    if(level === 13){
+      if(roll < 0.20) return 3;
+      if(roll < 0.80) return 2;
+      return 1;
+    }
+
+    if(level >= 14 && level <= 16){
+      const threeChance = (level - 14) * 0.20 + 0.40; // 40/60/80%
+      return roll < threeChance ? 3 : 2;
+    }
+
+    if(level === 17){
+      if(roll < 0.20) return 4;
+      if(roll < 0.80) return 3;
+      return 2;
+    }
+
+    // Level 18+: always 3, with a 20% chance to spawn 4.
+    return roll < 0.20 ? 4 : 3;
   }
 
   function placeBlackBlocks(cells, rows, cols, nodeR, nodeC, nodeDir, holeR, holeC, level){
     const count = getBlackBlockCount(level);
-    if(!count || Math.random() >= getBlackBlockChance(level)) return [];
+    if(!count) return [];
 
     // Never place a black block directly in the node's initial firing lane.
     // The shot starts from the node and travels in state.node.dir until it
@@ -1458,9 +1488,11 @@
 
     const boardOptions = state.level===1
       ? [[4,4]]
-      : state.level<6
-        ? [[4,4],[4,5],[5,5]]
-        : [[4,4],[4,5],[5,5],[4,6],[5,6],[6,4],[6,5],[6,6]];
+      : state.level<=6
+        ? [[4,4],[4,5],[5,4],[5,5]]
+        : state.level<=12
+          ? [[4,4],[4,5],[5,4],[4,6],[6,4],[5,5],[5,6],[6,5],[6,6]]
+          : [[5,5],[5,6],[6,5],[5,7],[7,5],[6,6],[6,7],[7,6],[7,7]];
     let [rows,cols] = pick(boardOptions);
     const cells = [];
     for(let r=0;r<rows;r++){ const row=[]; for(let c=0;c<cols;c++) row.push({type:'empty', block:null}); cells.push(row); }
@@ -3310,7 +3342,7 @@
       syncBallQueueFromPool();
       shopOverlayEl.innerHTML='';
       const panel=document.createElement('div'); panel.className='shop-panel';
-      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG — MÀN ${formatNumber(state.level)}</h2><div class="shop-money">Tiền hiện có: ${formatMoney(state.money)}</div>`;
+      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG</h2><div class="shop-money">Tiền hiện có: ${formatMoney(state.money)}</div>`;
 
       const ballsSection=document.createElement('div'); ballsSection.className='shop-section';
       ballsSection.innerHTML=`<h3>Bóng sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
@@ -3362,7 +3394,7 @@
       const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; const buffCost=bo.id==='discount'?bo.cost:shopPrice(bo.cost); br.innerHTML=`<div class="shop-price">$${buffCost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<buffCost; bb.addEventListener('click',()=>{ state.money-=buffCost; bo.apply(); bo.bought=true; markBuffOwned(bo.id); state.shopBuffBought=true; moneyValEl.textContent=formatMoney(state.money); renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
       const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>'; const gachGrid=document.createElement('div'); gachGrid.className='shop-gacha-grid'; state.gachaStock.forEach(g=>gachGrid.appendChild(renderGachaBox(g))); gach.appendChild(gachGrid); lower.appendChild(gach); panel.appendChild(lower);
 
-      const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent='Tiếp tục →'; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
+      const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent=`Màn ${formatNumber(state.level+1)}`; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
       shopOverlayEl.appendChild(panel);
     }
     activeRenderShop = renderShop;

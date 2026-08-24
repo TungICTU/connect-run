@@ -76,9 +76,6 @@
   .stat.target .value{ color: var(--ink); }
   .stat.money .value{ color: var(--gold); }
   .stat.level .value{ color: var(--ink); }
-  .save-status{ font-size:9px; letter-spacing:.6px; color:var(--ink-dim); white-space:nowrap; min-width:58px; text-align:center; }
-  .save-status.saved{ color:var(--green); }
-  .save-status.error{ color:var(--red); }
 
   button{
     font-family:'Space Grotesk', sans-serif; font-weight:600; font-size: 13px;
@@ -88,6 +85,8 @@
   }
   button:hover{ background: rgba(94,200,216,0.18); }
   button:active{ transform: scale(0.96); }
+  /* Shop controls should not visually 'pop' while being used. */
+  .shop-layer button:active{ transform:none; }
   button:focus-visible{ outline: 2px solid var(--cyan); outline-offset:2px; }
   button:disabled{ opacity:0.32; cursor:not-allowed; }
   button.gold{ border-color: rgba(242,201,76,0.4); color: var(--gold); background: rgba(242,201,76,0.08); }
@@ -103,7 +102,7 @@
   }
   .speed-control select:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
 
-  .ball-queue{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:center; }
+  .ball-queue{ display:flex; gap: 8px; flex-wrap: wrap; justify-content:center; position:relative; z-index:110; }
   .ball-chip{
     width: 28px; height:28px; border-radius:50%;
     background: radial-gradient(circle at 35% 30%, #fff, var(--amber) 65%);
@@ -131,7 +130,7 @@
   .ball-chip.targetable{ cursor:pointer; animation: targetPulse calc(1s / var(--anim-speed)) ease-in-out infinite; }
   .ball-queue .ball-chip:not(.fired){ cursor:grab; }
   .ball-queue .ball-chip:not(.fired):active{ cursor:grabbing; }
-  .ball-chip.ball-drop-hover,.shop-ball-item.ball-drop-hover .ball-chip{ box-shadow:0 0 0 2px var(--cyan),0 0 9px rgba(94,200,216,.55) !important; }
+  .ball-chip.ball-drop-hover{ box-shadow:0 0 0 2px var(--cyan),0 0 9px rgba(94,200,216,.55) !important; }
   .ball-chip.click-selected{ box-shadow:0 0 0 2px var(--green),0 0 11px rgba(111,207,151,.6) !important; }
   .ball-chip.shop-ball-preview{ width:34px; height:34px; font-size:9px; }
   .gacha-opt .ball-chip.shop-ball-preview{ margin:0 auto 6px; }
@@ -140,6 +139,7 @@
   @keyframes targetPulse{ 0%,100%{ box-shadow:0 0 0 2px var(--green),0 0 8px 2px var(--green);} 50%{ box-shadow:0 0 0 2px var(--green),0 0 14px 6px var(--green);} }
 
   .card-hand{ width:100%; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .card-hand.shop-active{ position:relative; z-index:101; pointer-events:auto; }
   .power-card-chip{
     display:flex; align-items:center; gap:8px;
     background: var(--panel); border:1px solid var(--panel-line); border-radius:7px;
@@ -182,6 +182,30 @@
     position:relative; background: rgba(255,255,255,0.02);
     border: 1px dashed rgba(94,200,216,0.12); border-radius: 5px; touch-action: none;
   }
+  .cell.board-reveal-cell{
+    opacity:0;
+    transform:scale(.02) rotate(var(--reveal-rotate, 0deg));
+    transform-origin:center center;
+    animation:boardCellReveal calc(.22s / var(--anim-speed)) cubic-bezier(.22,.9,.24,1.18) var(--reveal-delay,0ms) forwards;
+  }
+  @keyframes boardCellReveal{
+    0%{ opacity:0; transform:scale(.02) rotate(var(--reveal-rotate, 0deg)); }
+    68%{ opacity:1; transform:scale(1.08) rotate(calc(var(--reveal-rotate, 0deg) * .35)); }
+    100%{ opacity:1; transform:scale(1) rotate(0deg); }
+  }
+  .board.board-reveal-running{ pointer-events:none; }
+  .cell.board-hide-cell{
+    opacity:1;
+    transform:scale(1) rotate(0deg);
+    transform-origin:center center;
+    animation:boardCellHide calc(.22s / var(--anim-speed)) cubic-bezier(.55,.08,.68,.53) var(--hide-delay,0ms) forwards;
+  }
+  @keyframes boardCellHide{
+    0%{ opacity:1; transform:scale(1) rotate(0deg); }
+    32%{ opacity:1; transform:scale(1.06) rotate(calc(var(--hide-rotate, 0deg) * .35)); }
+    100%{ opacity:0; transform:scale(.02) rotate(var(--hide-rotate, 0deg)); }
+  }
+  .board.board-hide-running{ pointer-events:none; }
   .cell.empty.drop-hover,.cell.hasblock.drop-hover{ background: rgba(94,200,216,0.14); border-color: var(--cyan); }
   .cell.hasblock{ cursor: grab; border-style: solid; border-color: rgba(94,200,216,0.08); }
   .cell.hasblock:active{ cursor: grabbing; }
@@ -356,9 +380,11 @@
   }
 
   .hover-tip{
-    position:fixed; transform:translate(-50%, calc(-100% - 10px));
+    position:fixed;
     display:flex; flex-direction:row; align-items:flex-start; gap:6px;
     z-index:200; pointer-events:none; white-space:nowrap;
+    max-width:calc(100vw - 16px);
+    max-height:calc(100vh - 16px);
   }
   .hover-tip.hidden{ display:none; }
   .hover-tip-main, .hover-tip-details{
@@ -410,6 +436,7 @@
   @keyframes tooltipSpark{ 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.35);} }
 
   .hand-row{ width:100%; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .hand-row.reward-hidden{ visibility:hidden; pointer-events:none; }
   .hand{ flex:0 1 auto; min-width:0; display:flex; gap:10px; justify-content:center; }
   .hand-slot{ position:relative; width:78px; height:78px; flex:0 1 78px; min-width:0; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; touch-action:none; }
   .hand-slot.filled{ cursor: grab; }
@@ -431,26 +458,49 @@
   .inventory-item.target-selected{ border-color:var(--green); background:rgba(111,207,151,.15); box-shadow:0 0 0 2px var(--green),0 0 12px rgba(111,207,151,.35); }
   .inventory-item.targetable{ cursor:pointer; box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); opacity:1; filter:none; }
   @keyframes handRefresh{ 0%{ transform:scale(.4); opacity:.2; } 65%{ transform:scale(1.15); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+  @keyframes handUiReveal{
+    0%{ transform:scale(.05) rotate(-18deg); opacity:0; }
+    68%{ transform:scale(1.08) rotate(4deg); opacity:1; }
+    100%{ transform:scale(1) rotate(0deg); opacity:1; }
+  }
+  @keyframes handUiHide{
+    0%{ transform:scale(1) rotate(0deg); opacity:1; }
+    100%{ transform:scale(.05) rotate(18deg); opacity:0; }
+  }
+  .hand-row.hand-ui-reveal .hand-slot{ animation:handUiReveal calc(.24s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1) both; animation-delay:calc(var(--hand-delay) / var(--anim-speed)); }
+  .hand-row.hand-ui-reveal .discard-btn{ animation:handUiReveal calc(.24s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1) both; animation-delay:calc((var(--hand-delay-last) + 18ms) / var(--anim-speed)); }
+  .hand-row.hand-ui-hide .hand-slot{ animation:handUiHide calc(.20s / var(--anim-speed)) cubic-bezier(.7,0,.84,.2) both; animation-delay:calc(var(--hand-delay) / var(--anim-speed)); }
+  .hand-row.hand-ui-hide .discard-btn{ animation:handUiHide calc(.20s / var(--anim-speed)) cubic-bezier(.7,0,.84,.2) both; animation-delay:calc((var(--hand-delay-last) + 18ms) / var(--anim-speed)); }
   .hand-slot.just-refreshed .block-visual{ animation:handRefresh calc(.32s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
-  .status-strip{ min-height: 20px; font-size: 13px; font-family:'JetBrains Mono', monospace; color: var(--ink-dim); text-align:center; }
-  .status-strip.good{ color: var(--green); }
-  .status-strip.bad{ color: var(--red); }
 
   .drag-ghost{ position:fixed; width:70px; height:70px; pointer-events:none; z-index: 50; opacity: 0.95; transform: translate(-50%,-50%); filter: drop-shadow(0 16px 22px rgba(0,0,0,0.5)); }
   .drag-source-fade{ opacity: 0.3; transition: opacity calc(.15s / var(--anim-speed)) ease; }
 
   .overlay{ position:fixed; inset:0; background: rgba(7,19,34,0.9); display:flex; align-items:flex-start; justify-content:center; z-index: 100; overflow-y:auto; padding: 30px 14px; }
+  .overlay.reward-clear{ background:transparent; }
+  .shop-layer{ position:fixed; inset:0; display:block; z-index:100; overflow-y:auto; padding:0; pointer-events:none; background:transparent; }
+  .shop-layer.hidden{ display:none; }
   .overlay.hidden{ display:none; }
-  .overlay-panel{ background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; padding: 26px 28px; text-align:center; max-width: 320px; margin: auto; }
+  .overlay-panel{ background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; padding: 26px 28px; text-align:center; width:min(420px, calc(100vw - 28px)); max-width:420px; margin:auto; }
   .overlay-panel h2{ margin: 0 0 8px; font-family:'JetBrains Mono', monospace; letter-spacing:1px; }
   .overlay-panel.win h2{ color: var(--green); }
   .overlay-panel.lose h2{ color: var(--red); }
   .overlay-panel p{ color: var(--ink-dim); font-size:13px; margin: 4px 0 18px; }
-
-  .shop-panel{ background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; padding: 20px; width: 100%; max-width: 460px; margin: auto; }
+  @keyframes rewardPanelIn{ from{ transform:scale(.55); opacity:0; } to{ transform:scale(1); opacity:1; } }
+  @keyframes rewardPanelOut{ from{ transform:scale(1); opacity:1; } to{ transform:scale(.55); opacity:0; } }
+  @keyframes rewardElementIn{ from{ opacity:0; } to{ opacity:1; } }
+  .overlay-panel.reward-anim-in{ animation:rewardPanelIn calc(.42s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1) both; }
+  .overlay-panel.reward-anim-out{ animation:rewardPanelOut calc(.28s / var(--anim-speed)) cubic-bezier(.7,0,.84,.2) both; }
+  .reward-step{ opacity:0; }
+  .reward-step.reward-show{ animation:rewardElementIn calc(.24s / var(--anim-speed)) ease both; }
+  .reward-layout{ display:flex; flex-direction:column; gap:4px; width:100%; margin:4px 0 18px; }
+  .reward-row{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:baseline; text-align:left; font:13px/1.6 'JetBrains Mono',monospace; color:var(--ink-dim); }
+  .reward-row .reward-value{ color:var(--ink); font-weight:700; text-align:right; white-space:nowrap; }
+  .reward-row .reward-label{ white-space:normal; overflow-wrap:anywhere; min-width:0; }
+  .reward-win-label{ color:var(--green); font-weight:700; }
+  .shop-panel{ pointer-events:auto; position:absolute; left:50%; transform:translateX(-50%); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 12px; padding: 20px; width:calc(100% - 28px); max-width:460px; margin:0; box-sizing:border-box; }
   .shop-title{ font-family:'JetBrains Mono', monospace; letter-spacing:1px; color: var(--green); text-align:center; margin: 0 0 4px; }
   .shop-sub{ text-align:center; color: var(--ink-dim); font-size:12px; margin: 0 0 18px; }
-  .shop-money{ text-align:center; font-family:'JetBrains Mono', monospace; color: var(--gold); font-size:18px; margin-bottom: 16px; }
   .shop-section{ margin-bottom: 18px; }
   .shop-section h3{ font-size: 11px; letter-spacing:1px; text-transform:uppercase; color: var(--cyan); margin: 0 0 8px; border-bottom: 1px solid var(--panel-line); padding-bottom:6px; }
   .shop-card{ display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:8px; background: rgba(255,255,255,0.03); border: 1px solid var(--panel-line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
@@ -494,25 +544,11 @@
   .gacha-opt .mini-ball[data-prop=steel]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3;box-shadow:0 0 7px rgba(255,255,255,.15)}.gacha-opt .mini-ball[data-prop=stone]{background:#777;box-shadow:none}.gacha-opt .mini-ball[data-prop=gold]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#f2c94c}.gacha-opt .mini-ball[data-prop=wood]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),#b8895a;box-shadow:0 0 7px rgba(255,255,255,.12)}.gacha-opt .mini-ball[data-prop=glass]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.82) 0 2px,transparent 22%),transparent;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.22)}.gacha-opt .mini-ball[data-prop=striped]{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}.gacha-opt .mini-ball[data-prop=grid]{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
   .gacha-opt .mini-block .arm-wrap[data-enh=holo] .arm,.gacha-opt .mini-block .arm-wrap[data-enh=holo] .hub,.gacha-opt .mini-ball[data-enh=holo]{background:#2f80ed;background-image:none}
   .gacha-opt .mini-block .arm-wrap[data-enh=invert],.gacha-opt .mini-ball[data-enh=invert]{filter:invert(1)}
-  .shop-ball-grid{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; align-items:center; }
-  .shop-ball-item{ min-width:34px; padding:2px; }
-  .shop-ball-item, .shop-power-target, .gacha-owned-ball{ cursor:default; background:transparent; border:0; border-radius:0; }
-  .shop-ball-item:hover, .gacha-owned-ball:hover{ border-color:transparent; }
   .ball-choice-grid{ display:flex; gap:16px; flex-wrap:wrap; justify-content:center; align-items:center; }
   .ball-choice-item{ min-width:34px; min-height:38px; padding:2px; display:flex; align-items:center; justify-content:center; border:0; border-radius:0; background:transparent; cursor:pointer; }
   .ball-choice-item:hover{ background:transparent; }
   .ball-choice-item.selected .ball-chip{ box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); }
-  .shop-power-target{ min-width:34px; padding:2px; display:flex; align-items:center; justify-content:center; }
-  .shop-power-target.selected{ border:0; background:transparent; box-shadow:none; }
-  .shop-power-target.selected .ball-chip{ box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); }
-  .shop-power-panel{ position:relative; z-index:3; margin:0 0 14px; background:var(--panel); border:1px solid var(--green); border-radius:10px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,0.35); }
-  .shop-power-panel h3{ margin:0 0 5px; text-align:center; color:var(--green); font-family:'JetBrains Mono',monospace; font-size:13px; }
-  .shop-power-panel p{ margin:0 0 12px; text-align:center; color:var(--ink-dim); font-size:11px; }
-  .shop-power-targets{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
-  .shop-power-target{ min-width:0; background:rgba(255,255,255,0.04); border:1px solid var(--panel-line); border-radius:7px; padding:8px; text-align:center; cursor:pointer; font-size:10.5px; line-height:1.4; }
-  .shop-power-target:hover{ background:rgba(94,200,216,0.1); }
-  .shop-power-target.selected{ border-color:var(--green); background:rgba(111,207,151,0.12); }
-  .shop-power-actions{ display:flex; justify-content:center; gap:8px; margin-top:12px; }
+  @media (max-height:700px){ .shop-layer{ align-items:flex-start; } }
   .gacha-opt .mini-card{ min-height:42px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; color:var(--cyan); font-weight:600; }
   .gacha-choice-panel{ background:var(--panel); border:1px solid var(--panel-line); border-radius:12px; padding:20px; width:100%; max-width:520px; margin:auto; }
   .gacha-choice-head{ text-align:center; margin-bottom:14px; }
@@ -554,7 +590,13 @@
   .debug-hint{ margin:8px 0 0; color:var(--ink-dim); font-size:10px; text-align:center; }
   .debug-none{ color:var(--ink-dim); }
 
-  @media (prefers-reduced-motion: reduce){ .ball{ transition: none; } .ring{ animation: none; } }
+  @media (prefers-reduced-motion: reduce){
+    .ball{ transition: none; }
+    .ring{ animation: none; }
+    .cell.board-reveal-cell{ animation:none; opacity:1; transform:none; }
+    .cell.board-hide-cell{ animation:none; opacity:0; transform:scale(.02) rotate(var(--hide-rotate,0deg)); }
+    .board.board-reveal-running,.board.board-hide-running{ pointer-events:auto; }
+  }
 
   @media(max-width:620px){
     .shop-common-grid{ grid-template-columns:1fr; }
@@ -648,10 +690,6 @@
   .gacha-opt .mini-ball[data-enh=holo]::before{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.78) 0 1px,rgba(255,255,255,.08) 1px 6px);mix-blend-mode:screen}
 
   /* Borderless ball displays in shop/gacha: keep only the ball itself visible. */
-  .shop-power-targets .shop-power-target{ min-width:34px; padding:2px; display:flex; align-items:center; justify-content:center; background:transparent; border:0; border-radius:0; box-shadow:none; }
-  .shop-power-targets .shop-power-target:hover{ background:transparent; }
-  .shop-power-targets .shop-power-target.selected{ background:transparent; border:0; box-shadow:none; }
-  .shop-power-targets .shop-power-target.selected .ball-chip{ box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); }
   .ball-choice-item.selected .ball-chip{ box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); }
 
 </style>
@@ -678,7 +716,6 @@
         <option value="3">3x</option>
       </select>
     </div>
-    <span class="save-status" id="saveStatus">Tự động lưu</span>
     <button id="newGameBtn">Chơi lại</button>
   </header>
 
@@ -699,7 +736,6 @@
     <button id="inventoryBtn">Kho đồ</button>
   </div>
   <div class="card-hand" id="cardHand"></div>
-  <div class="status-strip" id="statusStrip"></div>
 
 </div>
 
@@ -713,7 +749,7 @@
   </div>
 </div>
 
-<div class="overlay hidden" id="shopOverlay"></div>
+<div class="shop-layer hidden" id="shopOverlay"></div>
 
 <div class="overlay hidden" id="gachaOverlay"></div>
 
@@ -969,7 +1005,43 @@
     return detail;
   }
 
+  function placeHoverTip(targetEl){
+    if(hoverTipEl.classList.contains('hidden') || !targetEl?.isConnected) return;
+
+    const targetRect = targetEl.getBoundingClientRect();
+    const tipRect = hoverTipEl.getBoundingClientRect();
+    const margin = 8;
+    const gap = 10;
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+
+    // Preferred position: centered above the hovered element.
+    let left = targetRect.left + targetRect.width / 2 - tipRect.width / 2;
+    let top = targetRect.top - tipRect.height - gap;
+
+    // If there is not enough room above, place it below instead.
+    if(top < margin){
+      top = targetRect.bottom + gap;
+    }
+
+    // Keep the entire tooltip inside the viewport horizontally.
+    if(left < margin) left = margin;
+    if(left + tipRect.width > viewportW - margin){
+      left = viewportW - margin - tipRect.width;
+    }
+
+    // If neither above nor below fits completely, clamp vertically to the viewport.
+    if(top + tipRect.height > viewportH - margin){
+      top = Math.max(margin, viewportH - margin - tipRect.height);
+    }
+
+    hoverTipEl.style.left = Math.round(left) + 'px';
+    hoverTipEl.style.top = Math.round(top) + 'px';
+    hoverTipEl.style.transform = 'none';
+  }
+
   function showHoverTip(targetEl, info){
+    hoverTipEl._targetEl = targetEl;
     hoverTipEl.innerHTML = '';
 
     const main = document.createElement('div');
@@ -1010,12 +1082,16 @@
       hoverTipEl.appendChild(details);
     }
 
-    const rect = targetEl.getBoundingClientRect();
-    hoverTipEl.style.left = (rect.left+rect.width/2)+'px';
-    hoverTipEl.style.top = rect.top+'px';
     hoverTipEl.classList.remove('hidden');
+    placeHoverTip(targetEl);
   }
-  function hideHoverTip(){ hoverTipEl.classList.add('hidden'); }
+  function hideHoverTip(){ hoverTipEl.classList.add('hidden'); hoverTipEl._targetEl = null; }
+  window.addEventListener('resize', ()=>{
+    if(!hoverTipEl.classList.contains('hidden') && hoverTipEl._targetEl) placeHoverTip(hoverTipEl._targetEl);
+  });
+  window.addEventListener('scroll', ()=>{
+    if(!hoverTipEl.classList.contains('hidden') && hoverTipEl._targetEl) placeHoverTip(hoverTipEl._targetEl);
+  }, true);
 
   function attachObjectTooltip(el, obj, kind){
     el.addEventListener('mouseenter', ()=> showHoverTip(el, kind==='ball' ? ballTooltip(obj) : blockTooltip(obj)));
@@ -1023,6 +1099,7 @@
   }
 
   function showSimpleHoverTip(targetEl, titleText, bodyText){
+    hoverTipEl._targetEl = targetEl;
     hoverTipEl.innerHTML='';
     const panel=document.createElement('div');
     panel.className='hover-tip-main';
@@ -1034,10 +1111,8 @@
     line.textContent=bodyText;
     panel.appendChild(line);
     hoverTipEl.appendChild(panel);
-    const rect=targetEl.getBoundingClientRect();
-    hoverTipEl.style.left=(rect.left+rect.width/2)+'px';
-    hoverTipEl.style.top=rect.top+'px';
     hoverTipEl.classList.remove('hidden');
+    placeHoverTip(targetEl);
   }
 
   function blackBlockTooltip(el){
@@ -1058,9 +1133,9 @@
   }
 
   const GACHA_TIERS = [
-    { key:'small', label:'Nhỏ', cost:8, options:3, picks:1 },
-    { key:'large', label:'Lớn', cost:14, options:5, picks:1 },
-    { key:'mega',  label:'Siêu lớn', cost:22, options:5, picks:2 },
+    { key:'small', label:'Nhỏ', cost:0, options:3, picks:1 },
+    { key:'large', label:'Lớn', cost:0, options:5, picks:1 },
+    { key:'mega',  label:'Siêu lớn', cost:0, options:5, picks:2 },
   ];
 
   function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -1071,21 +1146,21 @@
 
   // ---------- upgrade & buff & power card defs ----------
   const UPGRADE_POOL = [
-    { id:'base', name:'Nâng cấp bóng cơ bản', desc:'+10 điểm bóng chứa ban đầu và +2 điểm mỗi lần bóng thoát block (mọi bóng)', cost:10, apply(){ state.startBonus += 10; state.baseRateBonus += 2; } },
-    { id:'straight', name:'Nâng cấp khối Thẳng', desc:'+5 điểm khi bóng thoát khối Thẳng', cost:9, apply(){ state.typeBonus.straight += 5; } },
-    { id:'L', name:'Nâng cấp khối chữ L', desc:'+5 điểm khi bóng thoát khối L', cost:9, apply(){ state.typeBonus.L += 5; } },
-    { id:'T', name:'Nâng cấp khối chữ T', desc:'+5 điểm khi bóng thoát khối T', cost:11, apply(){ state.typeBonus.T += 5; } },
-    { id:'plus', name:'Nâng cấp khối Dấu Cộng', desc:'+5 điểm khi bóng thoát khối +', cost:13, apply(){ state.typeBonus.plus += 5; } },
+    { id:'base', name:'Nâng cấp bóng cơ bản', desc:'+10 điểm bóng chứa ban đầu và +2 điểm mỗi lần bóng thoát block (mọi bóng)', cost:5, apply(){ state.startBonus += 10; state.baseRateBonus += 2; } },
+    { id:'straight', name:'Nâng cấp khối Thẳng', desc:'+5 điểm khi bóng thoát khối Thẳng', cost:5, apply(){ state.typeBonus.straight += 5; } },
+    { id:'L', name:'Nâng cấp khối chữ L', desc:'+5 điểm khi bóng thoát khối L', cost:5, apply(){ state.typeBonus.L += 5; } },
+    { id:'T', name:'Nâng cấp khối chữ T', desc:'+5 điểm khi bóng thoát khối T', cost:5, apply(){ state.typeBonus.T += 5; } },
+    { id:'plus', name:'Nâng cấp khối Dấu Cộng', desc:'+5 điểm khi bóng thoát khối +', cost:5, apply(){ state.typeBonus.plus += 5; } },
   ];
 
   const BUFF_POOL = [
-    { id:'balls', name:'Tay nhanh', desc:'+1 giới hạn số bóng bắn mỗi màn, vĩnh viễn', cost:20, apply(){ state.maxBallsBonus += 1; } },
-    { id:'start', name:'Khởi động', desc:'Mọi bóng bắt đầu với +5 điểm nền, vĩnh viễn', cost:15, apply(){ state.startBonus += 5; } },
-    { id:'interest', name:'Giàu có', desc:'Tăng giới hạn số tiền lãi có thể nhận được +10$', cost:18, apply(){ state.interestCapBonus += 10; } },
-    { id:'trash', name:'Thùng rác', desc:'+1 giới hạn loại bỏ mỗi màn', cost:15, apply(){ state.discardBonus += 1; } },
-    { id:'big_hand', name:'Tay lớn', desc:'+1 khối có thể cầm trong tay', cost:18, apply(){ state.handSizeBonus += 1; } },
-    { id:'discount', name:'Hạ giá', desc:'Giảm 25% giá mua các vật phẩm trong cửa hàng', cost:28, apply(){ state.discountBonus = true; } },
-    { id:'empty', name:'Rỗng', desc:'Không có chức năng gì cả', cost:5, apply(){} },
+    { id:'balls', name:'Tay nhanh', desc:'+1 giới hạn số bóng bắn mỗi màn, vĩnh viễn', cost:12, apply(){ state.maxBallsBonus += 1; } },
+    { id:'start', name:'Khởi động', desc:'Mọi bóng bắt đầu với +5 điểm nền, vĩnh viễn', cost:12, apply(){ state.startBonus += 5; } },
+    { id:'interest', name:'Giàu có', desc:'Tăng giới hạn số tiền lãi có thể nhận được +10$', cost:12, apply(){ state.interestCapBonus += 10; } },
+    { id:'trash', name:'Thùng rác', desc:'+1 giới hạn loại bỏ mỗi màn', cost:12, apply(){ state.discardBonus += 1; } },
+    { id:'big_hand', name:'Tay lớn', desc:'+1 khối có thể cầm trong tay', cost:12, apply(){ state.handSizeBonus += 1; } },
+    { id:'discount', name:'Hạ giá', desc:'Giảm 25% giá mua các vật phẩm trong cửa hàng', cost:12, apply(){ state.discountBonus = true; } },
+    { id:'empty', name:'Rỗng', desc:'Không có chức năng gì cả', cost:12, apply(){} },
   ];
 
   function getOwnedBuffIds(){ return Array.isArray(state?.ownedBuffIds) ? state.ownedBuffIds : []; }
@@ -1111,19 +1186,19 @@
     POWER_CARD_DEFS['prop_'+p] = {
       id:'prop_'+p, name:`Thẻ ${PROP_LABEL[p]}`,
       desc:`Biến 1 ${kindLabel} thành thuộc tính ${PROP_LABEL[p]}`,
-      cost: 11, targetKind: kind, targetCount:1,
+      cost: 5, targetKind: kind, targetCount:1,
       use(targets){ targets[0].obj.property = p; }
     };
   });
-  POWER_CARD_DEFS['money'] = { id:'money', name:'Thẻ tiền', desc:'Nhận thêm một lượng tiền bằng số tiền hiện có, tối đa +25$', cost:18, targetKind:null, targetCount:0,
+  POWER_CARD_DEFS['money'] = { id:'money', name:'Thẻ tiền', desc:'Nhận thêm một lượng tiền bằng số tiền hiện có, tối đa +25$', cost:5, targetKind:null, targetCount:0,
     use(){ const bonus=Math.min(Math.max(0,state.money),25); state.money += bonus; moneyValEl.textContent=formatMoney(state.money); } };
-  POWER_CARD_DEFS['swap'] = { id:'swap', name:'Thẻ hoán đổi', desc:'Chọn 2 khối HOẶC 2 bóng, hoán đổi thuộc tính + enhancement', cost:14, targetKind:'swap', targetCount:2,
+  POWER_CARD_DEFS['swap'] = { id:'swap', name:'Thẻ hoán đổi', desc:'Chọn 2 khối HOẶC 2 bóng, hoán đổi thuộc tính + enhancement', cost:5, targetKind:'swap', targetCount:2,
     use(targets){ const a=targets[0].obj, b=targets[1].obj; const pa=a.property, ea=a.enhancement; a.property=b.property; a.enhancement=b.enhancement; b.property=pa; b.enhancement=ea; } };
-  POWER_CARD_DEFS['magic'] = { id:'magic', name:'Thẻ ma thuật', desc:'Chọn 1 khối hoặc bóng, thêm enhancement ngẫu nhiên', cost:14, targetKind:'both', targetCount:1,
+  POWER_CARD_DEFS['magic'] = { id:'magic', name:'Thẻ ma thuật', desc:'Chọn 1 khối hoặc bóng, thêm enhancement ngẫu nhiên', cost:5, targetKind:'both', targetCount:1,
     use(targets){ targets[0].obj.enhancement = pick(ENHANCEMENTS); } };
-  POWER_CARD_DEFS['clone'] = { id:'clone', name:'Thẻ nhân bản', desc:'Chọn 1 khối, tạo thêm 1 khối giống hệt cho túi đồ màn sau', cost:16, targetKind:'block', targetCount:1,
+  POWER_CARD_DEFS['clone'] = { id:'clone', name:'Thẻ nhân bản', desc:'Chọn 1 khối, tạo thêm 1 khối giống hệt cho túi đồ màn sau', cost:5, targetKind:'block', targetCount:1,
     use(targets){ const o=targets[0].obj; state.pendingBlocks.push({type:o.type, rotation:0, property:o.property, enhancement:o.enhancement}); } };
-  POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn trên tay hoặc bảng chơi', cost:16, targetKind:'block', targetCount:2, targetMinCount:1, manualConfirm:true,
+  POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn trên tay hoặc bảng chơi', cost:5, targetKind:'block', targetCount:2, targetMinCount:1, manualConfirm:true,
     use(targets){
       const selected = new Set(targets.map(t=>t.obj));
       state.hand = state.hand.filter(block=>!selected.has(block));
@@ -1134,13 +1209,13 @@
       }
       refillHand();
     } };
-  POWER_CARD_DEFS['breed'] = { id:'breed', name:'Thẻ sinh sản', desc:'Tạo ra 2 thẻ sức mạnh ngẫu nhiên và đưa vào tay', cost:18, targetKind:null, targetCount:0,
+  POWER_CARD_DEFS['breed'] = { id:'breed', name:'Thẻ sinh sản', desc:'Tạo ra 2 thẻ sức mạnh ngẫu nhiên và đưa vào tay', cost:5, targetKind:null, targetCount:0,
     use(){
       const defs=shuffle(Object.values(POWER_CARD_DEFS).filter(d=>d.id!=='copy'));
       const free=Math.max(0,getMaxCardHand()-state.cardHand.length);
       for(let i=0;i<Math.min(2,free);i++){ const d=defs[i%defs.length]; state.cardHand.push({id:cardUid(),kind:'power',defId:d.id}); }
     } };
-  POWER_CARD_DEFS['copy'] = { id:'copy', name:'Thẻ sao chép', desc:'Đưa vào tay thẻ sức mạnh hoặc thẻ nâng cấp gần nhất đã dùng', cost:10, targetKind:null, targetCount:0,
+  POWER_CARD_DEFS['copy'] = { id:'copy', name:'Thẻ sao chép', desc:'Đưa vào tay thẻ sức mạnh hoặc thẻ nâng cấp gần nhất đã dùng', cost:5, targetKind:null, targetCount:0,
     use(){
       const last=state.lastUsedCard;
       if(!last || state.cardHand.length>=getMaxCardHand()) return;
@@ -1158,15 +1233,10 @@
   // Saves the current run locally in the browser. No account or server is required.
   const SAVE_KEY = 'connect-run-save-v1';
   const SAVE_VERSION = 1;
-  let saveStatusEl = null;
   let saveTimer = null;
   let savePending = false;
 
-  function setSaveStatus(text, kind=''){
-    if(!saveStatusEl) return;
-    saveStatusEl.textContent = text;
-    saveStatusEl.className = 'save-status' + (kind ? ' '+kind : '');
-  }
+
 
   function snapshotGameState(){
     if(!state) return null;
@@ -1177,6 +1247,9 @@
       if(typeof value === 'function') return undefined;
       if(key === '_animateNewHoleConnections') return undefined;
       if(key === '_splitUsed') return undefined;
+      if(key === '_boardHideComplete') return undefined;
+      if(key === '_boardReveal') return undefined;
+      if(key === '_boardHide') return undefined;
       if(key === 'resolving') return false;
       if(key === 'targeting') return null;
       if(key === 'lastUpgrade') return undefined;
@@ -1200,11 +1273,9 @@
       const save = snapshotGameState();
       localStorage.setItem(SAVE_KEY, JSON.stringify(save));
       savePending = false;
-      if(!options.silent) setSaveStatus('Đã lưu', 'saved');
       return true;
     }catch(err){
       console.error('Không thể lưu game:', err);
-      setSaveStatus('Lỗi lưu', 'error');
       return false;
     }
   }
@@ -1284,7 +1355,6 @@
       if(state.phase === 'playing'){
         render();
         renderTargetBanner();
-        setStatus('', '');
         hideOverlay();
         hideShop();
         return true;
@@ -1299,13 +1369,14 @@
       }
 
       if(state.phase === 'reward'){
-        render();
         hideOverlay();
         hideShop();
         const unfired = Math.max(0, state.ballQueue.length - state.ballsFired);
         const interestCap = 5 + state.interestCapBonus;
         const interest = Math.min(Math.floor(state.money/5), interestCap);
-        showLevelReward({unfired, ballBonus:unfired*4, interest});
+        state._boardHide = false;
+        render();
+        runBoardHideAnimation(()=>showLevelReward({winBonus:3, unfired, ballBonus:unfired*2, interest}));
         return true;
       }
 
@@ -1317,14 +1388,12 @@
       return true;
     }catch(err){
       console.error('Không thể tải save:', err);
-      setSaveStatus('Save hỏng', 'error');
       return false;
     }
   }
 
   function deleteSave(){
     try{ localStorage.removeItem(SAVE_KEY); }catch(err){ console.error('Không thể xoá save:', err); }
-    setSaveStatus('Đã xoá save', 'saved');
   }
 
   function scheduleAutoSave(){
@@ -1343,7 +1412,7 @@
 
   function newRun(){
     state = {
-      money: 12, level: 0,
+      money: 3, level: 0,
       baseRateBonus: 0, typeBonus: { straight:0, L:0, T:0, plus:0 },
       maxBallsBonus: 0, bagBonus: 0, startBonus: 0, interestCapBonus: 0,
       discardBonus: 0, handSizeBonus: 0, discountBonus: false, ownedBuffIds: [],
@@ -1530,8 +1599,11 @@
     refillHand();
     state.ballQueue = makeBallQueue();
 
+    state._boardReveal = true;
+    state._handReveal = true;
+    state._handHide = false;
+    state._handRewardHidden = false;
     render();
-    setStatus('', '');
     hideOverlay();
     hideShop();
     renderTargetBanner();
@@ -1551,7 +1623,6 @@
     state.hand = [];
     refillHand();
     refreshAnimSlots = new Set(state.hand.map((_,i)=>i));
-    setStatus(`Đã loại bỏ tay — còn ${formatNumber(state.discardsLeft)} lần loại bỏ`, '');
     render();
     scheduleAutoSave();
   }
@@ -1564,7 +1635,6 @@
   const targetValEl = document.getElementById('targetVal');
   const moneyValEl = document.getElementById('moneyVal');
   const levelValEl = document.getElementById('levelVal');
-  const statusStripEl = document.getElementById('statusStrip');
   const ballQueueEl = document.getElementById('ballQueue');
   const cardHandEl = document.getElementById('cardHand');
   const targetBannerEl = document.getElementById('targetBanner');
@@ -1572,6 +1642,8 @@
   const discardBtnEl = document.getElementById('discardBtn');
   const discardCountEl = document.getElementById('discardCount');
   let refreshAnimSlots = new Set();
+  let boardRevealTimer = null;
+  let boardRevealToken = 0;
   discardBtnEl.addEventListener('click', discardHand);
   let placeAnimCell = null; // {r,c} of the block placed by the most recent drop, for the pop-in animation
   let swapAnim = null; // {source:{r,c},target:{r,c}} for two-block movement animation
@@ -1602,6 +1674,22 @@
   function render(){
     hideHoverTip();
     state._animateNewHoleConnections = new Set();
+    const boardReveal = !!state._boardReveal;
+    const boardHide = !!state._boardHide;
+    const revealToken = ++boardRevealToken;
+    if(boardRevealTimer){
+      clearTimeout(boardRevealTimer);
+      boardRevealTimer = null;
+    }
+    boardEl.classList.toggle('board-reveal-running', boardReveal || boardHide);
+    boardEl.classList.toggle('board-hide-running', boardHide);
+    const handRowEl = document.querySelector('.hand-row');
+    const handReveal = !!state._handReveal && boardReveal;
+    const handHide = !!state._handHide && boardHide;
+    handRowEl?.classList.toggle('hand-ui-reveal', handReveal);
+    handRowEl?.classList.toggle('hand-ui-hide', handHide);
+    handRowEl?.classList.toggle('reward-hidden', !!state._handRewardHidden || state.phase==='shop' || state.phase==='reward');
+    boardEl.classList.remove('board-reveal-complete');
     if(placeAnimCell){
       const {r,c}=placeAnimCell;
       const block=state.cells[r][c].block;
@@ -1623,6 +1711,21 @@
         const el = document.createElement('div');
         el.dataset.r=r; el.dataset.c=c;
         el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '');
+        if(boardReveal){
+          const revealIndex = r * state.cols + c;
+          const sign = ((r + c) % 2 === 0) ? 1 : -1;
+          const angle = sign * (10 + ((r * 3 + c) % 4) * 7);
+          el.classList.add('board-reveal-cell');
+          el.style.setProperty('--reveal-delay', `${revealIndex * 24}ms`);
+          el.style.setProperty('--reveal-rotate', `${angle}deg`);
+        } else if(boardHide){
+          const hideIndex = (state.rows * state.cols - 1) - (r * state.cols + c);
+          const sign = ((r + c) % 2 === 0) ? 1 : -1;
+          const angle = sign * (10 + ((r * 3 + c) % 4) * 7);
+          el.classList.add('board-hide-cell');
+          el.style.setProperty('--hide-delay', `${hideIndex * 24}ms`);
+          el.style.setProperty('--hide-rotate', `${angle}deg`);
+        }
 
         if(cellData.type==='node'){
           el.dataset.dir = DIR_NAMES[state.node.dir];
@@ -1691,7 +1794,31 @@
       });
     }
     placeAnimCell = null;
+    handRowEl?.style.setProperty('--hand-delay-last', `${Math.max(0,getMaxHandSize()-1)*24}ms`);
     renderHand();
+    if(boardReveal){
+      const revealDuration = ((state.rows * state.cols - 1) * 24 + 220) / animationSpeed;
+      boardRevealTimer = setTimeout(()=>{
+        if(revealToken !== boardRevealToken) return;
+        boardEl.classList.remove('board-reveal-running');
+        boardEl.classList.add('board-reveal-complete');
+        state._boardReveal = false;
+        state._handReveal = false;
+        handRowEl?.classList.remove('hand-ui-reveal');
+        boardRevealTimer = null;
+      }, Math.max(0, revealDuration));
+    } else if(boardHide){
+      const hideDuration = ((state.rows * state.cols - 1) * 24 + 220) / animationSpeed;
+      boardRevealTimer = setTimeout(()=>{
+        if(revealToken !== boardRevealToken) return;
+        boardEl.classList.remove('board-hide-running');
+        state._boardHide = false;
+        state._handHide = false;
+        handRowEl?.classList.remove('hand-ui-hide');
+        boardRevealTimer = null;
+        if(typeof state._boardHideComplete === 'function') state._boardHideComplete();
+      }, Math.max(0, hideDuration));
+    }
     renderBallQueue();
     renderCardHand();
     bagCountEl.textContent = `Túi khối còn lại: ${formatNumber(state.bag.length)}`;
@@ -1708,6 +1835,7 @@
     handEl.innerHTML = '';
     for(let i=0;i<getMaxHandSize();i++){
       const slot = document.createElement('div');
+      slot.style.setProperty('--hand-delay', `${i*24}ms`);
       const block = state.hand[i];
       slot.className = 'hand-slot' + (block ? ' filled' : ' empty-slot');
       slot.dataset.idx = i;
@@ -1793,7 +1921,7 @@
   }
 
   function handleBallQueueClick(idx){
-    if(state.targeting || state.resolving || state.phase!=='playing') return;
+    if(state.targeting || state.resolving || (state.phase!=='playing' && state.phase!=='shop')) return;
     const ball = state.ballQueue[idx];
     if(!ball || ball.fired || idx < state.ballsFired) return;
 
@@ -1880,7 +2008,7 @@
   function attachBallDrag(chip, idx){
     chip.addEventListener('pointerdown', e=>{
       if(state.targeting){ e.preventDefault(); return; }
-      if(state.resolving || state.phase!=='playing') return;
+      if(state.resolving || (state.phase!=='playing' && state.phase!=='shop')) return;
       if(idx < state.ballsFired || state.ballQueue[idx].fired) return;
       startBallDrag(e, idx);
     });
@@ -1979,32 +2107,19 @@
 
       const actions = document.createElement('div'); actions.className='card-actions';
       const btn = document.createElement('button'); btn.textContent='Dùng';
-      btn.disabled = state.phase!=='playing' || !!state.targeting;
-      if(isUpgrade){
-        btn.addEventListener('click', ()=>{
-          def.apply();
-          state.lastUpgrade=def;
-          state.lastUsedCard={kind:'upgrade',defId:def.id};
-          state.cardHand.splice(idx,1);
-          setStatus(`Đã dùng: ${def.name}`, 'good');
-          render(); renderTargetBanner();
-          scheduleAutoSave();
-        });
-      } else {
-        btn.addEventListener('click', ()=> startTargeting(idx, def));
-      }
+      btn.disabled = !['playing','shop'].includes(state.phase) || !!state.targeting;
+      btn.addEventListener('click', ()=> activateCardFromHand(idx, def));
 
       const sellPrice = getCardSellPrice(def);
       const sellBtn = document.createElement('button');
       sellBtn.className='sell-card-btn';
       sellBtn.textContent=`Bán ${formatMoney(sellPrice)}`;
-      sellBtn.disabled = state.phase!=='playing' || !!state.targeting || sellPrice<=0;
+      sellBtn.disabled = !['playing','shop'].includes(state.phase) || !!state.targeting || sellPrice<=0;
       sellBtn.addEventListener('click', ()=>{
-        if(state.phase!=='playing' || state.targeting || sellPrice<=0) return;
+        if(!['playing','shop'].includes(state.phase) || state.targeting || sellPrice<=0) return;
         state.cardHand.splice(idx,1);
         state.money += sellPrice;
         moneyValEl.textContent=formatMoney(state.money);
-        setStatus(`Đã bán: ${def.name} (+${formatMoney(sellPrice)})`, 'good');
         render();
         renderTargetBanner();
         scheduleAutoSave();
@@ -2018,7 +2133,6 @@
     });
   }
 
-  function setStatus(text, kind){ statusStripEl.textContent = text; statusStripEl.className = 'status-strip' + (kind ? ' '+kind : ''); }
 
   // ---------- targeting mode (power cards) ----------
   function targetKindMatches(def, kind){
@@ -2040,16 +2154,44 @@
     const def=t.def, min=def.targetMinCount||def.targetCount, max=def.targetCount;
     if(t.targets.length<min || t.targets.length>max) return false;
     def.use(t.targets); rememberLastUsedCard(def); syncBallMutationTargets(t.targets); renderBallQueue();
-    state.cardHand.splice(t.handIdx,1); state.targeting=null;
-    setStatus(`Đã dùng: ${def.name}`, 'good'); render(); renderTargetBanner();
+    state.cardHand.splice(t.handIdx,1); state.targeting=null; render(); renderTargetBanner();
+    if(state.phase==='shop') refreshOpenShop();
     return true;
+  }
+
+  function activateCardFromHand(handIdx, def){
+    if(!def) return;
+    const card=state.cardHand[handIdx];
+    if(!card) return;
+    if(card.kind==='upgrade'){
+      def.apply();
+      state.lastUpgrade=def;
+      state.lastUsedCard={kind:'upgrade',defId:def.id};
+      state.cardHand.splice(handIdx,1);
+      render();
+      renderTargetBanner();
+      scheduleAutoSave();
+      return;
+    }
+    activatePowerCardFromHand(handIdx, def);
+  }
+
+  function activatePowerCardFromHand(handIdx, def){
+    if(!def) return;
+    if(def.targetCount===0){
+      state.cardHand.splice(handIdx,1);
+      def.use([]);
+      rememberLastUsedCard(def);
+      render();
+      return;
+    }
+    startTargeting(handIdx, def);
   }
 
   function startTargeting(handIdx, def){
     if(def.targetCount===0){
       state.cardHand.splice(handIdx,1);
-      def.use([]); rememberLastUsedCard(def);
-      setStatus(`Đã dùng: ${def.name}`, 'good'); render(); return;
+      def.use([]); rememberLastUsedCard(def); render(); return;
     }
     state.targeting={handIdx,def,need:def.targetCount,targets:[]};
     render();
@@ -2062,6 +2204,7 @@
     inventoryOverlayEl.innerHTML='';
     render();
     renderTargetBanner();
+    if(state.phase==='shop') refreshOpenShop();
   }
 
   function handleTargetClick(target){
@@ -2578,7 +2721,6 @@
     queued.fired = true;
     state.ballsFired++;
     renderBallQueue();
-    setStatus('Đang bắn…', '');
 
     const counter = {launched:0, scored:0, broke:0};
     function makeBallState(stripInvert){
@@ -2601,9 +2743,7 @@
     if(gained>0){
       let msg = `${counter.scored}/${counter.launched} bóng về đích — +${gained} điểm`;
       if(counter.broke) msg += ` (${counter.broke} bóng vỡ)`;
-      setStatus(msg, 'good');
     } else {
-      setStatus('Bóng rơi mất — không có bóng nào về đích', 'bad');
     }
 
     state.resolving = false;
@@ -2616,9 +2756,9 @@
       const unfired = state.ballQueue.length - state.ballsFired;
       const interestCap = 5 + state.interestCapBonus;
       const interest = Math.min(Math.floor(state.money/5), interestCap);
-      const ballBonus = unfired*4;
+      const ballBonus = unfired*2;
       state.phase = 'reward';
-      showLevelReward({unfired, ballBonus, interest});
+      runBoardHideAnimation(()=>showLevelReward({winBonus:3, unfired, ballBonus, interest}));
     } else if(state.ballsFired >= state.ballQueue.length){
       state.phase = 'gameover';
       renderCardHand();
@@ -2626,16 +2766,107 @@
     }
   }
 
+  function runBoardHideAnimation(onComplete){
+    if(!state?.cells || !state.rows || !state.cols){
+      onComplete?.();
+      return;
+    }
+    if(boardRevealTimer){
+      clearTimeout(boardRevealTimer);
+      boardRevealTimer=null;
+    }
+    state._boardReveal = false;
+    state._boardHide = true;
+    state._handReveal = false;
+    state._handHide = true;
+    state._boardHideComplete = typeof onComplete === 'function' ? onComplete : null;
+    render();
+  }
+
+  function recycleCurrentLevelBlocksToBag(){
+    if(!state) return;
+    if(state.cells){
+      for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
+        const b=state.cells[r][c]?.block;
+        if(b){ state.bag.push(b); state.cells[r][c].block=null; }
+      }
+    }
+    state.bag.push(...state.hand.filter(Boolean));
+    state.bag.push(...state.discardPile.filter(Boolean));
+    state.hand=[];
+    state.discardPile=[];
+    state.discardsLeft=getMaxDiscards();
+    state.bag.forEach(block=>{ if(block) block.rotation=0; });
+    shuffle(state.bag);
+  }
+
   function showLevelReward(info){
     shopOverlayEl.classList.add('hidden');
-    const total = info.ballBonus + info.interest;
-    const panel = document.createElement('div'); panel.className='overlay-panel';
-    panel.innerHTML = `<h2 class="win">QUA MÀN ${formatNumber(state.level)}!</h2>
-      <p style="text-align:left;line-height:1.8">- ${info.unfired} bóng chưa bắn: <b>${info.ballBonus}$</b><br>- Lãi suất (Mỗi 5$ nhận được thêm 1$): <b>${info.interest}$</b></p>`;
-    const btn=document.createElement('button'); btn.className='gold'; btn.textContent=`Nhận tiền: ${formatNumber(total)}$`;
-    btn.addEventListener('click',()=>{ state.money += total; state.phase='shop'; moneyValEl.textContent=formatMoney(state.money); renderCardHand(); openShop(); });
-    panel.appendChild(btn);
-    shopOverlayEl.innerHTML=''; shopOverlayEl.appendChild(panel); shopOverlayEl.classList.remove('hidden');
+    shopOverlayEl.innerHTML='';
+    const winBonus = Number.isFinite(info.winBonus) ? info.winBonus : 3;
+    const total = winBonus + info.ballBonus + info.interest;
+    state._handRewardHidden = true;
+    document.querySelector('.hand-row')?.classList.add('reward-hidden');
+
+    overlayEl.classList.add('reward-clear');
+    overlayPanelEl.className='overlay-panel win reward-anim-in';
+    overlayTitleEl.innerHTML='<span class="reward-step">Qua màn!</span>';
+    overlayTextEl.style.textAlign='left';
+    overlayTextEl.style.lineHeight='1.6';
+    overlayTextEl.innerHTML=`
+      <div class="reward-layout">
+        <div class="reward-row"><span class="reward-label reward-win-label reward-step">- Thưởng thắng:</span><span class="reward-value reward-step">${formatNumber(winBonus)}$</span></div>
+        <div class="reward-row"><span class="reward-label reward-step">- ${formatNumber(info.unfired)} bóng còn sót (${formatNumber(2)}$ mỗi bóng):</span><span class="reward-value reward-step">${formatNumber(info.ballBonus)}$</span></div>
+        <div class="reward-row"><span class="reward-label reward-step">- Tiền lãi (Mỗi 5$ nhận thêm 1$, tối đa ${formatMoney(5 + state.interestCapBonus)}):</span><span class="reward-value reward-step">${formatNumber(info.interest)}$</span></div>
+      </div>`;
+
+    const oldBtn=document.getElementById('overlayBtn');
+    const btn=oldBtn;
+    btn.className='gold reward-step';
+    btn.textContent=`Nhận tiền: ${formatNumber(total)}$`;
+    btn.onclick=()=>{
+      if(btn.dataset.busy==='1') return;
+      btn.dataset.busy='1';
+
+      // No scale/zoom-out animation when collecting the reward.
+      state.money += total;
+      state.phase='shop';
+      state._boardHideComplete=null;
+      state._handRewardHidden=true;
+      document.querySelector('.hand-row')?.classList.add('reward-hidden');
+      state.score=0;
+      recycleCurrentLevelBlocksToBag();
+      state.ballsFired=0;
+      state.ballQueue=makeBallQueue();
+      document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup').forEach(el=>el.remove());
+      moneyValEl.textContent=formatMoney(state.money);
+      scoreValEl.textContent=formatNumber(state.score);
+      renderBallQueue();
+      renderHand();
+      renderCardHand();
+      bagCountEl.textContent=`Túi khối còn lại: ${formatNumber(state.bag.length)}`;
+      discardCountEl.textContent=`(${formatNumber(state.discardsLeft)}/${formatNumber(getMaxDiscards())})`;
+      discardBtnEl.disabled=true;
+      hideOverlay();
+      overlayEl.classList.remove('reward-clear');
+      openShop();
+    };
+    overlayEl.classList.remove('hidden');
+
+    requestAnimationFrame(()=>{
+      const title=overlayPanelEl.querySelector('#overlayTitle .reward-step');
+      if(title) setTimeout(()=>title.classList.add('reward-show'),0);
+      const labels=[...overlayPanelEl.querySelectorAll('.reward-row .reward-label')];
+      const values=[...overlayPanelEl.querySelectorAll('.reward-row .reward-value')];
+      let delay=500;
+      for(let i=0;i<labels.length;i++){
+        setTimeout(()=>labels[i].classList.add('reward-show'),delay);
+        delay += 220;
+        setTimeout(()=>values[i]?.classList.add('reward-show'),delay);
+        delay += 260;
+      }
+      setTimeout(()=>btn.classList.add('reward-show'),delay+500);
+    });
   }
 
   // ---------- overlay ----------
@@ -2644,12 +2875,20 @@
   const overlayTitleEl = document.getElementById('overlayTitle');
   const overlayTextEl = document.getElementById('overlayText');
   function showOverlay(kind, title, text){
+    overlayEl.classList.remove('reward-clear');
     overlayPanelEl.className = 'overlay-panel ' + kind;
-    overlayTitleEl.textContent = title; overlayTextEl.textContent = text;
+    overlayTitleEl.textContent = title;
+    overlayTextEl.textContent = text;
+    overlayTextEl.style.textAlign='center';
+    overlayTextEl.style.lineHeight='normal';
+    const btn=document.getElementById('overlayBtn');
+    btn.className='';
+    btn.textContent='Chơi lại từ đầu';
+    btn.onclick=newRun;
     overlayEl.classList.remove('hidden');
   }
-  function hideOverlay(){ overlayEl.classList.add('hidden'); }
-  document.getElementById('overlayBtn').addEventListener('click', newRun);
+  function hideOverlay(){ overlayEl.classList.add('hidden'); overlayEl.classList.remove('reward-clear'); }
+  document.getElementById('overlayBtn').onclick = newRun;
   document.getElementById('newGameBtn').addEventListener('click', newRun);
 
   // ---------- inventory (bag contents) ----------
@@ -2687,7 +2926,6 @@
     state.target=computeTarget(level);
     levelValEl.textContent=formatNumber(state.level);
     targetValEl.textContent=formatNumber(state.target);
-    setStatus(`DEBUG: Đã đặt màn ${level}`, 'good');
     render();
     renderTargetBanner();
     refreshOpenShop();
@@ -2696,13 +2934,11 @@
   function debugAddCard(kind, defId){
     if(!state) return;
     if(state.cardHand.length>=getMaxCardHand()){
-      setStatus(`Tay thẻ đã đầy (${getMaxCardHand()}/${getMaxCardHand()})`, 'bad');
       return;
     }
     const def=kind==='upgrade' ? UPGRADE_POOL.find(x=>x.id===defId) : POWER_CARD_DEFS[defId];
     if(!def) return;
     state.cardHand.push({id:cardUid(),kind,defId:def.id});
-    setStatus(`DEBUG: Đã thêm ${def.name} vào tay`, 'good');
     render();
     renderTargetBanner();
     scheduleAutoSave();
@@ -2779,13 +3015,14 @@
   const gachaOverlayEl = document.getElementById('gachaOverlay');
   let activeRenderShop = null;
   let activeRefreshGachaBalls = null;
+  window.addEventListener('resize', ()=>{ if(activeRenderShop && !shopOverlayEl.classList.contains('hidden')) activeRenderShop(); });
   function refreshOpenShop(){
     if(activeRenderShop && !shopOverlayEl.classList.contains('hidden')) activeRenderShop();
   }
   function refreshOpenGachaBalls(){
     if(activeRefreshGachaBalls && !gachaOverlayEl.classList.contains('hidden')) activeRefreshGachaBalls();
   }
-  function hideShop(){ shopOverlayEl.classList.add('hidden'); shopOverlayEl.innerHTML=''; hideGachaChoice(); }
+  function hideShop(){ shopOverlayEl.classList.add('hidden'); shopOverlayEl.innerHTML=''; hideGachaChoice(); cardHandEl.classList.remove('shop-active'); }
   function hideGachaChoice(){ activeRefreshGachaBalls=null; gachaOverlayEl.classList.add('hidden'); gachaOverlayEl.innerHTML=''; }
 
   function genBlockOptions(tier){
@@ -2798,6 +3035,17 @@
   }
   function genUpgradeOptions(tier){ return Array.from({length:tier.options},()=>({defId:pick(UPGRADE_POOL).id})); }
 
+  function gachaPrice(type, tier){
+    const tierKey = tier?.key || 'small';
+    const prices = {
+      upgrade: {small:4, large:7, mega:10},
+      power:   {small:4, large:7, mega:10},
+      block:   {small:8, large:12, mega:15},
+      ball:    {small:10, large:15, mega:22},
+    };
+    return prices[type]?.[tierKey] ?? tier?.cost ?? 0;
+  }
+
   function specialBlock(){
     let b={type:pick(Object.keys(BASE_SIDES)),rotation:0,property:null,enhancement:null};
     while(!b.property&&!b.enhancement){ b.property=rollProp(BLOCK_PROPS,0.6); b.enhancement=rollProp(ENHANCEMENTS,0.35); }
@@ -2807,9 +3055,9 @@
     return {property:pick(BALL_PROPS),enhancement:rollProp(ENHANCEMENTS,0.35)};
   }
   function blockPrice(b){
-    return ({straight:4,L:6,T:8,plus:11}[b.type]||0)
-      + ({wood:2,stone:3,gold:4,steel:7,glass:8}[b.property]||0)
-      + ({holo:6,spark:11,invert:18}[b.enhancement]||0);
+    return 3
+      + ({wood:3,stone:3,steel:4,gold:4,glass:6}[b.property]||0)
+      + ({holo:7,spark:5,invert:10}[b.enhancement]||0);
   }
   function ballPrice(b){
     return 20 + ({grid:2,striped:4,gold:6,steel:8,glass:8}[b.property]||0)
@@ -3111,131 +3359,54 @@
     if(!state.gachaStock) state.gachaStock=makeGachaStock();
     if(!state.shopBuff) state.shopBuff={...pickAvailableBuff(),bought:false};
     shopOverlayEl.classList.remove('hidden');
+    cardHandEl.classList.add('shop-active');
 
     function reroll(){ if(state.money<state.commonRerollCost) return; state.money-=state.commonRerollCost; state.commonRerollCost++; state.commonItems=makeCommonStock(); renderShop(); }
-    function powerCanTargetBalls(def){
-      return !!def && (def.targetKind==='ball' || def.targetKind==='both' || def.targetKind==='swap') && def.targetCount>0;
-    }
-
-    function openShopPowerChoice(item){
-      const def=POWER_CARD_DEFS[item.ref.defId];
-      const panel=shopOverlayEl.querySelector('.shop-panel');
-      if(!panel || !def) return;
-      const old=panel.querySelector('.shop-power-panel');
-      if(old) old.remove();
-
-      const choice=document.createElement('div');
-      choice.className='shop-power-panel';
-      choice.innerHTML=`<h3>Dùng ${def.name}</h3><p>Chọn mục tiêu để sử dụng thẻ.</p>`;
-      const targetsWrap=document.createElement('div');
-      targetsWrap.className='shop-power-targets';
-      const selected=[];
-
-      const ownedBlocks=collectOwnedBlocks().map(x=>x.block);
-      const targets=[];
-      if(def.targetKind==='block' || def.targetKind==='both' || def.targetKind==='swap') ownedBlocks.forEach(obj=>targets.push({obj,kind:'block'}));
-      if(def.targetKind==='ball' || def.targetKind==='both' || def.targetKind==='swap') state.ballPool.forEach(obj=>targets.push({obj,kind:'ball'}));
-
-      const renderSelected=()=>{
-        [...targetsWrap.children].forEach((el,i)=>el.classList.toggle('selected',selected.some(t=>t.obj===targets[i].obj)));
-      };
-
-      targets.forEach((target,i)=>{
-        const el=document.createElement('div');
-        el.className='shop-power-target';
-        el.innerHTML=target.kind==='block' ? renderMiniBlockMarkup(target.obj) : ballChipMarkup(target.obj);
-        attachObjectTooltip(el, target.obj, target.kind);
-        el.addEventListener('click',()=>{
-          const pos=selected.findIndex(t=>t.obj===target.obj);
-          if(pos>=0){
-            selected.splice(pos,1);
-          } else if(def.targetKind==='swap') {
-            if(selected.length>=2) selected.shift();
-            if(selected.length===0 || selected[0].kind===target.kind) selected.push(target);
-          } else {
-            selected.length=0;
-            selected.push(target);
-          }
-          renderSelected();
-          const valid = def.targetKind==='swap' ? selected.length===2 && selected[0].kind===selected[1].kind : (selected.length >= (def.targetMinCount||def.targetCount) && selected.length <= def.targetCount);
-          accept.disabled=!valid;
-        });
-        targetsWrap.appendChild(el);
-      });
-      choice.appendChild(targetsWrap);
-
-      const actions=document.createElement('div'); actions.className='shop-power-actions';
-      const cancel=document.createElement('button'); cancel.className='skip'; cancel.textContent='Huỷ';
-      cancel.addEventListener('click',()=>choice.remove());
-      const accept=document.createElement('button'); accept.className='gold'; accept.textContent='Dùng'; accept.disabled=def.targetCount!==0;
-      if(def.targetCount===0){ accept.disabled=false; }
-      accept.addEventListener('click',()=>{
-        if(def.targetCount!==0){
-          const valid = def.targetKind==='swap' ? selected.length===2 && selected[0].kind===selected[1].kind : (selected.length >= (def.targetMinCount||def.targetCount) && selected.length <= def.targetCount);
-          if(!valid) return;
-        }
-        def.use(selected); rememberLastUsedCard(def);
-        syncBallMutationTargets(selected);
-        state.money-=item.price;
-        item.bought=true;
-        moneyValEl.textContent=formatMoney(state.money);
-        choice.remove();
-        render();
-        renderShop();
-      });
-      actions.appendChild(cancel); actions.appendChild(accept); choice.appendChild(actions);
-      panel.appendChild(choice);
-      choice.scrollIntoView({behavior:'smooth',block:'nearest'});
-    }
-
     function buyCommon(item){
-      if(item.bought||state.money<item.price) return;
-      if(item.kind==='upgrade'){
-        if(state.cardHand.length>=getMaxCardHand()) return;
+      if(item.bought || state.money < shopPrice(item.price)) return;
+      if((item.kind==='upgrade'||item.kind==='power') && state.cardHand.length>=getMaxCardHand()) return;
+
+      if(item.kind==='upgrade' || item.kind==='power'){
         state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
-        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money); render(); renderShop();
+      } else if(!applyCommonItem(item)){
         return;
       }
-      if(item.kind==='power'){
-        if(state.cardHand.length>=getMaxCardHand()) return;
-        state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
-        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money); render(); renderShop();
-        return;
-      }
-      if(!applyCommonItem(item)) return;
-      state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money); renderShop();
+
+      state.money-=shopPrice(item.price);
+      item.bought=true;
+      moneyValEl.textContent=formatMoney(state.money);
+      render();
+      refreshOpenShop();
+      scheduleAutoSave();
     }
 
     function useCommon(item){
-      if(item.bought||state.money<item.price) return;
-      if(item.kind==='upgrade'){
-        const def=UPGRADE_POOL.find(x=>x.id===item.ref.defId);
-        if(!def) return;
-        def.apply(); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id};
-        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money);
-        render(); renderShop();
-        return;
-      }
-      if(item.kind==='power'){
-        const def=POWER_CARD_DEFS[item.ref.defId];
-        if(powerCanTargetBalls(def)){
-          openShopPowerChoice(item);
-          return;
-        }
-        if(def.targetCount===0){
-          def.use([]); rememberLastUsedCard(def);
-          state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money);
-          render(); renderShop();
-        }
-      }
+      if(item.bought || state.money < shopPrice(item.price)) return;
+      if(item.kind!=='power' && item.kind!=='upgrade') return;
+
+      const def = item.kind==='power' ? POWER_CARD_DEFS[item.ref.defId] : UPGRADE_POOL.find(x=>x.id===item.ref.defId);
+      if(!def) return;
+      if(item.kind==='power' && state.cardHand.length>=getMaxCardHand()) return;
+
+      const handIdx=state.cardHand.length;
+      state.cardHand.push({id:cardUid(),kind:item.kind,defId:def.id});
+      state.money-=shopPrice(item.price);
+      item.bought=true;
+      moneyValEl.textContent=formatMoney(state.money);
+
+      render();
+      activateCardFromHand(handIdx, def);
+      refreshOpenShop();
+      scheduleAutoSave();
     }
+
     function renderGachaBox(g){
       const box=document.createElement('div'); box.className='gacha-box';
       const names={block:'Hộp khối',ball:'Hộp bóng',power:'Hộp thẻ sức mạnh',upgrade:'Hộp thẻ nâng cấp'};
       if(g.done){ box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span></div><div class="tag-done">Đã dùng</div>`; return box; }
-      box.innerHTML=`<div class="shop-price">${formatMoney(shopPrice(g.tier.cost))}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
+      box.innerHTML=`<div class="shop-price">${formatMoney(shopPrice(gachaPrice(g.type, g.tier)))}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
       const actions=document.createElement('div'); actions.className='shop-item-actions';
-      const gachaCost=shopPrice(g.tier.cost);
+      const gachaCost=shopPrice(gachaPrice(g.type, g.tier));
       const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<gachaCost; buy.addEventListener('click',()=>{
         state.money-=gachaCost; moneyValEl.textContent=formatMoney(state.money);
         g.done=true;
@@ -3248,109 +3419,18 @@
       return box;
     }
 
-    let shopBallDrag = null;
-    let shopBallSwapAnim = null;
-
-    function renderShopBalls(ballsWrap){
-      ballsWrap.innerHTML='';
-      state.ballPool.forEach((ball,index)=>{
-        const el=document.createElement('div');
-        el.className='shop-ball-item';
-        el.dataset.ballIndex=index;
-        el.innerHTML=ballOptionLabel(ball);
-        markDebugTarget(el, ball, 'ball');
-        attachObjectTooltip(el, ball, 'ball');
-        el.addEventListener('pointerdown', e=>{
-          if(e.button!==0) return;
-          const firedIds = state.phase==='playing' ? new Set(state.ballQueue.filter(b=>b.fired).map(b=>b._id)) : new Set();
-          if(firedIds.has(ball._id)) return;
-          e.preventDefault();
-          ballsWrapForDrag = ballsWrap;
-          shopBallDrag={idx:index,startX:e.clientX,startY:e.clientY,moved:false,ghostEl:null,sourceEl:el,curX:e.clientX,curY:e.clientY,targetX:e.clientX,targetY:e.clientY};
-          window.addEventListener('pointermove', onShopBallDragMove);
-          window.addEventListener('pointerup', onShopBallDragEnd);
-        });
-        ballsWrap.appendChild(el);
-      });
-      if(shopBallSwapAnim){
-        const anim=shopBallSwapAnim; shopBallSwapAnim=null;
-        requestAnimationFrame(()=>{
-          const srcWrap=[...ballsWrap.children][anim.source], dstWrap=[...ballsWrap.children][anim.target];
-          const src=srcWrap?.querySelector('.ball-chip'), dst=dstWrap?.querySelector('.ball-chip');
-          if(!src||!dst) return;
-          const sr=src.getBoundingClientRect(), tr=dst.getBoundingClientRect();
-          src.style.setProperty('--from-x',`${anim.sourceRect.left-sr.left}px`); src.style.setProperty('--from-y',`${anim.sourceRect.top-sr.top}px`); src.style.animation='ballMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
-          dst.style.setProperty('--from-x',`${anim.targetRect.left-tr.left}px`); dst.style.setProperty('--from-y',`${anim.targetRect.top-tr.top}px`); dst.style.animation='ballMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
-        });
-      }
-    }
-
-    function onShopBallDragMove(e){
-      if(!shopBallDrag) return;
-      shopBallDrag.targetX=e.clientX; shopBallDrag.targetY=e.clientY;
-      const dx=e.clientX-shopBallDrag.startX, dy=e.clientY-shopBallDrag.startY;
-      if(!shopBallDrag.moved && Math.hypot(dx,dy)>6){
-        shopBallDrag.moved=true;
-        shopBallDrag.ghostEl=document.createElement('div');
-        shopBallDrag.ghostEl.className='ball-drag-ghost';
-        shopBallDrag.ghostEl.innerHTML=ballChipMarkup(state.ballPool[shopBallDrag.idx]);
-        document.body.appendChild(shopBallDrag.ghostEl);
-        shopBallDrag.sourceEl.classList.add('drag-source-fade');
-        shopBallDrag.curX=e.clientX; shopBallDrag.curY=e.clientY;
-        dragGhostLoop(shopBallDrag);
-      }
-      if(shopBallDrag.moved){
-        ballsWrapForDrag?.querySelectorAll?.('.ball-drop-hover')?.forEach(n=>n.classList.remove('ball-drop-hover'));
-        const el=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.shop-ball-item');
-        if(!el) return;
-        const targetIdx=[...ballsWrapForDrag.children].indexOf(el);
-        if(targetIdx<0 || targetIdx===shopBallDrag.idx) return;
-        const firedIds = state.phase==='playing' ? new Set(state.ballQueue.filter(b=>b.fired).map(b=>b._id)) : new Set();
-        if(!firedIds.has(state.ballPool[targetIdx]._id)) el.classList.add('ball-drop-hover');
-      }
-    }
-
-    let ballsWrapForDrag=null;
-
-    function onShopBallDragEnd(e){
-      window.removeEventListener('pointermove', onShopBallDragMove);
-      window.removeEventListener('pointerup', onShopBallDragEnd);
-      if(!shopBallDrag) return;
-      if(shopBallDrag.raf) cancelAnimationFrame(shopBallDrag.raf);
-      const info=shopBallDrag; shopBallDrag=null;
-      ballsWrapForDrag?.querySelectorAll?.('.ball-drop-hover')?.forEach(n=>n.classList.remove('ball-drop-hover'));
-      if(!info.moved){ info.ghostEl?.remove(); info.sourceEl?.classList.remove('drag-source-fade'); return; }
-      const el=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.shop-ball-item');
-      const targetIdx=el ? [...ballsWrapForDrag.children].indexOf(el) : -1;
-      const sourceIdx=info.idx;
-      const firedIds = state.phase==='playing' ? new Set(state.ballQueue.filter(b=>b.fired).map(b=>b._id)) : new Set();
-      if(targetIdx>=0 && targetIdx!==sourceIdx && !firedIds.has(state.ballPool[targetIdx]._id)){
-        const sourceBall=info.sourceEl.querySelector('.ball-chip'), targetBall=el.querySelector('.ball-chip');
-        const sourceRect=sourceBall?.getBoundingClientRect(), targetRect=targetBall?.getBoundingClientRect();
-        [state.ballPool[sourceIdx],state.ballPool[targetIdx]]=[state.ballPool[targetIdx],state.ballPool[sourceIdx]];
-        syncBallQueueFromPool();
-        shopBallSwapAnim={source:sourceIdx,target:targetIdx,sourceRect,targetRect};
-        info.ghostEl?.remove(); info.sourceEl?.classList.remove('drag-source-fade');
-        renderShop();
-        renderBallQueue();
-        return;
-      }
-      animateDragReturn(info);
+    function positionShopPanel(panel){
+      const anchor=ballQueueEl.getBoundingClientRect();
+      const top=Math.max(8, anchor.bottom + 10);
+      panel.style.top=`${Math.round(top)}px`;
     }
 
     function renderShop(){
       syncBallQueueFromPool();
       shopOverlayEl.innerHTML='';
       const panel=document.createElement('div'); panel.className='shop-panel';
-      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG</h2><div class="shop-money">Tiền hiện có: ${formatMoney(state.money)}</div>`;
-
-      const ballsSection=document.createElement('div'); ballsSection.className='shop-section';
-      ballsSection.innerHTML=`<h3>Bóng sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
-      const ballsWrap=document.createElement('div'); ballsWrap.className='shop-ball-grid';
-      ballsWrapForDrag=ballsWrap;
-      renderShopBalls(ballsWrap);
-      ballsSection.appendChild(ballsWrap);
-      panel.appendChild(ballsSection);
+      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG</h2>`;
+      positionShopPanel(panel);
 
       const common=document.createElement('div'); common.className='shop-section'; common.innerHTML='<h3>Hàng hóa chung</h3>';
       const commonGrid=document.createElement('div'); commonGrid.className='shop-common-grid';
@@ -3380,7 +3460,7 @@
         actions.appendChild(buy);
         if(item.kind==='power'||item.kind==='upgrade'){
           const use=document.createElement('button'); use.className='use-btn'; use.textContent='Dùng';
-          use.disabled=item.bought||state.money<shopPrice(item.price);
+          use.disabled=item.bought||state.money<shopPrice(item.price)||(item.kind==='power'&&state.cardHand.length>=getMaxCardHand());
           use.addEventListener('click',()=>useCommon(item));
           actions.appendChild(use);
         }
@@ -3394,7 +3474,7 @@
       const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; const buffCost=bo.id==='discount'?bo.cost:shopPrice(bo.cost); br.innerHTML=`<div class="shop-price">$${buffCost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<buffCost; bb.addEventListener('click',()=>{ state.money-=buffCost; bo.apply(); bo.bought=true; markBuffOwned(bo.id); state.shopBuffBought=true; moneyValEl.textContent=formatMoney(state.money); renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
       const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>'; const gachGrid=document.createElement('div'); gachGrid.className='shop-gacha-grid'; state.gachaStock.forEach(g=>gachGrid.appendChild(renderGachaBox(g))); gach.appendChild(gachGrid); lower.appendChild(gach); panel.appendChild(lower);
 
-      const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent=`Màn ${formatNumber(state.level+1)}`; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
+      const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent=`→ Màn ${formatNumber(state.level+1)}`; cb.addEventListener('click',()=>{ if(cb.dataset.busy==='1') return; cb.dataset.busy='1'; state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
       shopOverlayEl.appendChild(panel);
     }
     activeRenderShop = renderShop;
@@ -3402,7 +3482,6 @@
   }
 
   // ---------- persistence boot / lifecycle ----------
-  saveStatusEl = document.getElementById('saveStatus');
   window.addEventListener('pagehide', flushAutoSave);
   window.addEventListener('beforeunload', flushAutoSave);
   document.addEventListener('visibilitychange', ()=>{
@@ -3417,7 +3496,6 @@
   if(!loadGame()){
     newRun();
   } else {
-    setSaveStatus('Đã tải save', 'saved');
   }
 })();
 </script>

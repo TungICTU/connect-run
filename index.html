@@ -722,6 +722,31 @@
 (function(){
   "use strict";
 
+  // ---------- number formatting ----------
+  // Hiển thị số với dấu phân cách hàng nghìn: 1,000 / 1,000,000 / ...
+  // Khi vượt quá 999.999.999.999, chuyển sang dạng khoa học: 1.0e+12, ...
+  const NUMBER_FORMAT_LIMIT = 999_999_999_999;
+  const numberFormatter = new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+    useGrouping: true
+  });
+
+  function formatNumber(value){
+    const n = Number(value);
+    if(!Number.isFinite(n)) return String(value ?? 0);
+    if(Math.abs(n) > NUMBER_FORMAT_LIMIT){
+      const exp = Math.floor(Math.log10(Math.abs(n)));
+      const mantissa = n / Math.pow(10, exp);
+      return `${mantissa.toFixed(1)}e+${exp}`;
+    }
+    return numberFormatter.format(Math.round(n));
+  }
+
+  function formatMoney(value){
+    return `$${formatNumber(value)}`;
+  }
+
+
   // ---------- animation speed ----------
   let animationSpeed = 1;
   const animationSpeedSelect = document.getElementById('animationSpeedSelect');
@@ -796,7 +821,7 @@
 
   function blockTooltip(block){
     const level = ((state.typeBonus[block.type]||0)/5) + 1;
-    const lines = [`Số điểm cho khi bóng đi ra: ${(10+state.baseRateBonus)+(state.typeBonus[block.type]||0)}`];
+    const lines = [`Số điểm cho khi bóng đi ra: ${formatNumber((10+state.baseRateBonus)+(state.typeBonus[block.type]||0))}`];
     if(block.property) lines.push(`${PROP_LABEL[block.property]}: ${BLOCK_PROP_DESC[block.property]}`);
     if(block.enhancement) lines.push(`${ENH_LABEL[block.enhancement]}: ${BLOCK_ENH_DESC[block.enhancement]}`);
     return { title:TYPE_LABEL[block.type], level, lines };
@@ -804,8 +829,8 @@
   function ballTooltip(b){
     const level = ((state.baseRateBonus||0)/2) + 1;
     const lines = [
-      `Số điểm bóng chứa: ${50+state.startBonus}`,
-      `Tỉ lệ cộng: 10${state.baseRateBonus>0?`(+${state.baseRateBonus})`:''}/khối`,
+      `Số điểm bóng chứa: ${formatNumber(50+state.startBonus)}`,
+      `Tỉ lệ cộng: ${formatNumber(10)}${state.baseRateBonus>0?`(+${formatNumber(state.baseRateBonus)})`:''}/khối`,
     ];
     if(b.property) lines.push(`${PROP_LABEL[b.property]}: ${BALL_PROP_DESC[b.property]}`);
     if(b.enhancement) lines.push(`${ENH_LABEL[b.enhancement]}: ${BALL_ENH_DESC[b.enhancement]}`);
@@ -929,9 +954,9 @@
   }
 
   const GACHA_TIERS = [
-    { key:'small', label:'Nhỏ', cost:10, options:3, picks:1 },
-    { key:'large', label:'Lớn', cost:18, options:5, picks:1 },
-    { key:'mega',  label:'Siêu lớn', cost:28, options:5, picks:2 },
+    { key:'small', label:'Nhỏ', cost:8, options:3, picks:1 },
+    { key:'large', label:'Lớn', cost:14, options:5, picks:1 },
+    { key:'mega',  label:'Siêu lớn', cost:22, options:5, picks:2 },
   ];
 
   function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
@@ -942,20 +967,20 @@
 
   // ---------- upgrade & buff & power card defs ----------
   const UPGRADE_POOL = [
-    { id:'base', name:'Nâng cấp bóng cơ bản', desc:'+10 điểm bóng chứa ban đầu và +2 điểm mỗi lần bóng thoát block (mọi bóng)', cost:15, apply(){ state.startBonus += 10; state.baseRateBonus += 2; } },
-    { id:'straight', name:'Nâng cấp khối Thẳng', desc:'+5 điểm khi bóng thoát khối Thẳng', cost:12, apply(){ state.typeBonus.straight += 5; } },
-    { id:'L', name:'Nâng cấp khối chữ L', desc:'+5 điểm khi bóng thoát khối L', cost:12, apply(){ state.typeBonus.L += 5; } },
-    { id:'T', name:'Nâng cấp khối chữ T', desc:'+5 điểm khi bóng thoát khối T', cost:14, apply(){ state.typeBonus.T += 5; } },
-    { id:'plus', name:'Nâng cấp khối Dấu Cộng', desc:'+5 điểm khi bóng thoát khối +', cost:16, apply(){ state.typeBonus.plus += 5; } },
+    { id:'base', name:'Nâng cấp bóng cơ bản', desc:'+10 điểm bóng chứa ban đầu và +2 điểm mỗi lần bóng thoát block (mọi bóng)', cost:10, apply(){ state.startBonus += 10; state.baseRateBonus += 2; } },
+    { id:'straight', name:'Nâng cấp khối Thẳng', desc:'+5 điểm khi bóng thoát khối Thẳng', cost:9, apply(){ state.typeBonus.straight += 5; } },
+    { id:'L', name:'Nâng cấp khối chữ L', desc:'+5 điểm khi bóng thoát khối L', cost:9, apply(){ state.typeBonus.L += 5; } },
+    { id:'T', name:'Nâng cấp khối chữ T', desc:'+5 điểm khi bóng thoát khối T', cost:11, apply(){ state.typeBonus.T += 5; } },
+    { id:'plus', name:'Nâng cấp khối Dấu Cộng', desc:'+5 điểm khi bóng thoát khối +', cost:13, apply(){ state.typeBonus.plus += 5; } },
   ];
 
   const BUFF_POOL = [
-    { id:'balls', name:'Tay nhanh', desc:'+1 giới hạn số bóng bắn mỗi màn, vĩnh viễn', cost:25, apply(){ state.maxBallsBonus += 1; } },
-    { id:'start', name:'Khởi động', desc:'Mọi bóng bắt đầu với +5 điểm nền, vĩnh viễn', cost:18, apply(){ state.startBonus += 5; } },
-    { id:'interest', name:'Giàu có', desc:'Tăng giới hạn số tiền lãi có thể nhận được +10$', cost:22, apply(){ state.interestCapBonus += 10; } },
-    { id:'trash', name:'Thùng rác', desc:'+1 giới hạn loại bỏ mỗi màn', cost:18, apply(){ state.discardBonus += 1; } },
-    { id:'big_hand', name:'Tay lớn', desc:'+1 khối có thể cầm trong tay', cost:22, apply(){ state.handSizeBonus += 1; } },
-    { id:'discount', name:'Hạ giá', desc:'Giảm 25% giá mua các vật phẩm trong cửa hàng', cost:24, apply(){ state.discountBonus = true; } },
+    { id:'balls', name:'Tay nhanh', desc:'+1 giới hạn số bóng bắn mỗi màn, vĩnh viễn', cost:20, apply(){ state.maxBallsBonus += 1; } },
+    { id:'start', name:'Khởi động', desc:'Mọi bóng bắt đầu với +5 điểm nền, vĩnh viễn', cost:15, apply(){ state.startBonus += 5; } },
+    { id:'interest', name:'Giàu có', desc:'Tăng giới hạn số tiền lãi có thể nhận được +10$', cost:18, apply(){ state.interestCapBonus += 10; } },
+    { id:'trash', name:'Thùng rác', desc:'+1 giới hạn loại bỏ mỗi màn', cost:15, apply(){ state.discardBonus += 1; } },
+    { id:'big_hand', name:'Tay lớn', desc:'+1 khối có thể cầm trong tay', cost:18, apply(){ state.handSizeBonus += 1; } },
+    { id:'discount', name:'Hạ giá', desc:'Giảm 25% giá mua các vật phẩm trong cửa hàng', cost:28, apply(){ state.discountBonus = true; } },
     { id:'empty', name:'Rỗng', desc:'Không có chức năng gì cả', cost:5, apply(){} },
   ];
 
@@ -982,19 +1007,19 @@
     POWER_CARD_DEFS['prop_'+p] = {
       id:'prop_'+p, name:`Thẻ ${PROP_LABEL[p]}`,
       desc:`Biến 1 ${kindLabel} thành thuộc tính ${PROP_LABEL[p]}`,
-      cost: 14, targetKind: kind, targetCount:1,
+      cost: 11, targetKind: kind, targetCount:1,
       use(targets){ targets[0].obj.property = p; }
     };
   });
-  POWER_CARD_DEFS['money'] = { id:'money', name:'Thẻ tiền', desc:'Nhận thêm một lượng tiền bằng số tiền hiện có, tối đa +25$', cost:20, targetKind:null, targetCount:0,
-    use(){ const bonus=Math.min(Math.max(0,state.money),25); state.money += bonus; moneyValEl.textContent=`$${state.money}`; } };
-  POWER_CARD_DEFS['swap'] = { id:'swap', name:'Thẻ hoán đổi', desc:'Chọn 2 khối HOẶC 2 bóng, hoán đổi thuộc tính + enhancement', cost:16, targetKind:'swap', targetCount:2,
+  POWER_CARD_DEFS['money'] = { id:'money', name:'Thẻ tiền', desc:'Nhận thêm một lượng tiền bằng số tiền hiện có, tối đa +25$', cost:18, targetKind:null, targetCount:0,
+    use(){ const bonus=Math.min(Math.max(0,state.money),25); state.money += bonus; moneyValEl.textContent=formatMoney(state.money); } };
+  POWER_CARD_DEFS['swap'] = { id:'swap', name:'Thẻ hoán đổi', desc:'Chọn 2 khối HOẶC 2 bóng, hoán đổi thuộc tính + enhancement', cost:14, targetKind:'swap', targetCount:2,
     use(targets){ const a=targets[0].obj, b=targets[1].obj; const pa=a.property, ea=a.enhancement; a.property=b.property; a.enhancement=b.enhancement; b.property=pa; b.enhancement=ea; } };
-  POWER_CARD_DEFS['magic'] = { id:'magic', name:'Thẻ ma thuật', desc:'Chọn 1 khối hoặc bóng, thêm enhancement ngẫu nhiên', cost:16, targetKind:'both', targetCount:1,
+  POWER_CARD_DEFS['magic'] = { id:'magic', name:'Thẻ ma thuật', desc:'Chọn 1 khối hoặc bóng, thêm enhancement ngẫu nhiên', cost:14, targetKind:'both', targetCount:1,
     use(targets){ targets[0].obj.enhancement = pick(ENHANCEMENTS); } };
-  POWER_CARD_DEFS['clone'] = { id:'clone', name:'Thẻ nhân bản', desc:'Chọn 1 khối, tạo thêm 1 khối giống hệt cho túi đồ màn sau', cost:18, targetKind:'block', targetCount:1,
+  POWER_CARD_DEFS['clone'] = { id:'clone', name:'Thẻ nhân bản', desc:'Chọn 1 khối, tạo thêm 1 khối giống hệt cho túi đồ màn sau', cost:16, targetKind:'block', targetCount:1,
     use(targets){ const o=targets[0].obj; state.pendingBlocks.push({type:o.type, rotation:0, property:o.property, enhancement:o.enhancement}); } };
-  POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn trên tay hoặc bảng chơi', cost:18, targetKind:'block', targetCount:2, targetMinCount:1, manualConfirm:true,
+  POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn trên tay hoặc bảng chơi', cost:16, targetKind:'block', targetCount:2, targetMinCount:1, manualConfirm:true,
     use(targets){
       const selected = new Set(targets.map(t=>t.obj));
       state.hand = state.hand.filter(block=>!selected.has(block));
@@ -1005,13 +1030,13 @@
       }
       refillHand();
     } };
-  POWER_CARD_DEFS['breed'] = { id:'breed', name:'Thẻ sinh sản', desc:'Tạo ra 2 thẻ sức mạnh ngẫu nhiên và đưa vào tay', cost:20, targetKind:null, targetCount:0,
+  POWER_CARD_DEFS['breed'] = { id:'breed', name:'Thẻ sinh sản', desc:'Tạo ra 2 thẻ sức mạnh ngẫu nhiên và đưa vào tay', cost:18, targetKind:null, targetCount:0,
     use(){
       const defs=shuffle(Object.values(POWER_CARD_DEFS).filter(d=>d.id!=='copy'));
       const free=Math.max(0,getMaxCardHand()-state.cardHand.length);
       for(let i=0;i<Math.min(2,free);i++){ const d=defs[i%defs.length]; state.cardHand.push({id:cardUid(),kind:'power',defId:d.id}); }
     } };
-  POWER_CARD_DEFS['copy'] = { id:'copy', name:'Thẻ sao chép', desc:'Đưa vào tay thẻ sức mạnh hoặc thẻ nâng cấp gần nhất đã dùng', cost:12, targetKind:null, targetCount:0,
+  POWER_CARD_DEFS['copy'] = { id:'copy', name:'Thẻ sao chép', desc:'Đưa vào tay thẻ sức mạnh hoặc thẻ nâng cấp gần nhất đã dùng', cost:10, targetKind:null, targetCount:0,
     use(){
       const last=state.lastUsedCard;
       if(!last || state.cardHand.length>=getMaxCardHand()) return;
@@ -1176,7 +1201,7 @@
         const unfired = Math.max(0, state.ballQueue.length - state.ballsFired);
         const interestCap = 5 + state.interestCapBonus;
         const interest = Math.min(Math.floor(state.money/5), interestCap);
-        showLevelReward({unfired, ballBonus:unfired*3, interest});
+        showLevelReward({unfired, ballBonus:unfired*4, interest});
         return true;
       }
 
@@ -1184,7 +1209,7 @@
       render();
       renderCardHand();
       hideShop();
-      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${state.level}, đạt ${state.score}/${state.target} điểm. Tổng tiền tích luỹ: $${state.money}.`);
+      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
       return true;
     }catch(err){
       console.error('Không thể tải save:', err);
@@ -1214,7 +1239,7 @@
 
   function newRun(){
     state = {
-      money: 10, level: 0,
+      money: 12, level: 0,
       baseRateBonus: 0, typeBonus: { straight:0, L:0, T:0, plus:0 },
       maxBallsBonus: 0, bagBonus: 0, startBonus: 0, interestCapBonus: 0,
       discardBonus: 0, handSizeBonus: 0, discountBonus: false, ownedBuffIds: [],
@@ -1390,7 +1415,7 @@
     state.hand = [];
     refillHand();
     refreshAnimSlots = new Set(state.hand.map((_,i)=>i));
-    setStatus(`Đã loại bỏ tay — còn ${state.discardsLeft} lần loại bỏ`, '');
+    setStatus(`Đã loại bỏ tay — còn ${formatNumber(state.discardsLeft)} lần loại bỏ`, '');
     render();
     scheduleAutoSave();
   }
@@ -1533,14 +1558,14 @@
     renderHand();
     renderBallQueue();
     renderCardHand();
-    bagCountEl.textContent = `Túi khối còn lại: ${state.bag.length}`;
-    discardCountEl.textContent = `(${state.discardsLeft}/${getMaxDiscards()})`;
+    bagCountEl.textContent = `Túi khối còn lại: ${formatNumber(state.bag.length)}`;
+    discardCountEl.textContent = `(${formatNumber(state.discardsLeft)}/${formatNumber(getMaxDiscards())})`;
     discardBtnEl.disabled = state.discardsLeft<=0 || !state.hand.some(Boolean) || state.resolving || state.phase!=='playing' || !!state.targeting;
     refreshAnimSlots.clear();
-    scoreValEl.textContent = state.score;
-    targetValEl.textContent = state.target;
-    moneyValEl.textContent = `$${state.money}`;
-    levelValEl.textContent = state.level;
+    scoreValEl.textContent = formatNumber(state.score);
+    targetValEl.textContent = formatNumber(state.target);
+    moneyValEl.textContent = formatMoney(state.money);
+    levelValEl.textContent = formatNumber(state.level);
   }
 
   function renderHand(){
@@ -1836,14 +1861,14 @@
       const sellPrice = getCardSellPrice(def);
       const sellBtn = document.createElement('button');
       sellBtn.className='sell-card-btn';
-      sellBtn.textContent=`Bán $${sellPrice}`;
+      sellBtn.textContent=`Bán ${formatMoney(sellPrice)}`;
       sellBtn.disabled = state.phase!=='playing' || !!state.targeting || sellPrice<=0;
       sellBtn.addEventListener('click', ()=>{
         if(state.phase!=='playing' || state.targeting || sellPrice<=0) return;
         state.cardHand.splice(idx,1);
         state.money += sellPrice;
-        moneyValEl.textContent=`$${state.money}`;
-        setStatus(`Đã bán: ${def.name} (+$${sellPrice})`, 'good');
+        moneyValEl.textContent=formatMoney(state.money);
+        setStatus(`Đã bán: ${def.name} (+${formatMoney(sellPrice)})`, 'good');
         render();
         renderTargetBanner();
         scheduleAutoSave();
@@ -2221,7 +2246,7 @@
     const tipValue = document.createElement('span');
     tipValue.className='ball-tooltip-value';
     const currentTotal = Math.round(ballState.total);
-    tipValue.textContent = currentTotal;
+    tipValue.textContent = formatNumber(currentTotal);
     tipValue._initialTotal = ballState.initialTotal;
     tipValue._scoreScale = 1;
     tipValue._lastTotal = Number.isFinite(previousTotal) ? Math.round(previousTotal) : currentTotal;
@@ -2256,7 +2281,7 @@
     const valueEl = tip?._valueEl || tip;
     const nextTotal = Math.round(ballState.total);
     const previousTotal = Number.isFinite(valueEl._lastTotal) ? valueEl._lastTotal : nextTotal;
-    valueEl.textContent = nextTotal;
+    valueEl.textContent = formatNumber(nextTotal);
     if(nextTotal > previousTotal){
       animateScoreTipValue(valueEl, nextTotal, previousTotal, ballState.initialTotal, state.target, tip);
     }
@@ -2302,7 +2327,7 @@
 
     if(prop==='wood'){ ballState.total += 10*sparkX; }
     if(prop==='glass'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; if(Math.random()<0.25) brokeBlock=true; }
-    if(prop==='gold'){ state.money += 3*sparkX; moneyValEl.textContent = `$${state.money}`; }
+    if(prop==='gold'){ state.money += 3*sparkX; moneyValEl.textContent = formatMoney(state.money); }
 
     if(!prop && enh==='spark'){ ballState.total += ballState.rate; }
     if(enh==='holo'){ ballState.total += 50; }
@@ -2325,7 +2350,7 @@
     const prop = ballState.prop, enh = ballState.enh;
     const sparkX = (enh==='spark') ? 2 : 1;
     if(prop==='steel'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; }
-    if(prop==='gold'){ state.money += 5*sparkX; moneyValEl.textContent = `$${state.money}`; }
+    if(prop==='gold'){ state.money += 5*sparkX; moneyValEl.textContent = formatMoney(state.money); }
     if(prop==='glass' && Math.random()<0.25){ ballState.broke = true; }
   }
 
@@ -2359,7 +2384,7 @@
       updateTip(tip, ballState);
       const goalPopup = document.createElement('div');
       goalPopup.className = 'ball-goal-popup';
-      goalPopup.textContent = Math.round(ballState.total);
+      goalPopup.textContent = formatNumber(Math.round(ballState.total));
       // Keep the goal score readable when the tooltip score has grown larger.
       // Tooltip values use a base 11px font and a dynamic score scale; the goal
       // popup uses a base 18px font. Only enlarge the popup when the tooltip's
@@ -2386,7 +2411,7 @@
       const points = Math.round(ballState.total);
       state.score += points;
       counter.points = (counter.points||0) + points;
-      scoreValEl.textContent = state.score;
+      scoreValEl.textContent = formatNumber(state.score);
       return [points];
     }
 
@@ -2498,13 +2523,13 @@
       const unfired = state.ballQueue.length - state.ballsFired;
       const interestCap = 5 + state.interestCapBonus;
       const interest = Math.min(Math.floor(state.money/5), interestCap);
-      const ballBonus = unfired*3;
+      const ballBonus = unfired*4;
       state.phase = 'reward';
       showLevelReward({unfired, ballBonus, interest});
     } else if(state.ballsFired >= state.ballQueue.length){
       state.phase = 'gameover';
       renderCardHand();
-      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${state.level}, đạt ${state.score}/${state.target} điểm. Tổng tiền tích luỹ: $${state.money}.`);
+      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
     }
   }
 
@@ -2512,10 +2537,10 @@
     shopOverlayEl.classList.add('hidden');
     const total = info.ballBonus + info.interest;
     const panel = document.createElement('div'); panel.className='overlay-panel';
-    panel.innerHTML = `<h2 class="win">QUA MÀN ${state.level}!</h2>
+    panel.innerHTML = `<h2 class="win">QUA MÀN ${formatNumber(state.level)}!</h2>
       <p style="text-align:left;line-height:1.8">- ${info.unfired} bóng chưa bắn: <b>${info.ballBonus}$</b><br>- Lãi suất (Mỗi 5$ nhận được thêm 1$): <b>${info.interest}$</b></p>`;
-    const btn=document.createElement('button'); btn.className='gold'; btn.textContent=`Nhận tiền: ${total}$`;
-    btn.addEventListener('click',()=>{ state.money += total; state.phase='shop'; moneyValEl.textContent=`$${state.money}`; renderCardHand(); openShop(); });
+    const btn=document.createElement('button'); btn.className='gold'; btn.textContent=`Nhận tiền: ${formatNumber(total)}$`;
+    btn.addEventListener('click',()=>{ state.money += total; state.phase='shop'; moneyValEl.textContent=formatMoney(state.money); renderCardHand(); openShop(); });
     panel.appendChild(btn);
     shopOverlayEl.innerHTML=''; shopOverlayEl.appendChild(panel); shopOverlayEl.classList.remove('hidden');
   }
@@ -2567,8 +2592,8 @@
     if(!state) return;
     state.level=level;
     state.target=computeTarget(level);
-    levelValEl.textContent=state.level;
-    targetValEl.textContent=state.target;
+    levelValEl.textContent=formatNumber(state.level);
+    targetValEl.textContent=formatNumber(state.target);
     setStatus(`DEBUG: Đã đặt màn ${level}`, 'good');
     render();
     renderTargetBanner();
@@ -2599,7 +2624,7 @@
   }
   document.addEventListener('keydown', e=>{ if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='d'){e.preventDefault();toggleDebugMenu();} });
   document.getElementById('debugCloseBtn').addEventListener('click',()=>debugOverlayEl.classList.add('hidden'));
-  document.getElementById('debugAddMoneyBtn').addEventListener('click',()=>{ const amount=Number(document.getElementById('debugMoneyInput').value)||0; state.money+=amount; moneyValEl.textContent=`$${state.money}`; if(!shopOverlayEl.classList.contains('hidden')) renderShop(); scheduleAutoSave(); });
+  document.getElementById('debugAddMoneyBtn').addEventListener('click',()=>{ const amount=Number(document.getElementById('debugMoneyInput').value)||0; state.money+=amount; moneyValEl.textContent=formatMoney(state.money); if(!shopOverlayEl.classList.contains('hidden')) renderShop(); scheduleAutoSave(); });
   document.getElementById('debugSetLevelBtn').addEventListener('click',debugSetLevel);
   document.getElementById('debugAddUpgradeBtn').addEventListener('click',()=>debugAddCard('upgrade',debugUpgradeSelect.value));
   document.getElementById('debugAddPowerBtn').addEventListener('click',()=>debugAddCard('power',debugPowerSelect.value));
@@ -2689,13 +2714,13 @@
     return {property:pick(BALL_PROPS),enhancement:rollProp(ENHANCEMENTS,0.35)};
   }
   function blockPrice(b){
-    return ({straight:5,L:8,T:10,plus:15}[b.type]||0)
-      + ({wood:2,stone:3,gold:5,steel:10,glass:10}[b.property]||0)
-      + ({holo:8,spark:16,invert:25}[b.enhancement]||0);
+    return ({straight:4,L:6,T:8,plus:11}[b.type]||0)
+      + ({wood:2,stone:3,gold:4,steel:7,glass:8}[b.property]||0)
+      + ({holo:6,spark:11,invert:18}[b.enhancement]||0);
   }
   function ballPrice(b){
-    return 25 + ({grid:2,striped:5,gold:8,steel:10,glass:10}[b.property]||0)
-      + ({holo:8,spark:16,invert:25}[b.enhancement]||0);
+    return 20 + ({grid:2,striped:4,gold:6,steel:8,glass:8}[b.property]||0)
+      + ({holo:6,spark:11,invert:18}[b.enhancement]||0);
   }
 
   function blockOptionLabel(b){
@@ -3060,7 +3085,7 @@
         syncBallMutationTargets(selected);
         state.money-=item.price;
         item.bought=true;
-        moneyValEl.textContent=`$${state.money}`;
+        moneyValEl.textContent=formatMoney(state.money);
         choice.remove();
         render();
         renderShop();
@@ -3075,17 +3100,17 @@
       if(item.kind==='upgrade'){
         if(state.cardHand.length>=getMaxCardHand()) return;
         state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
-        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`; render(); renderShop();
+        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money); render(); renderShop();
         return;
       }
       if(item.kind==='power'){
         if(state.cardHand.length>=getMaxCardHand()) return;
         state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
-        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`; render(); renderShop();
+        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money); render(); renderShop();
         return;
       }
       if(!applyCommonItem(item)) return;
-      state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`; renderShop();
+      state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money); renderShop();
     }
 
     function useCommon(item){
@@ -3094,7 +3119,7 @@
         const def=UPGRADE_POOL.find(x=>x.id===item.ref.defId);
         if(!def) return;
         def.apply(); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id};
-        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`;
+        state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money);
         render(); renderShop();
         return;
       }
@@ -3106,7 +3131,7 @@
         }
         if(def.targetCount===0){
           def.use([]); rememberLastUsedCard(def);
-          state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=`$${state.money}`;
+          state.money-=shopPrice(item.price); item.bought=true; moneyValEl.textContent=formatMoney(state.money);
           render(); renderShop();
         }
       }
@@ -3115,11 +3140,11 @@
       const box=document.createElement('div'); box.className='gacha-box';
       const names={block:'Hộp khối',ball:'Hộp bóng',power:'Hộp thẻ sức mạnh',upgrade:'Hộp thẻ nâng cấp'};
       if(g.done){ box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span></div><div class="tag-done">Đã dùng</div>`; return box; }
-      box.innerHTML=`<div class="shop-price">$${shopPrice(g.tier.cost)}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
+      box.innerHTML=`<div class="shop-price">${formatMoney(shopPrice(g.tier.cost))}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
       const actions=document.createElement('div'); actions.className='shop-item-actions';
       const gachaCost=shopPrice(g.tier.cost);
       const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<gachaCost; buy.addEventListener('click',()=>{
-        state.money-=gachaCost; moneyValEl.textContent=`$${state.money}`;
+        state.money-=gachaCost; moneyValEl.textContent=formatMoney(state.money);
         g.done=true;
         g.options=g.type==='block'?genBlockOptions(g.tier):g.type==='ball'?genBallOptions(g.tier):g.type==='power'?genPowerOptions(g.tier):genUpgradeOptions(g.tier);
         renderShop();
@@ -3224,7 +3249,7 @@
       syncBallQueueFromPool();
       shopOverlayEl.innerHTML='';
       const panel=document.createElement('div'); panel.className='shop-panel';
-      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG — MÀN ${state.level}</h2><div class="shop-money">Tiền hiện có: $${state.money}</div>`;
+      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG — MÀN ${formatNumber(state.level)}</h2><div class="shop-money">Tiền hiện có: ${formatMoney(state.money)}</div>`;
 
       const ballsSection=document.createElement('div'); ballsSection.className='shop-section';
       ballsSection.innerHTML=`<h3>Bóng sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
@@ -3238,7 +3263,7 @@
       const commonGrid=document.createElement('div'); commonGrid.className='shop-common-grid';
       state.commonItems.forEach(item=>{
         const row=document.createElement('div'); row.className='shop-card';
-        const price=document.createElement('div'); price.className='shop-price price'; price.textContent=`$${shopPrice(item.price)}`;
+        const price=document.createElement('div'); price.className='shop-price price'; price.textContent=formatMoney(shopPrice(item.price));
         row.appendChild(price);
 
         const visual=document.createElement('div'); visual.className='shop-item-visual';
@@ -3270,10 +3295,10 @@
         commonGrid.appendChild(row);
       });
       common.appendChild(commonGrid);
-      const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;'; const rb=document.createElement('button'); rb.textContent=`Đổi hàng ($${state.commonRerollCost})`; rb.disabled=state.money<state.commonRerollCost; rb.addEventListener('click',reroll); rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
+      const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;'; const rb=document.createElement('button'); rb.textContent=`Đổi hàng (${formatMoney(state.commonRerollCost)})`; rb.disabled=state.money<state.commonRerollCost; rb.addEventListener('click',reroll); rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
 
       const lower=document.createElement('div'); lower.className='shop-lower';
-      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; const buffCost=bo.id==='discount'?bo.cost:shopPrice(bo.cost); br.innerHTML=`<div class="shop-price">$${buffCost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<buffCost; bb.addEventListener('click',()=>{ state.money-=buffCost; bo.apply(); bo.bought=true; markBuffOwned(bo.id); state.shopBuffBought=true; moneyValEl.textContent=`$${state.money}`; renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
+      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; const buffCost=bo.id==='discount'?bo.cost:shopPrice(bo.cost); br.innerHTML=`<div class="shop-price">$${buffCost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<buffCost; bb.addEventListener('click',()=>{ state.money-=buffCost; bo.apply(); bo.bought=true; markBuffOwned(bo.id); state.shopBuffBought=true; moneyValEl.textContent=formatMoney(state.money); renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
       const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>'; const gachGrid=document.createElement('div'); gachGrid.className='shop-gacha-grid'; state.gachaStock.forEach(g=>gachGrid.appendChild(renderGachaBox(g))); gach.appendChild(gachGrid); lower.appendChild(gach); panel.appendChild(lower);
 
       const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent='Tiếp tục →'; cb.addEventListener('click',()=>{ state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);

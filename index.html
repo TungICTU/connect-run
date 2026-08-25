@@ -1494,7 +1494,14 @@
     scheduleAutoSave();
   }
 
-  function computeTarget(level){ return Math.round(300 * Math.pow(1.35, level-1)); }
+  function computeTarget(level){
+    const EARLY_TARGETS = [
+      300, 600, 900, 1500, 2400, 3300, 4500, 6000, 7500,
+      12000, 16500, 21000, 33000, 45000, 60000, 76000, 87000, 100000
+    ];
+    if(level <= EARLY_TARGETS.length) return EARLY_TARGETS[Math.max(0, level - 1)];
+    return Math.round(100000 * Math.pow(1.5, level - 18));
+  }
 
   // kho đồ (bag) is generated once per run and persists (recycled level to level) until loss/restart
   function makeInitialDeck(){
@@ -1743,9 +1750,181 @@
     container.addEventListener('mouseleave', hideHoverTip);
   }
 
+  function prepareBoardRender(boardReveal){
+    state._animateNewHoleConnections = new Set();
+    if(!placeAnimCell) return;
+
+    const {r,c}=placeAnimCell;
+    const block=state.cells[r][c].block;
+    for(const d of [0,1,2,3]){
+      const [dx,dy]=DIR_VEC[d], hr=r+dy, hc=c+dx;
+      if(hr<0||hr>=state.rows||hc<0||hc>=state.cols || state.cells[hr][hc].type!=='hole' || !block) continue;
+      const key=`${hr},${hc},${opposite(d)}`;
+      if(openSides(block).includes(d) && !state.holeConnections.has(key)) state._animateNewHoleConnections.add(key);
+    }
+  }
+
+  function applyBoardCellAnimation(el, r, c, boardReveal, boardHide){
+    if(boardReveal){
+      const revealIndex = r * state.cols + c;
+      const sign = ((r + c) % 2 === 0) ? 1 : -1;
+      const angle = sign * (10 + ((r * 3 + c) % 4) * 7);
+      el.classList.add('board-reveal-cell');
+      el.style.setProperty('--reveal-delay', `${revealIndex * 24}ms`);
+      el.style.setProperty('--reveal-rotate', `${angle}deg`);
+    } else if(boardHide){
+      const hideIndex = (state.rows * state.cols - 1) - (r * state.cols + c);
+      const sign = ((r + c) % 2 === 0) ? 1 : -1;
+      const angle = sign * (10 + ((r * 3 + c) % 4) * 7);
+      el.classList.add('board-hide-cell');
+      el.style.setProperty('--hide-delay', `${hideIndex * 24}ms`);
+      el.style.setProperty('--hide-rotate', `${angle}deg`);
+    }
+  }
+
+  function renderNodeCell(el){
+    el.dataset.dir = DIR_NAMES[state.node.dir];
+    const arm = document.createElement('div'); arm.className = 'arm arm-'+DIR_NAMES[state.node.dir];
+    const hub = document.createElement('div'); hub.className='hub';
+    el.appendChild(arm); el.appendChild(hub);
+    el.addEventListener('click', onNodeClick);
+  }
+
+  function renderHoleCell(el, r, c){
+    const r2=document.createElement('div'); r2.className='ring r2';
+    el.appendChild(r2);
+    const nextConnections = new Set();
+
+    for(const d of [0,1,2,3]){
+      const [dx,dy]=DIR_VEC[d];
+      const nr=r+dy, nc=c+dx;
+      if(nr<0||nr>=state.rows||nc<0||nc>=state.cols) continue;
+      const nb=state.cells[nr][nc].block;
+      if(!nb || !openSides(nb).includes(opposite(d))) continue;
+      const key=`${r},${c},${d}`;
+      nextConnections.add(key);
+      const connector=document.createElement('div');
+      connector.className='hole-connector '+DIR_NAMES[d];
+      if(state._animateNewHoleConnections?.has(key)) connector.classList.add('forming');
+      el.appendChild(connector);
+    }
+
+    for(const key of [...state.holeConnections]){
+      if(!key.startsWith(`${r},${c},`) || nextConnections.has(key)) continue;
+      const d=+key.split(',')[2];
+      const connector=document.createElement('div');
+      connector.className='hole-connector '+DIR_NAMES[d]+' retracting';
+      el.appendChild(connector);
+      setTimeout(()=>connector.remove(),scaledDuration(290));
+      state.holeConnections.delete(key);
+    }
+    for(const key of nextConnections) state.holeConnections.add(key);
+  }
+
+  function renderBlackCell(el){
+    el.classList.add('black-block');
+    blackBlockTooltip(el);
+  }
+
+  function renderBlockCell(el, r, c, block){
+    renderBlockArms(el, block);
+    attachBoardBlockDrag(el);
+    if(state.targeting && targetKindMatches(state.targeting.def, 'block')){
+      el.classList.add('targetable');
+      if(state.targeting.targets.some(t=>t.obj===block)) el.classList.add('target-selected');
+    }
+    if(placeAnimCell && placeAnimCell.r===r && placeAnimCell.c===c){
+      el.classList.add('just-placed');
+      const visual = el.querySelector('.block-visual');
+      if(visual) visual.style.setProperty('--place-deg', (block.rotation*90)+'deg');
+    }
+  }
+
+  function renderBoardCell(r, c, boardReveal, boardHide){
+    const cellData = state.cells[r][c];
+    const el = document.createElement('div');
+    el.dataset.r=r; el.dataset.c=c;
+    el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '');
+    applyBoardCellAnimation(el, r, c, boardReveal, boardHide);
+
+    if(cellData.type==='node'){
+      renderNodeCell(el);
+    } else if(cellData.type==='hole'){
+      renderHoleCell(el, r, c);
+    } else if(cellData.type==='black'){
+      renderBlackCell(el);
+    } else if(cellData.block){
+      renderBlockCell(el, r, c, cellData.block);
+    }
+
+    boardEl.appendChild(el);
+  }
+
+  function renderBoardSwapAnimation(){
+    if(!swapAnim) return;
+    const anim=swapAnim;
+    swapAnim=null;
+    requestAnimationFrame(()=>{
+      const sourceEl=boardEl.querySelector(`.cell[data-r="${anim.source.r}"][data-c="${anim.source.c}"]`);
+      const targetEl=boardEl.querySelector(`.cell[data-r="${anim.target.r}"][data-c="${anim.target.c}"]`);
+      if(sourceEl&&targetEl){
+        const sFrom=anim.sourceRect, sTo=anim.targetRect, tFrom=anim.targetRect, tTo=anim.sourceRect;
+        const sVis=sourceEl.querySelector('.block-visual'), tVis=targetEl.querySelector('.block-visual');
+        if(sVis){ sVis.style.setProperty('--from-x', `${sFrom.left-sTo.left}px`); sVis.style.setProperty('--from-y', `${sFrom.top-sTo.top}px`); sVis.style.setProperty('--block-deg', `${(state.cells[anim.source.r][anim.source.c].block.rotation||0)*90}deg`); sVis.style.animation='blockMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)'; }
+        if(tVis){ tVis.style.setProperty('--from-x', `${tFrom.left-tTo.left}px`); tVis.style.setProperty('--from-y', `${tFrom.top-tTo.top}px`); tVis.style.setProperty('--block-deg', `${(state.cells[anim.target.r][anim.target.c].block.rotation||0)*90}deg`); tVis.style.animation='blockMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)'; }
+      }
+    });
+  }
+
+  function scheduleBoardAnimation(boardReveal, boardHide, revealToken, handRowEl){
+    if(!boardReveal && !boardHide) return;
+    const duration = ((state.rows * state.cols - 1) * 24 + 220) / animationSpeed;
+    boardRevealTimer = setTimeout(()=>{
+      if(revealToken !== boardRevealToken) return;
+      if(boardReveal){
+        boardEl.classList.remove('board-reveal-running');
+        boardEl.classList.add('board-reveal-complete');
+        state._boardReveal = false;
+        state._handReveal = false;
+        handRowEl?.classList.remove('hand-ui-reveal');
+      } else {
+        boardEl.classList.remove('board-hide-running');
+        state._boardHide = false;
+        state._handHide = false;
+        handRowEl?.classList.remove('hand-ui-hide');
+        if(typeof state._boardHideComplete === 'function') state._boardHideComplete();
+      }
+      boardRevealTimer = null;
+    }, Math.max(0, duration));
+  }
+
+  function renderBoard(boardReveal, boardHide, revealToken){
+    prepareBoardRender(boardReveal);
+    boardEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+    boardEl.style.gridTemplateRows = `repeat(${state.rows}, 1fr)`;
+    boardWrapEl.style.aspectRatio = `${state.cols} / ${state.rows}`;
+    boardEl.innerHTML = '';
+
+    for(let r=0;r<state.rows;r++){
+      for(let c=0;c<state.cols;c++) renderBoardCell(r, c, boardReveal, boardHide);
+    }
+
+    renderBoardSwapAnimation();
+    placeAnimCell = null;
+  }
+
+  function renderHUD(){
+    bagCountEl.textContent = `Túi khối còn lại: ${formatNumber(state.bag.length)}`;
+    discardCountEl.textContent = `(${formatNumber(state.discardsLeft)}/${formatNumber(getMaxDiscards())})`;
+    discardBtnEl.disabled = state.discardsLeft<=0 || !state.hand.some(Boolean) || state.resolving || state.phase!=='playing' || !!state.targeting;
+    scoreValEl.textContent = formatNumber(state.score);
+    targetValEl.textContent = formatNumber(state.target);
+    moneyValEl.textContent = formatMoney(state.money);
+    levelValEl.textContent = formatNumber(state.level);
+  }
+
   function render(){
     hideHoverTip();
-    state._animateNewHoleConnections = new Set();
     const boardReveal = !!state._boardReveal;
     const boardHide = !!state._boardHide;
     const revealToken = ++boardRevealToken;
@@ -1753,8 +1932,10 @@
       clearTimeout(boardRevealTimer);
       boardRevealTimer = null;
     }
+
     boardEl.classList.toggle('board-reveal-running', boardReveal || boardHide);
     boardEl.classList.toggle('board-hide-running', boardHide);
+
     const handRowEl = document.querySelector('.hand-row');
     const handReveal = !!state._handReveal && boardReveal;
     const handHide = !!state._handHide && boardHide;
@@ -1762,145 +1943,15 @@
     handRowEl?.classList.toggle('hand-ui-hide', handHide);
     handRowEl?.classList.toggle('reward-hidden', !!state._handRewardHidden || state.phase==='shop' || state.phase==='reward');
     boardEl.classList.remove('board-reveal-complete');
-    if(placeAnimCell){
-      const {r,c}=placeAnimCell;
-      const block=state.cells[r][c].block;
-      for(const d of [0,1,2,3]){
-        const [dx,dy]=DIR_VEC[d], hr=r+dy, hc=c+dx;
-        if(hr<0||hr>=state.rows||hc<0||hc>=state.cols || state.cells[hr][hc].type!=='hole' || !block) continue;
-        const key=`${hr},${hc},${opposite(d)}`;
-        if(openSides(block).includes(d) && !state.holeConnections.has(key)) state._animateNewHoleConnections.add(key);
-      }
-    }
-    boardEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
-    boardEl.style.gridTemplateRows = `repeat(${state.rows}, 1fr)`;
-    boardWrapEl.style.aspectRatio = `${state.cols} / ${state.rows}`;
-    boardEl.innerHTML = '';
 
-    for(let r=0;r<state.rows;r++){
-      for(let c=0;c<state.cols;c++){
-        const cellData = state.cells[r][c];
-        const el = document.createElement('div');
-        el.dataset.r=r; el.dataset.c=c;
-        el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '');
-        if(boardReveal){
-          const revealIndex = r * state.cols + c;
-          const sign = ((r + c) % 2 === 0) ? 1 : -1;
-          const angle = sign * (10 + ((r * 3 + c) % 4) * 7);
-          el.classList.add('board-reveal-cell');
-          el.style.setProperty('--reveal-delay', `${revealIndex * 24}ms`);
-          el.style.setProperty('--reveal-rotate', `${angle}deg`);
-        } else if(boardHide){
-          const hideIndex = (state.rows * state.cols - 1) - (r * state.cols + c);
-          const sign = ((r + c) % 2 === 0) ? 1 : -1;
-          const angle = sign * (10 + ((r * 3 + c) % 4) * 7);
-          el.classList.add('board-hide-cell');
-          el.style.setProperty('--hide-delay', `${hideIndex * 24}ms`);
-          el.style.setProperty('--hide-rotate', `${angle}deg`);
-        }
-
-        if(cellData.type==='node'){
-          el.dataset.dir = DIR_NAMES[state.node.dir];
-          const arm = document.createElement('div'); arm.className = 'arm arm-'+DIR_NAMES[state.node.dir];
-          const hub = document.createElement('div'); hub.className='hub';
-          el.appendChild(arm); el.appendChild(hub);
-          el.addEventListener('click', onNodeClick);
-        } else if(cellData.type==='hole'){
-          const r2=document.createElement('div'); r2.className='ring r2';
-          el.appendChild(r2);
-          const nextConnections = new Set();
-          for(const d of [0,1,2,3]){
-            const [dx,dy]=DIR_VEC[d];
-            const nr=r+dy, nc=c+dx;
-            if(nr<0||nr>=state.rows||nc<0||nc>=state.cols) continue;
-            const nb=state.cells[nr][nc].block;
-            if(!nb || !openSides(nb).includes(opposite(d))) continue;
-            const key=`${r},${c},${d}`;
-            nextConnections.add(key);
-            const connector=document.createElement('div');
-            connector.className='hole-connector '+DIR_NAMES[d];
-            if(state._animateNewHoleConnections?.has(key)) connector.classList.add('forming');
-            el.appendChild(connector);
-          }
-          for(const key of [...state.holeConnections]){
-            if(!key.startsWith(`${r},${c},`) || nextConnections.has(key)) continue;
-            const d=+key.split(',')[2];
-            const connector=document.createElement('div');
-            connector.className='hole-connector '+DIR_NAMES[d]+' retracting';
-            el.appendChild(connector);
-            setTimeout(()=>connector.remove(),scaledDuration(290));
-            state.holeConnections.delete(key);
-          }
-          for(const key of nextConnections) state.holeConnections.add(key);
-        } else if(cellData.type==='black'){
-          el.classList.add('black-block');
-          blackBlockTooltip(el);
-        } else if(cellData.block){
-          renderBlockArms(el, cellData.block);
-          attachBoardBlockDrag(el);
-          if(state.targeting && targetKindMatches(state.targeting.def, 'block')){
-            el.classList.add('targetable');
-            if(state.targeting.targets.some(t=>t.obj===cellData.block)) el.classList.add('target-selected');
-          }
-          if(placeAnimCell && placeAnimCell.r===r && placeAnimCell.c===c){
-            el.classList.add('just-placed');
-            const visual = el.querySelector('.block-visual');
-            if(visual) visual.style.setProperty('--place-deg', (cellData.block.rotation*90)+'deg');
-          }
-        }
-        boardEl.appendChild(el);
-      }
-    }
-    if(swapAnim){
-      const anim=swapAnim;
-      swapAnim=null;
-      requestAnimationFrame(()=>{
-        const sourceEl=boardEl.querySelector(`.cell[data-r="${anim.source.r}"][data-c="${anim.source.c}"]`);
-        const targetEl=boardEl.querySelector(`.cell[data-r="${anim.target.r}"][data-c="${anim.target.c}"]`);
-        if(sourceEl&&targetEl){
-          const sFrom=anim.sourceRect, sTo=anim.targetRect, tFrom=anim.targetRect, tTo=anim.sourceRect;
-          const sVis=sourceEl.querySelector('.block-visual'), tVis=targetEl.querySelector('.block-visual');
-          if(sVis){ sVis.style.setProperty('--from-x', `${sFrom.left-sTo.left}px`); sVis.style.setProperty('--from-y', `${sFrom.top-sTo.top}px`); sVis.style.setProperty('--block-deg', `${(state.cells[anim.source.r][anim.source.c].block.rotation||0)*90}deg`); sVis.style.animation='blockMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)'; }
-          if(tVis){ tVis.style.setProperty('--from-x', `${tFrom.left-tTo.left}px`); tVis.style.setProperty('--from-y', `${tFrom.top-tTo.top}px`); tVis.style.setProperty('--block-deg', `${(state.cells[anim.target.r][anim.target.c].block.rotation||0)*90}deg`); tVis.style.animation='blockMoveIn calc(.34s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)'; }
-        }
-      });
-    }
-    placeAnimCell = null;
+    renderBoard(boardReveal, boardHide, revealToken);
     handRowEl?.style.setProperty('--hand-delay-last', `${Math.max(0,getMaxHandSize()-1)*24}ms`);
     renderHand();
-    if(boardReveal){
-      const revealDuration = ((state.rows * state.cols - 1) * 24 + 220) / animationSpeed;
-      boardRevealTimer = setTimeout(()=>{
-        if(revealToken !== boardRevealToken) return;
-        boardEl.classList.remove('board-reveal-running');
-        boardEl.classList.add('board-reveal-complete');
-        state._boardReveal = false;
-        state._handReveal = false;
-        handRowEl?.classList.remove('hand-ui-reveal');
-        boardRevealTimer = null;
-      }, Math.max(0, revealDuration));
-    } else if(boardHide){
-      const hideDuration = ((state.rows * state.cols - 1) * 24 + 220) / animationSpeed;
-      boardRevealTimer = setTimeout(()=>{
-        if(revealToken !== boardRevealToken) return;
-        boardEl.classList.remove('board-hide-running');
-        state._boardHide = false;
-        state._handHide = false;
-        handRowEl?.classList.remove('hand-ui-hide');
-        boardRevealTimer = null;
-        if(typeof state._boardHideComplete === 'function') state._boardHideComplete();
-      }, Math.max(0, hideDuration));
-    }
+    scheduleBoardAnimation(boardReveal, boardHide, revealToken, handRowEl);
     renderBallQueue();
     renderCardHand();
-    bagCountEl.textContent = `Túi khối còn lại: ${formatNumber(state.bag.length)}`;
-    discardCountEl.textContent = `(${formatNumber(state.discardsLeft)}/${formatNumber(getMaxDiscards())})`;
-    discardBtnEl.disabled = state.discardsLeft<=0 || !state.hand.some(Boolean) || state.resolving || state.phase!=='playing' || !!state.targeting;
+    renderHUD();
     refreshAnimSlots.clear();
-    scoreValEl.textContent = formatNumber(state.score);
-    targetValEl.textContent = formatNumber(state.target);
-    moneyValEl.textContent = formatMoney(state.money);
-    levelValEl.textContent = formatNumber(state.level);
   }
 
   function renderHand(){
@@ -2622,44 +2673,77 @@
   }
   function wait(ms){ return new Promise(res=>setTimeout(res,scaledDuration(ms))); }
 
+  // ---------- gameplay effects (data-driven) ----------
   // ballState: { total, rate, prop, enh, broke }
+  const BLOCK_PROP_EFFECTS = {
+    steel: { onExit:(bs, x)=>{ for(let i=0;i<x;i++) bs.rate *= 2; } },
+    stone: { onExit:(bs, x)=>{ bs.rate += 50*x; } },
+    wood:  { onExit:(bs, x)=>{ bs.total += 10*x; } },
+    glass: { onExit:(bs, x)=>{ for(let i=0;i<x;i++) bs.total *= 2; }, chanceToBreak:0.25 },
+    gold:  { onExit:(bs, x)=>{ state.money += 3*x; } },
+  };
+
+  const BALL_PROP_EFFECTS = {
+    striped: { onExit:(bs, x)=>{ bs.total += 10*x; } },
+    grid:    { onExit:(bs, x)=>{ bs.total += 100*x; } },
+    glass:   { onExit:(bs, x)=>{ for(let i=0;i<x;i++) bs.total *= 2; } },
+    steel:   { onGoal:(bs, x)=>{ for(let i=0;i<x;i++) bs.total *= 2; } },
+    gold:    { onGoal:(bs, x)=>{ state.money += 5*x; } },
+  };
+
+  const ENHANCEMENT_EFFECTS = {
+    spark: { blockExit:(bs)=>{ bs.total += bs.rate; }, ballExit:(bs)=>{ bs.total *= 2; } },
+    holo:  { blockExit:(bs)=>{ bs.total += 50; }, ballExit:(bs)=>{ bs.total += 50; } },
+  };
+
+  function syncMoneyHud(){
+    moneyValEl.textContent = formatMoney(state.money);
+  }
+
   function blockExitEffects(block, ballState){
     const prop = block.property, enh = block.enhancement;
-    const sparkX = (enh==='spark') ? 2 : 1;
+    const sparkX = enh==='spark' ? 2 : 1;
     let brokeBlock = false;
 
-    if(prop==='steel'){ for(let i=0;i<sparkX;i++) ballState.rate *= 2; }
-    if(prop==='stone'){ ballState.rate += 50*sparkX; }
+    const propFx = BLOCK_PROP_EFFECTS[prop];
+    propFx?.onExit?.(ballState, sparkX);
 
     ballState.total += ballState.rate; // base (*) gain
 
-    if(prop==='wood'){ ballState.total += 10*sparkX; }
-    if(prop==='glass'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; if(Math.random()<0.25) brokeBlock=true; }
-    if(prop==='gold'){ state.money += 3*sparkX; moneyValEl.textContent = formatMoney(state.money); }
+    if(propFx?.chanceToBreak && Math.random() < propFx.chanceToBreak) brokeBlock = true;
+    if(!prop && enh==='spark') ENHANCEMENT_EFFECTS.spark.blockExit(ballState);
+    if(enh==='holo') ENHANCEMENT_EFFECTS.holo.blockExit(ballState);
 
-    if(!prop && enh==='spark'){ ballState.total += ballState.rate; }
-    if(enh==='holo'){ ballState.total += 50; }
-
+    if(prop==='gold') syncMoneyHud();
     ballState.total += (state.typeBonus[block.type] || 0);
     return brokeBlock;
   }
 
   function ballExitEffects(ballState){
     const prop = ballState.prop, enh = ballState.enh;
-    const sparkX = (enh==='spark') ? 2 : 1;
-    if(prop==='striped'){ ballState.total += 10*sparkX; }
-    if(prop==='grid'){ ballState.total += 100*sparkX; }
-    if(prop==='glass'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; }
-    if(!prop && enh==='spark'){ ballState.total *= 2; }
-    if(enh==='holo'){ ballState.total += 50; }
+    const sparkX = enh==='spark' ? 2 : 1;
+    BALL_PROP_EFFECTS[prop]?.onExit?.(ballState, sparkX);
+    if(!prop && enh==='spark') ENHANCEMENT_EFFECTS.spark.ballExit(ballState);
+    if(enh==='holo') ENHANCEMENT_EFFECTS.holo.ballExit(ballState);
   }
 
   function ballGoalEffects(ballState){
     const prop = ballState.prop, enh = ballState.enh;
-    const sparkX = (enh==='spark') ? 2 : 1;
-    if(prop==='steel'){ for(let i=0;i<sparkX;i++) ballState.total *= 2; }
-    if(prop==='gold'){ state.money += 5*sparkX; moneyValEl.textContent = formatMoney(state.money); }
-    if(prop==='glass' && Math.random()<0.25){ ballState.broke = true; }
+    const sparkX = enh==='spark' ? 2 : 1;
+    BALL_PROP_EFFECTS[prop]?.onGoal?.(ballState, sparkX);
+    if(prop==='gold' || prop==='steel') syncMoneyHud();
+    // Glass has a separate goal-side break chance; keep it explicit so the
+    // existing property semantics remain unchanged.
+    if(prop==='glass' && Math.random()<0.25) ballState.broke = true;
+  }
+
+  async function loseBall(ball, tip, r, c){
+    if(Number.isInteger(r) && Number.isInteger(c)) flashBlocked(r,c);
+    ball.classList.add('lost');
+    tip.style.opacity='0';
+    await wait(300);
+    removeEntity(ball,tip);
+    return [];
   }
 
   async function travel(ball, tip, row, col, dir, ballState, counter, generation=runGeneration){
@@ -2677,10 +2761,7 @@
       ball.style.left=L; ball.style.top=T; tip.style.left=L; tip.style.top=T;
       await wait(230);
       if(generation!==runGeneration || !state){ removeEntity(ball,tip); return []; }
-      ball.classList.add('lost'); tip.style.opacity='0';
-      await wait(300);
-      removeEntity(ball,tip);
-      return [];
+      return loseBall(ball, tip);
     }
 
     await moveEntityTo(ball,tip,nr,nc);
@@ -2688,10 +2769,7 @@
     const cellData = state.cells[nr][nc];
 
     if(cellData.type==='black'){
-      flashBlocked(nr,nc);
-      ball.classList.add('lost'); tip.style.opacity='0';
-      await wait(300); removeEntity(ball,tip);
-      return [];
+      return loseBall(ball, tip, nr, nc);
     }
 
     if(cellData.type==='hole'){
@@ -2732,20 +2810,14 @@
     }
 
     if(cellData.type==='node' || (cellData.type==='empty' && !cellData.block)){
-      flashBlocked(nr,nc);
-      ball.classList.add('lost'); tip.style.opacity='0';
-      await wait(300); removeEntity(ball,tip);
-      return [];
+      return loseBall(ball, tip, nr, nc);
     }
 
     const entrySide = opposite(dir);
     const blockRef = cellData.block;
     const sides = openSides(blockRef);
     if(!sides.includes(entrySide)){
-      flashBlocked(nr,nc);
-      ball.classList.add('lost'); tip.style.opacity='0';
-      await wait(300); removeEntity(ball,tip);
-      return [];
+      return loseBall(ball, tip, nr, nc);
     }
 
     const previousTotal = ballState.total;
@@ -3490,139 +3562,181 @@
     return true;
   }
 
+  function rerollShop(){
+    if(state.money<state.commonRerollCost) return;
+    state.money-=state.commonRerollCost;
+    state.commonRerollCost++;
+    state.commonItems=makeCommonStock();
+    moneyValEl.textContent=formatMoney(state.money);
+    renderShop();
+    scheduleAutoSave();
+  }
+
+  function buyCommonShop(item){
+    if(item.bought || state.money < shopPrice(item.price)) return;
+    if((item.kind==='upgrade'||item.kind==='power') && state.cardHand.length>=getMaxCardHand()) return;
+
+    if(item.kind==='upgrade' || item.kind==='power'){
+      state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
+    } else if(!applyCommonItem(item)) {
+      return;
+    }
+
+    state.money-=shopPrice(item.price);
+    item.bought=true;
+    moneyValEl.textContent=formatMoney(state.money);
+    render();
+    refreshOpenShop();
+    scheduleAutoSave();
+  }
+
+  function useCommonShop(item){
+    if(item.bought || state.money < shopPrice(item.price)) return;
+    if(item.kind!=='power' && item.kind!=='upgrade') return;
+
+    const def = item.kind==='power' ? POWER_CARD_DEFS[item.ref.defId] : UPGRADE_POOL.find(x=>x.id===item.ref.defId);
+    if(!def) return;
+    if(item.kind==='power' && state.cardHand.length>=getMaxCardHand()) return;
+
+    const handIdx=state.cardHand.length;
+    state.cardHand.push({id:cardUid(),kind:item.kind,defId:def.id});
+    state.money-=shopPrice(item.price);
+    item.bought=true;
+    moneyValEl.textContent=formatMoney(state.money);
+
+    render();
+    activateCardFromHand(handIdx, def);
+    refreshOpenShop();
+    scheduleAutoSave();
+  }
+
+  function renderGachaBoxShop(g){
+    const box=document.createElement('div'); box.className='gacha-box';
+    const names={block:'Hộp khối',ball:'Hộp bóng',power:'Hộp thẻ sức mạnh',upgrade:'Hộp thẻ nâng cấp'};
+    if(g.done){
+      box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span></div><div class="tag-done">Đã dùng</div>`;
+      return box;
+    }
+    box.innerHTML=`<div class="shop-price">${formatMoney(shopPrice(gachaPrice(g.type, g.tier)))}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label}</div>`;
+    const actions=document.createElement('div'); actions.className='shop-item-actions';
+    const gachaCost=shopPrice(gachaPrice(g.type, g.tier));
+    const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<gachaCost; buy.addEventListener('click',()=>{
+      state.money-=gachaCost;
+      moneyValEl.textContent=formatMoney(state.money);
+      g.done=true;
+      g.options=g.type==='block'?genBlockOptions(g.tier):g.type==='ball'?genBallOptions(g.tier):g.type==='power'?genPowerOptions(g.tier):genUpgradeOptions(g.tier);
+      renderShop();
+      showGachaChoice(g);
+      scheduleAutoSave();
+    });
+    actions.appendChild(buy);
+    box.appendChild(actions);
+    return box;
+  }
+
+  function positionShopPanel(panel){
+    const anchor=ballQueueEl.getBoundingClientRect();
+    const top=Math.max(8, anchor.bottom + 10);
+    panel.style.top=`${Math.round(top)}px`;
+  }
+
+  function renderShop(){
+    if(!state) return;
+    syncBallQueueFromPool();
+    shopOverlayEl.innerHTML='';
+    const panel=document.createElement('div'); panel.className='shop-panel';
+    panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG</h2>`;
+    positionShopPanel(panel);
+
+    const common=document.createElement('div'); common.className='shop-section'; common.innerHTML='<h3>Hàng hóa chung</h3>';
+    const commonGrid=document.createElement('div'); commonGrid.className='shop-common-grid';
+    state.commonItems.forEach(item=>{
+      const row=document.createElement('div'); row.className='shop-card';
+      const price=document.createElement('div'); price.className='shop-price price'; price.textContent=formatMoney(shopPrice(item.price));
+      row.appendChild(price);
+
+      const visual=document.createElement('div'); visual.className='shop-item-visual';
+      if(item.kind==='block'){
+        const blockVisual=document.createElement('div');
+        blockVisual.innerHTML=renderMiniBlockMarkup(item.ref);
+        markDebugTarget(blockVisual, item.ref, 'block');
+        attachObjectTooltip(blockVisual, item.ref, 'block');
+        visual.appendChild(blockVisual);
+      } else {
+        const name=document.createElement('div'); name.className='shop-item-name'; name.textContent=item.name;
+        visual.appendChild(name);
+      }
+      if(item.kind==='power') attachCardTooltip(visual, POWER_CARD_DEFS[item.ref.defId]);
+      if(item.kind==='upgrade') attachCardTooltip(visual, UPGRADE_POOL.find(x=>x.id===item.ref.defId));
+      row.appendChild(visual);
+
+      const actions=document.createElement('div'); actions.className='shop-item-actions';
+      const buy=document.createElement('button'); buy.textContent=item.bought?'Đã mua':'Mua';
+      buy.disabled=item.bought||state.money<shopPrice(item.price)||((item.kind==='power'||item.kind==='upgrade')&&state.cardHand.length>=getMaxCardHand());
+      buy.addEventListener('click',()=>buyCommonShop(item));
+      actions.appendChild(buy);
+      if(item.kind==='power'||item.kind==='upgrade'){
+        const use=document.createElement('button'); use.className='use-btn'; use.textContent='Dùng';
+        use.disabled=item.bought||state.money<shopPrice(item.price)||(item.kind==='power'&&state.cardHand.length>=getMaxCardHand());
+        use.addEventListener('click',()=>useCommonShop(item));
+        actions.appendChild(use);
+      }
+      row.appendChild(actions);
+      commonGrid.appendChild(row);
+    });
+    common.appendChild(commonGrid);
+    const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;';
+    const rb=document.createElement('button'); rb.textContent=`Đổi hàng (${formatMoney(state.commonRerollCost)})`;
+    rb.disabled=state.money<state.commonRerollCost;
+    rb.addEventListener('click',rerollShop);
+    rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
+
+    const lower=document.createElement('div'); lower.className='shop-lower';
+    const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>';
+    const br=document.createElement('div'); br.className='shop-card';
+    const bo=state.shopBuff;
+    const buffCost=bo.id==='discount'?bo.cost:shopPrice(bo.cost);
+    br.innerHTML=`<div class="shop-price">$${buffCost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`;
+    const buffActions=document.createElement('div'); buffActions.className='shop-item-actions';
+    const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<buffCost;
+    bb.addEventListener('click',()=>{
+      state.money-=buffCost;
+      bo.apply();
+      bo.bought=true;
+      markBuffOwned(bo.id);
+      state.shopBuffBought=true;
+      moneyValEl.textContent=formatMoney(state.money);
+      renderShop();
+      scheduleAutoSave();
+    });
+    buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
+
+    const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>';
+    const gachGrid=document.createElement('div'); gachGrid.className='shop-gacha-grid';
+    state.gachaStock.forEach(g=>gachGrid.appendChild(renderGachaBoxShop(g)));
+    gach.appendChild(gachGrid); lower.appendChild(gach); panel.appendChild(lower);
+
+    const cont=document.createElement('div'); cont.className='shop-continue';
+    const cb=document.createElement('button'); cb.className='gold'; cb.textContent=`→ Màn ${formatNumber(state.level+1)}`;
+    cb.addEventListener('click',()=>{
+      if(cb.dataset.busy==='1') return;
+      cb.dataset.busy='1';
+      state.commonItems=null;
+      state.gachaStock=null;
+      state.commonRerollCost=3;
+      newLevel();
+    });
+    cont.appendChild(cb); panel.appendChild(cont);
+    shopOverlayEl.appendChild(panel);
+  }
+
   function openShop(){
     if(!state.commonItems) state.commonItems=makeCommonStock();
     if(!state.gachaStock) state.gachaStock=makeGachaStock();
     if(!state.shopBuff) state.shopBuff={...pickAvailableBuff(),bought:false};
+    activeRenderShop = renderShop;
     shopOverlayEl.classList.remove('hidden');
     cardHandEl.classList.add('shop-active');
-
-    function reroll(){
-      if(state.money<state.commonRerollCost) return;
-      state.money-=state.commonRerollCost;
-      state.commonRerollCost++;
-      state.commonItems=makeCommonStock();
-      moneyValEl.textContent=formatMoney(state.money);
-      renderShop();
-      scheduleAutoSave();
-    }
-    function buyCommon(item){
-      if(item.bought || state.money < shopPrice(item.price)) return;
-      if((item.kind==='upgrade'||item.kind==='power') && state.cardHand.length>=getMaxCardHand()) return;
-
-      if(item.kind==='upgrade' || item.kind==='power'){
-        state.cardHand.push({id:cardUid(),kind:item.kind,defId:item.ref.defId});
-      } else if(!applyCommonItem(item)){
-        return;
-      }
-
-      state.money-=shopPrice(item.price);
-      item.bought=true;
-      moneyValEl.textContent=formatMoney(state.money);
-      render();
-      refreshOpenShop();
-      scheduleAutoSave();
-    }
-
-    function useCommon(item){
-      if(item.bought || state.money < shopPrice(item.price)) return;
-      if(item.kind!=='power' && item.kind!=='upgrade') return;
-
-      const def = item.kind==='power' ? POWER_CARD_DEFS[item.ref.defId] : UPGRADE_POOL.find(x=>x.id===item.ref.defId);
-      if(!def) return;
-      if(item.kind==='power' && state.cardHand.length>=getMaxCardHand()) return;
-
-      const handIdx=state.cardHand.length;
-      state.cardHand.push({id:cardUid(),kind:item.kind,defId:def.id});
-      state.money-=shopPrice(item.price);
-      item.bought=true;
-      moneyValEl.textContent=formatMoney(state.money);
-
-      render();
-      activateCardFromHand(handIdx, def);
-      refreshOpenShop();
-      scheduleAutoSave();
-    }
-
-    function renderGachaBox(g){
-      const box=document.createElement('div'); box.className='gacha-box';
-      const names={block:'Hộp khối',ball:'Hộp bóng',power:'Hộp thẻ sức mạnh',upgrade:'Hộp thẻ nâng cấp'};
-      if(g.done){ box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span></div><div class="tag-done">Đã dùng</div>`; return box; }
-      box.innerHTML=`<div class="shop-price">${formatMoney(shopPrice(gachaPrice(g.type, g.tier)))}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label}</div>`;
-      const actions=document.createElement('div'); actions.className='shop-item-actions';
-      const gachaCost=shopPrice(gachaPrice(g.type, g.tier));
-      const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<gachaCost; buy.addEventListener('click',()=>{
-        state.money-=gachaCost; moneyValEl.textContent=formatMoney(state.money);
-        g.done=true;
-        g.options=g.type==='block'?genBlockOptions(g.tier):g.type==='ball'?genBallOptions(g.tier):g.type==='power'?genPowerOptions(g.tier):genUpgradeOptions(g.tier);
-        renderShop();
-        showGachaChoice(g);
-      });
-      actions.appendChild(buy);
-      box.appendChild(actions);
-      return box;
-    }
-
-    function positionShopPanel(panel){
-      const anchor=ballQueueEl.getBoundingClientRect();
-      const top=Math.max(8, anchor.bottom + 10);
-      panel.style.top=`${Math.round(top)}px`;
-    }
-
-    function renderShop(){
-      syncBallQueueFromPool();
-      shopOverlayEl.innerHTML='';
-      const panel=document.createElement('div'); panel.className='shop-panel';
-      panel.innerHTML=`<h2 class="shop-title">CỬA HÀNG</h2>`;
-      positionShopPanel(panel);
-
-      const common=document.createElement('div'); common.className='shop-section'; common.innerHTML='<h3>Hàng hóa chung</h3>';
-      const commonGrid=document.createElement('div'); commonGrid.className='shop-common-grid';
-      state.commonItems.forEach(item=>{
-        const row=document.createElement('div'); row.className='shop-card';
-        const price=document.createElement('div'); price.className='shop-price price'; price.textContent=formatMoney(shopPrice(item.price));
-        row.appendChild(price);
-
-        const visual=document.createElement('div'); visual.className='shop-item-visual';
-        if(item.kind==='block'){
-          const blockVisual=document.createElement('div');
-          blockVisual.innerHTML=renderMiniBlockMarkup(item.ref);
-          markDebugTarget(blockVisual, item.ref, 'block');
-          attachObjectTooltip(blockVisual, item.ref, 'block');
-          visual.appendChild(blockVisual);
-        } else {
-          const name=document.createElement('div'); name.className='shop-item-name'; name.textContent=item.name;
-          visual.appendChild(name);
-        }
-        if(item.kind==='power') attachCardTooltip(visual, POWER_CARD_DEFS[item.ref.defId]);
-        if(item.kind==='upgrade') attachCardTooltip(visual, UPGRADE_POOL.find(x=>x.id===item.ref.defId));
-        row.appendChild(visual);
-
-        const actions=document.createElement('div'); actions.className='shop-item-actions';
-        const buy=document.createElement('button'); buy.textContent=item.bought?'Đã mua':'Mua';
-        buy.disabled=item.bought||state.money<shopPrice(item.price)||((item.kind==='power'||item.kind==='upgrade')&&state.cardHand.length>=getMaxCardHand());
-        buy.addEventListener('click',()=>buyCommon(item));
-        actions.appendChild(buy);
-        if(item.kind==='power'||item.kind==='upgrade'){
-          const use=document.createElement('button'); use.className='use-btn'; use.textContent='Dùng';
-          use.disabled=item.bought||state.money<shopPrice(item.price)||(item.kind==='power'&&state.cardHand.length>=getMaxCardHand());
-          use.addEventListener('click',()=>useCommon(item));
-          actions.appendChild(use);
-        }
-        row.appendChild(actions);
-        commonGrid.appendChild(row);
-      });
-      common.appendChild(commonGrid);
-      const rr=document.createElement('div'); rr.style.cssText='display:flex;justify-content:center;margin-top:8px;'; const rb=document.createElement('button'); rb.textContent=`Đổi hàng (${formatMoney(state.commonRerollCost)})`; rb.disabled=state.money<state.commonRerollCost; rb.addEventListener('click',reroll); rr.appendChild(rb); common.appendChild(rr); panel.appendChild(common);
-
-      const lower=document.createElement('div'); lower.className='shop-lower';
-      const buff=document.createElement('div'); buff.className='shop-section'; buff.innerHTML='<h3>Thẻ buff</h3>'; const br=document.createElement('div'); br.className='shop-card'; const bo=state.shopBuff; const buffCost=bo.id==='discount'?bo.cost:shopPrice(bo.cost); br.innerHTML=`<div class="shop-price">$${buffCost}</div><div class="desc"><span class="name">${bo.name}</span>${bo.desc}</div>`; const buffActions=document.createElement('div'); buffActions.className='shop-item-actions'; const bb=document.createElement('button'); bb.textContent=bo.bought?'Đã mua':'Mua'; bb.disabled=bo.bought||state.money<buffCost; bb.addEventListener('click',()=>{ state.money-=buffCost; bo.apply(); bo.bought=true; markBuffOwned(bo.id); state.shopBuffBought=true; moneyValEl.textContent=formatMoney(state.money); renderShop(); }); buffActions.appendChild(bb); br.appendChild(buffActions); buff.appendChild(br); lower.appendChild(buff);
-      const gach=document.createElement('div'); gach.className='shop-section'; gach.innerHTML='<h3>Các hộp gacha</h3>'; const gachGrid=document.createElement('div'); gachGrid.className='shop-gacha-grid'; state.gachaStock.forEach(g=>gachGrid.appendChild(renderGachaBox(g))); gach.appendChild(gachGrid); lower.appendChild(gach); panel.appendChild(lower);
-
-      const cont=document.createElement('div'); cont.className='shop-continue'; const cb=document.createElement('button'); cb.className='gold'; cb.textContent=`→ Màn ${formatNumber(state.level+1)}`; cb.addEventListener('click',()=>{ if(cb.dataset.busy==='1') return; cb.dataset.busy='1'; state.commonItems=null; state.gachaStock=null; state.commonRerollCost=3; newLevel(); }); cont.appendChild(cb); panel.appendChild(cont);
-      shopOverlayEl.appendChild(panel);
-    }
-    activeRenderShop = renderShop;
     renderShop();
   }
 

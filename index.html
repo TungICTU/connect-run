@@ -541,6 +541,55 @@
   .gacha-opt .mini-block .arm-wrap[data-prop=glass] .arm,.gacha-opt .mini-block .arm-wrap[data-prop=glass] .hub{background:transparent;border:1px solid rgba(255,255,255,.85);box-shadow:none}
   .gacha-opt .mini-block .arm-wrap[data-prop=striped] .arm,.gacha-opt .mini-block .arm-wrap[data-prop=striped] .hub{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}
   .gacha-opt .mini-block .arm-wrap[data-prop=grid] .arm,.gacha-opt .mini-block .arm-wrap[data-prop=grid] .hub{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
+  /* Gacha block previews: larger and closer to the board block visual. */
+  .gacha-opt .mini-block{
+    width:68px;
+    height:68px;
+    margin:0 auto 8px;
+    background:var(--bg-deep);
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .gacha-opt .mini-block .arm{ box-shadow:0 0 8px var(--cyan-dim); }
+  .gacha-opt .mini-block .hub{ box-shadow:0 0 8px var(--cyan-dim); }
+  .gacha-block-choice{
+    flex:0 0 auto;
+    width:78px;
+    min-height:78px;
+    padding:4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:transparent;
+    border:0;
+    border-radius:0;
+    cursor:pointer;
+  }
+  .gacha-block-choice:hover{ background:transparent; }
+  .gacha-block-choice .mini-block{
+    width:68px;
+    height:68px;
+    margin:0;
+    position:relative;
+    flex:0 0 68px;
+    background:var(--bg-deep);
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .gacha-block-choice .mini-block .arm{ box-shadow:0 0 8px var(--cyan-dim); }
+  .gacha-block-choice .mini-block .hub{ box-shadow:0 0 8px var(--cyan-dim); }
+  .gacha-block-choice.selected .mini-block{
+    filter:drop-shadow(0 0 4px rgba(111,207,151,.9)) drop-shadow(0 0 10px rgba(111,207,151,.45));
+  }
+  .gacha-power-block-options{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+  }
   .gacha-opt .mini-ball[data-prop=steel]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#c7cdd3;box-shadow:0 0 7px rgba(255,255,255,.15)}.gacha-opt .mini-ball[data-prop=stone]{background:#777;box-shadow:none}.gacha-opt .mini-ball[data-prop=gold]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.8) 0 2px,transparent 22%),#f2c94c}.gacha-opt .mini-ball[data-prop=wood]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.78) 0 2px,transparent 22%),#b8895a;box-shadow:0 0 7px rgba(255,255,255,.12)}.gacha-opt .mini-ball[data-prop=glass]{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.82) 0 2px,transparent 22%),transparent;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.22)}.gacha-opt .mini-ball[data-prop=striped]{background:#c94848;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.16) 0 3px,transparent 3px 7px)}.gacha-opt .mini-ball[data-prop=grid]{background:#3976b9;background-image:linear-gradient(rgba(255,255,255,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.2) 1px,transparent 1px);background-size:6px 6px}
   .gacha-opt .mini-block .arm-wrap[data-enh=holo] .arm,.gacha-opt .mini-block .arm-wrap[data-enh=holo] .hub,.gacha-opt .mini-ball[data-enh=holo]{background:#2f80ed;background-image:none}
   .gacha-opt .mini-block .arm-wrap[data-enh=invert],.gacha-opt .mini-ball[data-enh=invert]{filter:invert(1)}
@@ -555,6 +604,8 @@
   .gacha-choice-head h2{ margin:0 0 5px; font-family:'JetBrains Mono',monospace; color:var(--green); letter-spacing:1px; font-size:15px; }
   .gacha-choice-head p{ margin:0; color:var(--ink-dim); font-size:12px; line-height:1.5; }
   .gacha-choice-section{ margin-top:14px; }
+  .gacha-power-targets,.gacha-power-owned-balls{ margin-top:10px; }
+  .gacha-power-targets:first-of-type{ margin-top:2px; }
   .gacha-choice-section h3{ font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--cyan); margin:0 0 8px; border-bottom:1px solid var(--panel-line); padding-bottom:6px; }
   .gacha-choice-options{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
   .gacha-choice-actions{ display:flex; justify-content:center; gap:8px; margin-top:16px; flex-wrap:wrap; }
@@ -1224,6 +1275,9 @@
 
   // ---------- run / level state ----------
   let state = null;
+  // Invalidates async shots from previous runs so they cannot mutate a new run.
+  let runGeneration = 0;
+  let rewardGeneration = 0;
   let _ballUid = 1;
   function ballUid(){ return 'b' + (_ballUid++); }
   function ensureBallIds(){ state.ballPool.forEach(b=>{ if(!b._id) b._id=ballUid(); }); }
@@ -1411,6 +1465,17 @@
   }
 
   function newRun(){
+    rewardGeneration++;
+    // Invalidate async work from the previous run before replacing the global state.
+    runGeneration++;
+    if(boardRevealTimer){
+      clearTimeout(boardRevealTimer);
+      boardRevealTimer=null;
+    }
+    document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup').forEach(el=>el.remove());
+    ballClickSelection=null;
+    suppressBallClickUntil=0;
+
     state = {
       money: 3, level: 0,
       baseRateBonus: 0, typeBonus: { straight:0, L:0, T:0, plus:0 },
@@ -1530,6 +1595,13 @@
   }
 
   function newLevel(){
+    rewardGeneration++;
+    const rewardBtn = document.getElementById('overlayBtn');
+    if(rewardBtn){
+      rewardBtn.dataset.busy='';
+      rewardBtn.disabled=false;
+      rewardBtn.onclick=newRun;
+    }
     state.level += 1;
     state.target = computeTarget(state.level);
     state.score = 0;
@@ -2590,7 +2662,11 @@
     if(prop==='glass' && Math.random()<0.25){ ballState.broke = true; }
   }
 
-  async function travel(ball, tip, row, col, dir, ballState, counter){
+  async function travel(ball, tip, row, col, dir, ballState, counter, generation=runGeneration){
+    if(generation!==runGeneration || !state){
+      removeEntity(ball,tip);
+      return [];
+    }
     counter.launched++;
     const [dx,dy] = DIR_VEC[dir];
     const nr=row+dy, nc=col+dx;
@@ -2600,12 +2676,15 @@
       const L=(p.left+dx*40)+'%', T=(p.top+dy*40)+'%';
       ball.style.left=L; ball.style.top=T; tip.style.left=L; tip.style.top=T;
       await wait(230);
+      if(generation!==runGeneration || !state){ removeEntity(ball,tip); return []; }
       ball.classList.add('lost'); tip.style.opacity='0';
-      await wait(300); removeEntity(ball,tip);
+      await wait(300);
+      removeEntity(ball,tip);
       return [];
     }
 
     await moveEntityTo(ball,tip,nr,nc);
+    if(generation!==runGeneration || !state){ removeEntity(ball,tip); return []; }
     const cellData = state.cells[nr][nc];
 
     if(cellData.type==='black'){
@@ -2640,6 +2719,7 @@
       ball.classList.add('scored');
       tip.style.opacity='0';
       await wait(700);
+      if(generation!==runGeneration || !state){ goalPopup.remove(); removeEntity(ball,tip); return []; }
       goalPopup.remove();
       removeEntity(ball,tip);
       counter.scored++;
@@ -2703,6 +2783,7 @@
   async function onNodeClick(){
     if(state.resolving || state.phase!=='playing' || state.targeting) return;
     if(state.ballsFired >= state.ballQueue.length) return;
+    const generation = runGeneration;
     state.resolving = true;
 
     for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
@@ -2733,9 +2814,12 @@
 
     const branchPromises = initialStates.map(bs=>{
       const ent = createBallEntity(state.node.r, state.node.c, bs);
-      return travel(ent.ball, ent.tip, state.node.r, state.node.c, state.node.dir, bs, counter);
+      return travel(ent.ball, ent.tip, state.node.r, state.node.c, state.node.dir, bs, counter, generation);
     });
     const resultsArrays = await Promise.all(branchPromises);
+    if(generation!==runGeneration || !state){
+      return;
+    }
     const results = resultsArrays.flat();
 
     const gained = counter.points || 0;
@@ -2801,6 +2885,7 @@
   }
 
   function showLevelReward(info){
+    const rewardId = ++rewardGeneration;
     shopOverlayEl.classList.add('hidden');
     shopOverlayEl.innerHTML='';
     const winBonus = Number.isFinite(info.winBonus) ? info.winBonus : 3;
@@ -2820,13 +2905,18 @@
         <div class="reward-row"><span class="reward-label reward-step">- Tiền lãi (Mỗi 5$ nhận thêm 1$, tối đa ${formatMoney(5 + state.interestCapBonus)}):</span><span class="reward-value reward-step">${formatNumber(info.interest)}$</span></div>
       </div>`;
 
-    const oldBtn=document.getElementById('overlayBtn');
-    const btn=oldBtn;
+    const btn=document.getElementById('overlayBtn');
+    // The reward button is shared with the lose overlay/restart flow.
+    // Reset every transient state and bind this button to a unique reward cycle.
     btn.className='gold reward-step';
+    delete btn.dataset.busy;
+    btn.disabled=false;
     btn.textContent=`Nhận tiền: ${formatNumber(total)}$`;
     btn.onclick=()=>{
-      if(btn.dataset.busy==='1') return;
+      // Ignore stale handlers from an older reward/run and prevent double collection.
+      if(rewardId!==rewardGeneration || btn.dataset.busy==='1' || state.phase!=='reward') return;
       btn.dataset.busy='1';
+      btn.disabled=true;
 
       // No scale/zoom-out animation when collecting the reward.
       state.money += total;
@@ -2850,6 +2940,12 @@
       hideOverlay();
       overlayEl.classList.remove('reward-clear');
       openShop();
+      // The reward has been consumed; while the shop is active the shared button
+      // must not retain a stale reward handler.
+      btn.dataset.busy='';
+      btn.disabled=false;
+      btn.onclick=newRun;
+      scheduleAutoSave();
     };
     overlayEl.classList.remove('hidden');
 
@@ -2858,14 +2954,17 @@
       if(title) setTimeout(()=>title.classList.add('reward-show'),0);
       const labels=[...overlayPanelEl.querySelectorAll('.reward-row .reward-label')];
       const values=[...overlayPanelEl.querySelectorAll('.reward-row .reward-value')];
-      let delay=500;
+      // Keep the reward reveal timings consistent with the selected animation speed.
+      // CSS animation durations already use --anim-speed, so the JS delays must
+      // use the same scale as well.
+      let delay=scaledDuration(500);
       for(let i=0;i<labels.length;i++){
         setTimeout(()=>labels[i].classList.add('reward-show'),delay);
-        delay += 220;
+        delay += scaledDuration(220);
         setTimeout(()=>values[i]?.classList.add('reward-show'),delay);
-        delay += 260;
+        delay += scaledDuration(260);
       }
-      setTimeout(()=>btn.classList.add('reward-show'),delay+500);
+      setTimeout(()=>btn.classList.add('reward-show'),delay+scaledDuration(500));
     });
   }
 
@@ -3070,6 +3169,10 @@
     return `${renderMiniBlockMarkup(b)}<div>${TYPE_LABEL[b.type]}</div><div>${prop}${prop&&enh?' · ':''}${enh}</div>`;
   }
 
+  function gachaBlockChoiceLabel(b){
+    return renderMiniBlockMarkup(b);
+  }
+
   function renderMiniBlockMarkup(block){
     const deg = block.rotation||0;
     const sides = BASE_SIDES[block.type].map(side => DIR_NAMES[(side+deg)%4]);
@@ -3129,8 +3232,16 @@
 
   function applyPowerPick(opt, targets){
     const def=POWER_CARD_DEFS[opt.defId];
+    if(!def) return false;
     if(def.targetCount===0){ def.use([]); return true; }
-    if(!targets || targets.length<def.targetCount) return false;
+    const minTargets = def.targetMinCount ?? def.targetCount;
+    const maxTargets = def.targetCount;
+    if(!targets || targets.length<minTargets || targets.length>maxTargets) return false;
+    if(def.targetKind==='swap'){
+      if(targets.length!==2 || targets[0]?.kind!==targets[1]?.kind) return false;
+    } else if(!targets.every(t=>targetKindMatches(def,t.kind))) {
+      return false;
+    }
     def.use(targets);
     rememberLastUsedCard(def);
     syncBallMutationTargets(targets);
@@ -3160,19 +3271,26 @@
 
     function finish(){
       syncBallQueueFromPool();
-      hideGachaChoice(); renderBallQueue(); renderShop();
+      hideGachaChoice();
+      renderBallQueue();
+      // renderShop() is local to openShop(); reopen the shop through its public entry point.
+      openShop();
+      scheduleAutoSave();
     }
 
     function skip(){ finish(); }
 
     if(g.type==='block'){
+      optionsWrap.classList.add('gacha-block-options');
       g.options.forEach((opt,i)=>{
-        const el=document.createElement('div'); el.className='gacha-opt'; el.innerHTML=blockOptionLabel(opt);
+        const el=document.createElement('div');
+        el.className='gacha-block-choice';
+        el.innerHTML=gachaBlockChoiceLabel(opt);
         attachObjectTooltip(el, opt, 'block');
         el.addEventListener('click',()=>{
           if(stateUi.selected.includes(i)) stateUi.selected=stateUi.selected.filter(x=>x!==i);
           else if(stateUi.selected.length<g.tier.picks) stateUi.selected.push(i);
-          optionsWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.selected.includes(j)));
+          optionsWrap.querySelectorAll('.gacha-block-choice').forEach((n,j)=>n.classList.toggle('selected',stateUi.selected.includes(j)));
           accept.disabled=!stateUi.selected.length;
           accept.textContent=`Nhận (${stateUi.selected.length}/${g.tier.picks})`;
         });
@@ -3196,7 +3314,6 @@
       const note=document.createElement('div'); note.className='gacha-choice-section';
       const max=BASE_MAX_BALLS + state.maxBallsBonus;
       if(state.ballPool.length < max){
-        note.innerHTML=`<h3>Bóng hiện có (${state.ballPool.length}/${max})</h3>`;
         const ownedWrap=document.createElement('div'); ownedWrap.className='ball-choice-grid';
         state.ballPool.forEach((b,i)=>{ const e=document.createElement('div'); e.className='ball-choice-item gacha-owned-ball'; e.innerHTML=ballOptionLabel(b); markDebugTarget(e,b,'ball'); attachObjectTooltip(e,b,'ball'); ownedWrap.appendChild(e); });
         note.appendChild(ownedWrap);
@@ -3217,7 +3334,6 @@
           optionsWrap.appendChild(el);
         });
       } else {
-        note.innerHTML=`<h3>Bóng hiện có (${state.ballPool.length}/${max}) — chọn 1 bóng để thay</h3>`;
         const ownedWrap=document.createElement('div'); ownedWrap.className='ball-choice-grid';
         state.ballPool.forEach((b,i)=>{ const e=document.createElement('div'); e.className='ball-choice-item gacha-owned-ball'; e.innerHTML=ballOptionLabel(b); markDebugTarget(e,b,'ball'); attachObjectTooltip(e,b,'ball'); e.addEventListener('click',()=>{ stateUi.ownedIndex=i; ownedWrap.querySelectorAll('.gacha-owned-ball').forEach((n,j)=>n.classList.toggle('selected',j===i)); accept.disabled=stateUi.selected.length!==1 || stateUi.ownedIndex===null; }); ownedWrap.appendChild(e); });
         note.appendChild(ownedWrap);
@@ -3238,12 +3354,29 @@
     } else {
       const targets=randomBagBlocks(5);
       g.powerTargets=targets;
-      const targetSec=document.createElement('div'); targetSec.className='gacha-choice-section'; targetSec.innerHTML='<h3>5 khối ngẫu nhiên từ kho đồ</h3>';
-      const targetWrap=document.createElement('div'); targetWrap.className='gacha-choice-options';
-      targets.forEach((b,i)=>{ const e=document.createElement('div'); e.className='gacha-opt'; e.innerHTML=blockOptionLabel(b); markDebugTarget(e,b,'block'); attachObjectTooltip(e,b,'block'); e.addEventListener('click',()=>{ if(!stateUi.targeting.some(x=>x.obj===b)){ if(stateUi.targeting.length>=2) return; stateUi.targeting.push({obj:b,kind:'block'}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } targetWrap.querySelectorAll('.gacha-opt').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j]))); updatePowerAccept(); }); targetWrap.appendChild(e); });
+      const targetSec=document.createElement('div'); targetSec.className='gacha-choice-section gacha-power-targets';
+      const targetWrap=document.createElement('div'); targetWrap.className='gacha-block-options gacha-power-block-options';
+      targets.forEach((b,i)=>{
+        const e=document.createElement('div');
+        e.className='gacha-block-choice';
+        e.innerHTML=gachaBlockChoiceLabel(b);
+        markDebugTarget(e,b,'block');
+        attachObjectTooltip(e,b,'block');
+        e.addEventListener('click',()=>{
+          if(!stateUi.targeting.some(x=>x.obj===b)){
+            if(stateUi.targeting.length>=2) return;
+            stateUi.targeting.push({obj:b,kind:'block'});
+          } else {
+            stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b);
+          }
+          targetWrap.querySelectorAll('.gacha-block-choice').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===targets[j])));
+          updatePowerAccept();
+        });
+        targetWrap.appendChild(e);
+      });
       targetSec.appendChild(targetWrap); panel.appendChild(targetSec);
 
-      const ballSec=document.createElement('div'); ballSec.className='gacha-choice-section'; ballSec.innerHTML=`<h3>Bóng đang sở hữu (${state.ballPool.length}/${BASE_MAX_BALLS+state.maxBallsBonus})</h3>`;
+      const ballSec=document.createElement('div'); ballSec.className='gacha-choice-section gacha-power-owned-balls';
       const ballWrap=document.createElement('div'); ballWrap.className='ball-choice-grid';
       state.ballPool.forEach((b)=>{ const e=document.createElement('div'); e.className='ball-choice-item'; e.innerHTML=ballOptionLabel(b); attachObjectTooltip(e,b,'ball'); e.addEventListener('click',()=>{ if(!stateUi.targeting.some(x=>x.obj===b)){ stateUi.targeting.push({obj:b,kind:'ball'}); } else { stateUi.targeting=stateUi.targeting.filter(x=>x.obj!==b); } ballWrap.querySelectorAll('.ball-choice-item').forEach((n,j)=>n.classList.toggle('selected',stateUi.targeting.some(x=>x.obj===state.ballPool[j]))); updatePowerAccept(); }); ballWrap.appendChild(e); });
       ballSec.appendChild(ballWrap); panel.appendChild(ballSec);
@@ -3296,9 +3429,12 @@
         finish();
       } else if(g.type==='power'){
         const opt=g.options[stateUi.selected[0]];
-        const def=POWER_CARD_DEFS[opt.defId];
-        if(def.targetCount===0) applyPowerPick(opt,[]);
-        else applyPowerPick(opt,stateUi.targeting);
+        if(!opt) return;
+        const applied = applyPowerPick(opt, stateUi.targeting || []);
+        if(!applied){
+          if(panel._updatePowerAccept) panel._updatePowerAccept();
+          return;
+        }
         syncBallQueueFromPool();
         g.powerUsed=(g.powerUsed||0)+1;
         if(stateUi.selected.length) stateUi.usedOptions.push(stateUi.selected[0]);
@@ -3361,7 +3497,15 @@
     shopOverlayEl.classList.remove('hidden');
     cardHandEl.classList.add('shop-active');
 
-    function reroll(){ if(state.money<state.commonRerollCost) return; state.money-=state.commonRerollCost; state.commonRerollCost++; state.commonItems=makeCommonStock(); renderShop(); }
+    function reroll(){
+      if(state.money<state.commonRerollCost) return;
+      state.money-=state.commonRerollCost;
+      state.commonRerollCost++;
+      state.commonItems=makeCommonStock();
+      moneyValEl.textContent=formatMoney(state.money);
+      renderShop();
+      scheduleAutoSave();
+    }
     function buyCommon(item){
       if(item.bought || state.money < shopPrice(item.price)) return;
       if((item.kind==='upgrade'||item.kind==='power') && state.cardHand.length>=getMaxCardHand()) return;
@@ -3404,7 +3548,7 @@
       const box=document.createElement('div'); box.className='gacha-box';
       const names={block:'Hộp khối',ball:'Hộp bóng',power:'Hộp thẻ sức mạnh',upgrade:'Hộp thẻ nâng cấp'};
       if(g.done){ box.innerHTML=`<div class="gacha-head"><span>${names[g.type]} ${g.tier.label.toLowerCase()}</span></div><div class="tag-done">Đã dùng</div>`; return box; }
-      box.innerHTML=`<div class="shop-price">${formatMoney(shopPrice(gachaPrice(g.type, g.tier)))}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label.toLowerCase()}</div>`;
+      box.innerHTML=`<div class="shop-price">${formatMoney(shopPrice(gachaPrice(g.type, g.tier)))}</div><div class="shop-item-name">${names[g.type]} ${g.tier.label}</div>`;
       const actions=document.createElement('div'); actions.className='shop-item-actions';
       const gachaCost=shopPrice(gachaPrice(g.type, g.tier));
       const buy=document.createElement('button'); buy.textContent='Mở hộp'; buy.disabled=state.money<gachaCost; buy.addEventListener('click',()=>{
@@ -3440,14 +3584,15 @@
         row.appendChild(price);
 
         const visual=document.createElement('div'); visual.className='shop-item-visual';
-        const name=document.createElement('div'); name.className='shop-item-name'; name.textContent=item.name;
-        visual.appendChild(name);
         if(item.kind==='block'){
           const blockVisual=document.createElement('div');
           blockVisual.innerHTML=renderMiniBlockMarkup(item.ref);
           markDebugTarget(blockVisual, item.ref, 'block');
           attachObjectTooltip(blockVisual, item.ref, 'block');
           visual.appendChild(blockVisual);
+        } else {
+          const name=document.createElement('div'); name.className='shop-item-name'; name.textContent=item.name;
+          visual.appendChild(name);
         }
         if(item.kind==='power') attachCardTooltip(visual, POWER_CARD_DEFS[item.ref.defId]);
         if(item.kind==='upgrade') attachCardTooltip(visual, UPGRADE_POOL.find(x=>x.id===item.ref.defId));

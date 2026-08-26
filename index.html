@@ -496,7 +496,7 @@
   .overlay{ position:fixed; inset:0; background: rgba(7,19,34,0.9); display:flex; align-items:flex-start; justify-content:center; z-index: 100; overflow-y:auto; padding: 30px 14px; }
   .overlay.reward-clear{ background:transparent; }
   /* The shop wrapper must never block the underlying game. Only the actual panel receives input/scroll. */
-  .shop-layer{ position:fixed; inset:0; width:100%; height:100dvh; display:block; z-index:100; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; scrollbar-gutter:stable; padding:0 0 24px; pointer-events:none; background:transparent; } 
+  .shop-layer{ position:fixed; inset:0; width:100%; height:100dvh; display:block; z-index:100; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; scrollbar-gutter:stable; padding:0 0 24px; pointer-events:auto; background:transparent; } 
   .shop-layer.hidden{ display:none; }
   .shop-layer .shop-panel{ pointer-events:auto; }
   /* While selecting a card target, even the shop panel must release the pointer so targets underneath can be selected. */

@@ -337,12 +337,12 @@
   .ball-tooltip{
     --tooltip-scale:1;
     --score-scale:1;
-    --score-font-size:11px;
+    --score-font-size:var(--score-display-base-font-size);
     position:absolute;
     transform:translate(-50%, calc(-100% - 14px));
     transform-origin:center bottom;
     background:rgba(10,26,44,0.92); border:1px solid var(--amber-dim); color:var(--amber);
-    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700;
+    font-family:'JetBrains Mono',monospace; font-size:var(--score-display-base-font-size); font-weight:700;
     padding:2px 6px; border-radius:5px; white-space:nowrap;
     transition:left calc(.22s / var(--anim-speed)) linear, top calc(.22s / var(--anim-speed)) linear, opacity calc(.2s / var(--anim-speed)) ease;
     z-index:6; pointer-events:none; will-change:transform;
@@ -373,9 +373,9 @@
   }
   .ball-goal-popup{
     position:absolute;
-    transform:translate(-50%, -50%) scale(.35);
+    transform:translate(-50%, -50%) scale(1);
     font-family:'JetBrains Mono',monospace;
-    font-size:18px;
+    font-size:var(--score-display-base-font-size);
     font-weight:700;
     white-space:nowrap;
     z-index:7;
@@ -383,14 +383,106 @@
     text-shadow:0 2px 8px rgba(0,0,0,.55), 0 0 8px currentColor;
     transform-origin:center center;
     opacity:0;
+    will-change:top,transform,opacity,font-size;
   }
-  @keyframes ballGoalPopup{
-    0%{ transform:translate(-50%, -50%) scale(.35); opacity:0; }
-    30%{ transform:translate(-50%, -68%) scale(1.15); opacity:1; animation-timing-function:linear; }
-    75%{ transform:translate(-50%, -109%) scale(1.15); opacity:1; animation-timing-function:linear; }
-    100%{ transform:translate(-50%, -132%) scale(1); opacity:0; }
+  .ball-goal-popup-value{
+    display:inline-block;
+    transform:scale(1);
+    transform-origin:center center;
+    line-height:1;
+    will-change:transform;
   }
-  .ball-goal-popup.show{ animation:ballGoalPopup calc(.7s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1) forwards; }
+  /* The popup's parent flies upward; the value itself handles zoom/shake so the
+     flight animation and the score-impact animation never fight over transform. */
+  @keyframes ballGoalPopupValueImpact{
+    0%{ transform:scale(1) rotate(0deg); }
+    16%{ transform:scale(1.24) translateX(-2px) rotate(-5deg); }
+    32%{ transform:scale(1.08) translateX(2px) rotate(5deg); }
+    48%{ transform:scale(1.18) translateX(-1px) rotate(-3.5deg); }
+    64%{ transform:scale(1.04) translateX(1px) rotate(2.5deg); }
+    82%{ transform:scale(1.10) translateX(-.5px) rotate(-1.5deg); }
+    100%{ transform:scale(1) translateX(0) rotate(0deg); }
+  }
+  .ball-goal-popup-value.impact{
+    animation:ballGoalPopupValueImpact calc(.34s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1);
+  }
+  /* Steel score multipliers are shown one at a time during goal resolution. */
+  .ball-goal-popup.steel-sequence{
+    opacity:1;
+    transform:translate(-50%, -50%) scale(1);
+  }
+  .steel-multiplier-tooltip{
+    position:absolute;
+    transform:translate(-50%, calc(-100% - 14px)) scale(.7);
+    transform-origin:center bottom;
+    background:rgba(10,26,44,.94);
+    border:1px solid rgba(199,205,211,.8);
+    color:#fff;
+    font-family:'JetBrains Mono',monospace;
+    font-size:18px;
+    font-weight:700;
+    padding:3px 8px;
+    border-radius:6px;
+    white-space:nowrap;
+    z-index:8;
+    pointer-events:none;
+    opacity:0;
+  }
+  @keyframes steelMultiplierIn{
+    0%{ opacity:0; transform:translate(-50%, calc(-100% - 14px)) scale(.7); }
+    70%{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1.1); }
+    100%{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1); }
+  }
+  .steel-multiplier-tooltip.show{
+    animation:steelMultiplierIn calc(.24s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1) forwards;
+  }
+  @keyframes steelMultiplierOut{
+    from{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1); }
+    to{ opacity:0; transform:translate(-50%, calc(-100% - 18px)) scale(.88); }
+  }
+  .steel-multiplier-tooltip.hide{
+    animation:steelMultiplierOut calc(.18s / var(--anim-speed)) ease forwards;
+  }
+  .gold-reward-tooltip{
+    position:absolute;
+    transform:translate(-50%, calc(-100% - 14px)) scale(.7);
+    transform-origin:center bottom;
+    background:rgba(10,26,44,.94);
+    border:1px solid rgba(242,201,76,.9);
+    color:var(--gold);
+    font-family:'JetBrains Mono',monospace;
+    font-size:18px;
+    font-weight:700;
+    padding:3px 8px;
+    border-radius:6px;
+    white-space:nowrap;
+    z-index:8;
+    pointer-events:none;
+    opacity:0;
+  }
+  @keyframes goldRewardIn{
+    0%{ opacity:0; transform:translate(-50%, calc(-100% - 14px)) scale(.7); }
+    70%{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1.1); }
+    100%{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1); }
+  }
+  .gold-reward-tooltip.show{
+    animation:goldRewardIn calc(.24s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1) forwards;
+  }
+  @keyframes goldRewardOut{
+    from{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1); }
+    to{ opacity:0; transform:translate(-50%, calc(-100% - 18px)) scale(.88); }
+  }
+  .gold-reward-tooltip.hide{
+    animation:goldRewardOut calc(.18s / var(--anim-speed)) ease forwards;
+  }
+  .gold-reward-tooltip::after{
+    content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:4px solid transparent; border-top-color:rgba(242,201,76,.75);
+  }
+  .steel-multiplier-tooltip::after{
+    content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:4px solid transparent; border-top-color:rgba(199,205,211,.65);
+  }
   .ball-tooltip::after{
     content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:4px solid transparent; border-top-color: var(--amber-dim);
@@ -905,6 +997,14 @@
 
   // ---------- animation speed ----------
   let animationSpeed = 1;
+
+  // Single source of truth for the displayed score size used by:
+  // 1) the ball-contained score tooltip,
+  // 2) the score popup when the ball reaches the hole, and
+  // 3) the ball score shake/grow animation (via the same computed font size).
+  const SCORE_DISPLAY_BASE_FONT_SIZE = 18;
+  document.documentElement.style.setProperty('--score-display-base-font-size', `${SCORE_DISPLAY_BASE_FONT_SIZE}px`);
+
   const animationSpeedSelect = document.getElementById('animationSpeedSelect');
   function setAnimationSpeed(value){
     const next = Number(value);
@@ -1452,7 +1552,7 @@
         const interest = Math.min(Math.floor(state.money/5), interestCap);
         state._boardHide = false;
         render();
-        runBoardHideAnimation(()=>showLevelReward({winBonus:getWinBonus(), unfired, ballBonus:unfired*2, interest, goldBlockCount:0, goldBonus:0}));
+        runBoardHideAnimation(()=>showLevelReward({winBonus:getWinBonus(), unfired, ballBonus:unfired*2, interest}));
         return true;
       }
 
@@ -1460,7 +1560,7 @@
       render();
       renderCardHand();
       hideShop();
-      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
+      showOverlay('lose', 'GAME OVER', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
       return true;
     }catch(err){
       console.error('Không thể tải save:', err);
@@ -2596,6 +2696,11 @@
     return Math.min(4, 1 + steps * 0.05);
   }
 
+  function getScoreDisplayFontSize(scale=1){
+    const safeScale = Number.isFinite(scale) ? scale : 1;
+    return SCORE_DISPLAY_BASE_FONT_SIZE * safeScale;
+  }
+
   function animateScoreTipValue(valueEl, nextTotal, previousTotal, initialTotal, targetTotal, tip){
     if(!valueEl) return;
     const prevTotal = Number.isFinite(previousTotal) ? previousTotal : nextTotal;
@@ -2605,7 +2710,7 @@
 
     if(valueEl._scoreAnim){ try{ valueEl._scoreAnim.cancel(); }catch{} valueEl._scoreAnim=null; }
     valueEl._scoreScale = nextScale;
-    if(tip) tip.style.setProperty('--score-font-size', `${11 * nextScale}px`);
+    if(tip) tip.style.setProperty('--score-font-size', `${getScoreDisplayFontSize(nextScale)}px`);
 
     if(nextTotal <= prevTotal){
       valueEl.style.transform='scale(1)';
@@ -2656,7 +2761,7 @@
     tipValue.style.setProperty('--score-scale', '1');
     tipValue.style.setProperty('--score-scale-prev', '1');
     tipValue.style.transform='scale(1)';
-    tip.style.setProperty('--score-font-size', '11px');
+    tip.style.setProperty('--score-font-size', `${SCORE_DISPLAY_BASE_FONT_SIZE}px`);
     tip.appendChild(tipValue);
     tip._valueEl = tipValue;
     boardWrapEl.appendChild(tip);
@@ -2667,7 +2772,7 @@
       const scale = computeScoreTooltipScale(currentTotal, ballState.initialTotal, state.target);
       tipValue._scoreScale = scale;
       tipValue.style.transform = 'scale(1)';
-      tip.style.setProperty('--score-font-size', `${11 * scale}px`);
+      tip.style.setProperty('--score-font-size', `${getScoreDisplayFontSize(scale)}px`);
       tip.style.setProperty('--tooltip-scale', String(scale));
       tip._tooltipScale = scale;
     }
@@ -2807,11 +2912,254 @@
     }
   }
 
+  function findBlockCell(blockRef){
+    if(!blockRef || !state?.cells) return null;
+    for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
+      if(state.cells[r][c]?.block===blockRef) return {r,c};
+    }
+    return null;
+  }
+
+  function createSteelMultiplierTooltip(blockRef){
+    const pos=findBlockCell(blockRef);
+    if(!pos) return null;
+    const tip=document.createElement('div');
+    tip.className='steel-multiplier-tooltip';
+    tip.textContent='x1.5';
+    const p=cellPercent(pos.r,pos.c);
+    tip.style.left=p.left+'%';
+    tip.style.top=p.top+'%';
+    boardWrapEl.appendChild(tip);
+    return tip;
+  }
+
+  function createGoldRewardTooltip(blockRef){
+    const pos=findBlockCell(blockRef);
+    if(!pos) return null;
+    const tip=document.createElement('div');
+    tip.className='gold-reward-tooltip';
+    tip.textContent='+3$';
+    const p=cellPercent(pos.r,pos.c);
+    tip.style.left=p.left+'%';
+    tip.style.top=p.top+'%';
+    boardWrapEl.appendChild(tip);
+    return tip;
+  }
+
+  async function animateSteelGoalMultipliers(ballState, goalPopup, generation){
+    const steelBlocks = Array.from(ballState.steelBlocks || []);
+    let activeTip = null;
+
+    for(let i=0;i<steelBlocks.length;i++){
+      if(generation!==runGeneration || !state) return false;
+
+      const nextTip=createSteelMultiplierTooltip(steelBlocks[i]);
+      if(!nextTip){
+        ballState.total*=1.5;
+        updateGoalPopupScore(goalPopup, ballState);
+        continue;
+      }
+
+      // Stronger chained sequence: show the next tooltip first, then hide the previous
+      // one at the same time instead of fully completing one tooltip before starting the next.
+      requestAnimationFrame(()=>nextTip.classList.add('show'));
+      await wait(70);
+      if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
+
+      ballState.total*=1.5;
+      updateGoalPopupScore(goalPopup, ballState, {impact:true, rise:40});
+
+      if(activeTip){
+        activeTip.classList.remove('show');
+        activeTip.classList.add('hide');
+      }
+
+      if(activeTip){
+        await wait(100);
+        if(generation!==runGeneration || !state){ nextTip.remove(); activeTip.remove(); return false; }
+        activeTip.remove();
+      }
+
+      activeTip=nextTip;
+      await wait(i < steelBlocks.length-1 ? 90 : 260);
+    }
+
+    if(activeTip){
+      if(generation!==runGeneration || !state){ activeTip.remove(); return false; }
+      activeTip.classList.remove('show');
+      activeTip.classList.add('hide');
+      await wait(100);
+      activeTip.remove();
+    }
+    return true;
+  }
+
+  async function animateGoldBlockRewards(goldBlocks, generation){
+    let activeTip = null;
+
+    for(let i=0;i<goldBlocks.length;i++){
+      if(generation!==runGeneration || !state) return false;
+
+      const nextTip=createGoldRewardTooltip(goldBlocks[i]);
+      if(!nextTip) continue;
+
+      requestAnimationFrame(()=>nextTip.classList.add('show'));
+      await wait(70);
+      if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
+
+      if(activeTip){
+        activeTip.classList.remove('show');
+        activeTip.classList.add('hide');
+      }
+
+      if(activeTip){
+        await wait(100);
+        if(generation!==runGeneration || !state){ nextTip.remove(); activeTip.remove(); return false; }
+        activeTip.remove();
+
+        // Each gold block pays exactly once when its tooltip finishes disappearing.
+        state.money += 3;
+        syncMoneyHud();
+      }
+
+      activeTip=nextTip;
+      await wait(i < goldBlocks.length-1 ? 90 : 260);
+    }
+
+    if(activeTip){
+      if(generation!==runGeneration || !state){ activeTip.remove(); return false; }
+      activeTip.classList.remove('show');
+      activeTip.classList.add('hide');
+      await wait(100);
+      activeTip.remove();
+
+      state.money += 3;
+      syncMoneyHud();
+    }
+
+    return true;
+  }
+
+  function syncGoalPopupScoreSize(goalPopup, ballState){
+    if(!goalPopup || !ballState || !state) return;
+    const scale=computeScoreTooltipScale(ballState.total, ballState.initialTotal, state.target);
+    goalPopup.style.fontSize=`${getScoreDisplayFontSize(scale)}px`;
+    goalPopup._scoreScale=scale;
+  }
+
+  function getGoalPopupValueEl(goalPopup){
+    return goalPopup?._valueEl || goalPopup;
+  }
+
+  function pulseGoalPopupValue(goalPopup){
+    const valueEl=getGoalPopupValueEl(goalPopup);
+    if(!valueEl) return;
+    valueEl.classList.remove('impact');
+    void valueEl.offsetWidth;
+    valueEl.classList.add('impact');
+  }
+
+  // Popup flight uses one constant pixel-per-second speed for the entire life of the popup.
+  // Extending the flight reuses that same speed, so there is no visible pause, jump, or acceleration.
+  const GOAL_POPUP_FLIGHT_SPEED = 69; // px/s
+  const GOAL_POPUP_FIRST_IMPACT_DELAY = 180; // ms: short pause after popup appears before the first extra-score source
+  const GOAL_POPUP_IMPACT_RISE = 42;  // extra travel added for each new score impact
+  const GOAL_POPUP_FINAL_RISE = 56;   // final travel while fading out
+  const GOAL_POPUP_FINAL_FADE_DURATION = 220; // ms: quick fade after the final score impact
+
+  function getGoalPopupCurrentTop(goalPopup){
+    const computedTop=parseFloat(getComputedStyle(goalPopup).top);
+    return Number.isFinite(computedTop) ? computedTop : 0;
+  }
+
+  function continueGoalPopupFlight(goalPopup, extraRise=0, {fade=false}={}){
+    if(!goalPopup || !boardWrapEl) return;
+
+    const currentTop=getGoalPopupCurrentTop(goalPopup);
+    const speed=GOAL_POPUP_FLIGHT_SPEED;
+    const distance=Math.max(0, Number(extraRise)||0);
+
+    if(goalPopup._flightAnim){
+      try{ goalPopup._flightAnim.cancel(); }catch{}
+      goalPopup._flightAnim=null;
+    }
+
+    goalPopup.style.top=`${currentTop}px`;
+    goalPopup.style.transform='translate(-50%, -50%) scale(1)';
+    if(!fade) goalPopup.style.opacity='1';
+
+    if(distance<=0) return;
+
+    const duration=Math.max(1, scaledDuration((distance/speed)*1000));
+    const nextTop=currentTop-distance;
+    goalPopup._flightAnim=goalPopup.animate(
+      [
+        {top:`${currentTop}px`},
+        {top:`${nextTop}px`}
+      ],
+      {duration,easing:'linear',fill:'forwards'}
+    );
+    goalPopup._flightAnim.onfinish=()=>{
+      if(goalPopup._flightAnim) goalPopup._flightAnim=null;
+    };
+  }
+
+  function startGoalPopupFlight(goalPopup, row, col){
+    const boardRect=boardWrapEl.getBoundingClientRect();
+    const startTop=boardRect.height*((row+0.5)/state.rows);
+
+    goalPopup.style.top=`${startTop}px`;
+    goalPopup.style.opacity='1';
+    goalPopup.style.transform='translate(-50%, -50%) scale(1)';
+
+    // The popup starts moving upward immediately, at one constant linear speed.
+    continueGoalPopupFlight(goalPopup, 70);
+  }
+
+  function updateGoalPopupScore(goalPopup, ballState, {impact=true, rise=38}={}){
+    if(!goalPopup || !ballState || !state) return;
+    const valueEl=getGoalPopupValueEl(goalPopup);
+    const nextTotal=Math.round(ballState.total);
+    const previousTotal=Number.isFinite(goalPopup._lastTotal) ? goalPopup._lastTotal : nextTotal;
+    if(valueEl) valueEl.textContent=formatNumber(nextTotal);
+    syncGoalPopupScoreSize(goalPopup, ballState);
+    goalPopup._lastTotal=nextTotal;
+
+    if(nextTotal>previousTotal){
+      // The parent never pauses: only the value itself receives the impact animation.
+      if(impact) pulseGoalPopupValue(goalPopup);
+      continueGoalPopupFlight(goalPopup, Number.isFinite(rise) ? rise : GOAL_POPUP_IMPACT_RISE);
+    }
+  }
+
+  async function finishGoalPopup(goalPopup, generation){
+    if(!goalPopup) return;
+    if(generation!==runGeneration || !state){ goalPopup.remove(); return; }
+
+    // No pause after the final score: extend the same constant-speed flight and fade
+    // at the same time. The popup therefore follows one straight, uninterrupted path.
+    const finalRise=GOAL_POPUP_FINAL_RISE;
+    const duration=Math.max(1, scaledDuration((finalRise/GOAL_POPUP_FLIGHT_SPEED)*1000));
+    continueGoalPopupFlight(goalPopup, finalRise, {fade:true});
+
+    const fadeDuration=Math.max(1, scaledDuration(GOAL_POPUP_FINAL_FADE_DURATION));
+    const fade=goalPopup.animate(
+      [
+        {opacity:1},
+        {opacity:0}
+      ],
+      {duration:fadeDuration,easing:'linear',fill:'forwards'}
+    );
+    goalPopup._fadeAnim=fade;
+    await new Promise(resolve=>{ fade.onfinish=resolve; fade.oncancel=resolve; });
+    if(goalPopup._fadeAnim===fade) goalPopup._fadeAnim=null;
+  }
+
   function ballGoalEffects(ballState){
     const prop=ballState.prop, enh=ballState.enh;
     const sparkX=enh==='spark'?2:1;
-    const steelBlockCount=ballState.steelBlocks?.size || 0;
-    for(let i=0;i<steelBlockCount;i++) ballState.total*=1.5;
+    // Steel block multipliers are resolved visually/sequentially in travel() so the
+    // player can see exactly which steel block grants each x1.5.
     BALL_PROP_EFFECTS[prop]?.onGoal?.(ballState,sparkX);
     if(prop==='gold' || prop==='steel') syncMoneyHud();
   }
@@ -2853,39 +3201,56 @@
     }
 
     if(cellData.type==='hole'){
-      ballGoalEffects(ballState);
-      updateTip(tip, ballState);
       const goalPopup = document.createElement('div');
-      goalPopup.className = 'ball-goal-popup';
-      goalPopup.textContent = formatNumber(Math.round(ballState.total));
-      // Keep the goal score readable when the tooltip score has grown larger.
-      // Tooltip values use a base 11px font and a dynamic score scale; the goal
-      // popup uses a base 18px font. Only enlarge the popup when the tooltip's
-      // rendered score would otherwise be larger.
+      goalPopup.className='ball-goal-popup steel-sequence';
+      const goalValue=document.createElement('span');
+      goalValue.className='ball-goal-popup-value';
+      goalValue.textContent=formatNumber(Math.round(ballState.total));
+      goalPopup._valueEl=goalValue;
+      goalPopup._lastTotal=Math.round(ballState.total);
       const tooltipScoreScale = Number.isFinite(tip?._valueEl?._scoreScale) ? tip._valueEl._scoreScale : 1;
-      const tooltipFontSize = 11 * tooltipScoreScale;
-      // The goal popup uses the same rendered font size as the score in the tooltip.
-      // This keeps both score readouts visually matched at every growth stage.
-      goalPopup.style.fontSize = `${tooltipFontSize}px`;
+      goalPopup.style.fontSize=`${getScoreDisplayFontSize(tooltipScoreScale)}px`;
       const goalColor = ballState.enh ? ENH_COLOR[ballState.enh] : (ballState.prop ? PROP_COLOR[ballState.prop] : 'var(--amber)');
-      goalPopup.style.color = goalColor || 'var(--amber)';
-      const goalPos = cellPercent(nr,nc);
-      goalPopup.style.left = goalPos.left + '%';
-      goalPopup.style.top = goalPos.top + '%';
+      goalPopup.style.color=goalColor || 'var(--amber)';
+      const goalPos=cellPercent(nr,nc);
+      goalPopup.style.left=goalPos.left+'%';
+      goalPopup.style.top=goalPos.top+'%';
+      goalPopup.appendChild(goalValue);
       boardWrapEl.appendChild(goalPopup);
-      requestAnimationFrame(()=>goalPopup.classList.add('show'));
+      startGoalPopupFlight(goalPopup,nr,nc);
+
+      // Initial appearance impact: shake/zoom once as the popup first appears.
+      // The impact is applied only to the inner value so the popup keeps flying
+      // upward continuously without disturbing its parent flight path.
+      requestAnimationFrame(()=>pulseGoalPopupValue(goalPopup));
+
       ball.classList.add('scored');
       tip.style.opacity='0';
-      await wait(700);
+
+      // Let the popup establish itself visually before any secondary score source is applied.
+      await wait(GOAL_POPUP_FIRST_IMPACT_DELAY);
       if(generation!==runGeneration || !state){ goalPopup.remove(); removeEntity(ball,tip); return []; }
+
+      // Every score increase while the popup is alive extends its upward flight
+      // and triggers a strong zoom/shake on the score itself.
+      const steelResolved=await animateSteelGoalMultipliers(ballState,goalPopup,generation);
+      if(!steelResolved || generation!==runGeneration || !state){ goalPopup.remove(); removeEntity(ball,tip); return []; }
+
+      const beforeGoalEffects=ballState.total;
+      ballGoalEffects(ballState);
+      updateTip(tip, ballState);
+      updateGoalPopupScore(goalPopup, ballState, {impact:ballState.total>beforeGoalEffects, rise:GOAL_POPUP_IMPACT_RISE});
+
+      await finishGoalPopup(goalPopup,generation);
+      if(generation!==runGeneration || !state){ removeEntity(ball,tip); return []; }
       goalPopup.remove();
       removeEntity(ball,tip);
       counter.scored++;
       if(ballState.broke) counter.broke=(counter.broke||0)+1;
-      const points = ballState.broke ? 0 : Math.round(ballState.total);
+      const points=ballState.broke ? 0 : Math.round(ballState.total);
       state.score += points;
-      counter.points = (counter.points||0) + points;
-      scoreValEl.textContent = formatNumber(state.score);
+      counter.points=(counter.points||0) + points;
+      scoreValEl.textContent=formatNumber(state.score);
       finishGlassBranch(ballState,true);
 
       return [points];
@@ -3021,7 +3386,7 @@
     }
 
     state.resolving = false;
-    checkEndState();
+    await checkEndState();
     saveGame({silent:true});
   }
 
@@ -3030,24 +3395,31 @@
     return Math.max(0, minBoardSize - 1);
   }
 
-  function checkEndState(){
+  async function checkEndState(){
     if(state.score >= state.target){
       const unfired = state.ballQueue.length - state.ballsFired;
       const interestCap = 5 + state.interestCapBonus;
       const interest = Math.min(Math.floor(state.money/5), interestCap);
       const ballBonus = unfired*2;
-      let goldBlockCount = 0;
+
+      const goldBlocks = [];
       if(state.cells) for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
         const b = state.cells[r][c]?.block;
-        if(b?.property==='gold') goldBlockCount++;
+        if(b?.property==='gold') goldBlocks.push(b);
       }
-      const goldBonus = goldBlockCount * 3;
+
+      // The last scoring ball has finished. Show each gold-block reward
+      // while the board is still fully visible, then start board hide.
+      const generation = runGeneration;
+      const goldResolved = await animateGoldBlockRewards(goldBlocks, generation);
+      if(!goldResolved || generation!==runGeneration || !state) return;
+
       state.phase = 'reward';
-      runBoardHideAnimation(()=>showLevelReward({winBonus:getWinBonus(), unfired, ballBonus, interest, goldBlockCount, goldBonus}));
+      runBoardHideAnimation(()=>showLevelReward({winBonus:getWinBonus(), unfired, ballBonus, interest}));
     } else if(state.ballsFired >= state.ballQueue.length){
       state.phase = 'gameover';
       renderCardHand();
-      showOverlay('lose', 'HẾT BÓNG — KẾT THÚC RUN', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
+      showOverlay('lose', 'GAME OVER', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
     }
   }
 
@@ -3090,9 +3462,8 @@
     shopOverlayEl.classList.add('hidden');
     shopOverlayEl.innerHTML='';
     const winBonus = Number.isFinite(info.winBonus) ? info.winBonus : getWinBonus();
-    const goldBonus = Number.isFinite(info.goldBonus) ? info.goldBonus : 0;
-    const goldBlockCount = Number.isFinite(info.goldBlockCount) ? info.goldBlockCount : Math.floor(goldBonus/3);
-    const total = winBonus + info.ballBonus + info.interest + goldBonus;
+    // Gold-block money has already been awarded during each +3$ tooltip sequence.
+    const total = winBonus + info.ballBonus + info.interest;
     state._handRewardHidden = true;
     document.querySelector('.hand-row')?.classList.add('reward-hidden');
 
@@ -3106,7 +3477,6 @@
         <div class="reward-row"><span class="reward-label reward-win-label reward-step">- Thưởng thắng:</span><span class="reward-value reward-step">${formatNumber(winBonus)}$</span></div>
         <div class="reward-row"><span class="reward-label reward-step">- ${formatNumber(info.unfired)} bóng còn sót (${formatNumber(2)}$ mỗi bóng):</span><span class="reward-value reward-step">${formatNumber(info.ballBonus)}$</span></div>
         <div class="reward-row"><span class="reward-label reward-step">- Tiền lãi (Mỗi 5$ nhận thêm 1$, tối đa ${formatMoney(5 + state.interestCapBonus)}):</span><span class="reward-value reward-step">${formatNumber(info.interest)}$</span></div>
-        <div class="reward-row"><span class="reward-label reward-step">- Khối vàng còn lại (${formatNumber(goldBlockCount)} khối × 3$):</span><span class="reward-value reward-step">${formatNumber(goldBonus)}$</span></div>
       </div>`;
 
     const btn=document.getElementById('overlayBtn');

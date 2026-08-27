@@ -196,7 +196,8 @@
   .cell.just-placed .block-visual{ animation: placeIn calc(.32s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
 
   .cell{
-    position:relative; background: rgba(255,255,255,0.02);
+    position:relative;
+    container-type:size; background: rgba(255,255,255,0.02);
     border: 1px dashed rgba(94,200,216,0.12); border-radius: 5px; touch-action: none;
   }
   .cell.board-reveal-cell{
@@ -258,6 +259,7 @@
     72%{ transform:scale(1.01) translateX(1px) rotate(calc(var(--block-base-rotation,0deg) + 1.5deg)); filter:drop-shadow(0 0 4px rgba(255,79,131,.65)); }
     100%{ transform:scale(1) translateX(0) rotate(var(--block-base-rotation,0deg)); filter:drop-shadow(0 0 0 rgba(255,79,131,0)); }
   }
+
   .cell-lock-icon{
     position:absolute;
     top:3px;
@@ -312,6 +314,67 @@
   }
   .cell.targetable{ cursor:pointer; animation: cellTargetPulse calc(1s / var(--anim-speed)) ease-in-out infinite; }
   @keyframes cellTargetPulse{ 0%,100%{ box-shadow:inset 0 0 0 2px var(--green);} 50%{ box-shadow:inset 0 0 0 2px var(--green), 0 0 10px var(--green);} }
+
+  /* Debuff cells are adverse cells that keep normal block geometry but disable
+     every gameplay effect of the block placed on them. */
+  .cell.debuff-cell{
+    background:rgba(255,88,54,0.12);
+    border-color:rgba(255,88,54,0.80);
+    box-shadow:inset 0 0 14px rgba(255,88,54,0.18);
+  }
+  .cell-debuff-x{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    pointer-events:none;
+    color:rgba(255,72,48,0.35);
+    font-family:'JetBrains Mono',monospace;
+    font-size:min(88cqw, 88cqh);
+    line-height:1;
+    font-weight:900;
+    text-shadow:0 0 6px rgba(255,72,48,.14);
+  }
+  .cell.debuff-cell.hasblock .cell-debuff-x{
+    color:rgba(255,72,48,0.52);
+    text-shadow:0 0 5px rgba(255,72,48,.20);
+  }
+  /* Debuff X feedback: the four ends of the X extend outward from its center. */
+  .cell-debuff-x{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    z-index:50; pointer-events:none; color:rgba(255,72,48,0.35);
+    line-height:1; font-weight:900; text-shadow:0 0 6px rgba(255,72,48,.14);
+  }
+  .cell.debuff-cell.hasblock .cell-debuff-x{ color:rgba(255,72,48,0.52); text-shadow:0 0 5px rgba(255,72,48,.20); }
+  .cell-debuff-x::before, .cell-debuff-x::after{
+    --x-arm-rotate:45deg; content:""; position:absolute; left:50%; top:50%; width:76%; height:10%;
+    border-radius:999px; background:currentColor; box-shadow:0 0 5px rgba(255,72,48,.12); transform-origin:center center;
+    transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(.18);
+  }
+  .cell-debuff-x::after{ --x-arm-rotate:-45deg; }
+  .cell-debuff-x.debuff-x-grow::before, .cell-debuff-x.debuff-x-grow::after{ animation:debuffXReachOut calc(.30s / var(--anim-speed)) cubic-bezier(.22,.9,.24,1.05) both; }
+  .cell-debuff-x.debuff-x-shrink::before, .cell-debuff-x.debuff-x-shrink::after{ animation:debuffXReachIn calc(.22s / var(--anim-speed)) cubic-bezier(.55,.08,.68,.53) both; }
+  @keyframes debuffXReachOut{
+    0%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(.18); }
+    72%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1.12); }
+    100%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1); }
+  }
+  @keyframes debuffXReachIn{
+    0%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1); }
+    28%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1.06); }
+    100%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(.18); }
+  }
+  .cell.debuff-cell.hasblock.debuff-block-feedback .block-visual{ animation:debuffBlockShake calc(.36s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
+  @keyframes debuffBlockShake{
+    0%{ transform:rotate(var(--block-base-rotation,0deg)) translateX(0); }
+    18%{ transform:rotate(calc(var(--block-base-rotation,0deg) - 4deg)) translateX(-2px); }
+    36%{ transform:rotate(calc(var(--block-base-rotation,0deg) + 4deg)) translateX(2px); }
+    54%{ transform:rotate(calc(var(--block-base-rotation,0deg) - 2.5deg)) translateX(-1.5px); }
+    72%{ transform:rotate(calc(var(--block-base-rotation,0deg) + 1.5deg)) translateX(1px); }
+    100%{ transform:rotate(var(--block-base-rotation,0deg)) translateX(0); }
+  }
 
   .cell.blocked-flash{ animation: flashRed calc(.4s / var(--anim-speed)) ease; }
   @keyframes flashRed{ 0%,100%{ background: rgba(255,255,255,0.02); } 40%{ background: rgba(232,93,78,0.35); } }
@@ -563,6 +626,48 @@
     content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:4px solid transparent; border-top-color:rgba(242,201,76,.75);
   }
+
+  /* Per-block score effect tooltips shown while a ball exits a block. */
+  .block-exit-tooltip{
+    position:absolute;
+    transform:translate(-50%, calc(-100% - 14px)) scale(.7);
+    transform-origin:center bottom;
+    background:rgba(10,26,44,.94);
+    border-radius:6px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:18px;
+    font-weight:700;
+    padding:3px 8px;
+    white-space:nowrap;
+    z-index:8;
+    pointer-events:none;
+    opacity:0;
+  }
+  .block-exit-tooltip.stone{ color:#fff; border:1px solid rgba(180,160,130,.9); }
+  .block-exit-tooltip.spark{ color:#ffd166; border:1px solid rgba(255,209,102,.85); }
+  @keyframes blockExitTooltipIn{
+    0%{ opacity:0; transform:translate(-50%, calc(-100% - 14px)) scale(.7); }
+    70%{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1.1); }
+    100%{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1); }
+  }
+  .block-exit-tooltip.show{
+    animation:blockExitTooltipIn calc(.24s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1) forwards;
+  }
+  @keyframes blockExitTooltipOut{
+    from{ opacity:1; transform:translate(-50%, calc(-100% - 14px)) scale(1); }
+    to{ opacity:0; transform:translate(-50%, calc(-100% - 18px)) scale(.88); }
+  }
+  .block-exit-tooltip.hide{
+    animation:blockExitTooltipOut calc(.18s / var(--anim-speed)) ease forwards;
+  }
+  .block-exit-tooltip.stone::after{
+    content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:4px solid transparent; border-top-color:rgba(180,160,130,.75);
+  }
+  .block-exit-tooltip.spark::after{
+    content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:4px solid transparent; border-top-color:rgba(255,209,102,.75);
+  }
   .steel-multiplier-tooltip::after{
     content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:4px solid transparent; border-top-color:rgba(199,205,211,.65);
@@ -605,6 +710,35 @@
     margin-bottom:4px;
   }
   .hover-tip.locked-tooltip-stack .locked-tooltip-desc{
+    color:var(--ink);
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    line-height:1.55;
+  }
+  .hover-tip.debuff-tooltip-stack{
+    flex-direction:row;
+    align-items:flex-start;
+    gap:6px;
+    white-space:normal;
+  }
+  .hover-tip.debuff-tooltip-stack .debuff-tooltip-main{
+    flex:0 1 260px;
+    width:min(260px, calc(100vw - 280px));
+    min-width:220px;
+    box-sizing:border-box;
+    background:rgba(10,26,44,0.96);
+    border:1px solid rgba(255,88,54,0.96);
+    border-radius:8px;
+    padding:7px 10px;
+    box-shadow:0 4px 18px rgba(255,88,54,.16);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:#ff5836;
+    line-height:1.65;
+  }
+  .hover-tip.debuff-tooltip-stack .debuff-tooltip-title{ color:#ff5836; font-weight:700; margin-bottom:4px; }
+  .hover-tip.debuff-tooltip-stack .debuff-tooltip-desc{
     color:var(--ink);
     white-space:normal;
     overflow-wrap:anywhere;
@@ -881,6 +1015,14 @@
   @media (prefers-reduced-motion: reduce){
     .ball{ transition: none; }
     .ring{ animation: none; }
+    .cell-debuff-x.debuff-x-grow::before,
+    .cell-debuff-x.debuff-x-grow::after,
+    .cell-debuff-x.debuff-x-shrink::before,
+    .cell-debuff-x.debuff-x-shrink::after,
+    .cell.debuff-cell.hasblock.debuff-block-feedback .block-visual{
+      animation:none !important;
+    }
+    .cell-debuff-x{ transform:scaleX(1); }
     .cell.board-reveal-cell{ animation:none; opacity:1; transform:none; }
     .cell.board-hide-cell{ animation:none; opacity:0; transform:scale(.02) rotate(var(--hide-rotate,0deg)); }
     .board.board-reveal-running,.board.board-hide-running{ pointer-events:auto; }
@@ -1515,7 +1657,7 @@
   function showHoverTip(targetEl, info){
     hoverTipEl._targetEl = targetEl;
     hoverTipEl.innerHTML = '';
-    hoverTipEl.classList.remove('locked-tooltip-stack', 'hazard-tooltip');
+    hoverTipEl.classList.remove('locked-tooltip-stack', 'debuff-tooltip-stack', 'hazard-tooltip');
 
     const main = document.createElement('div');
     main.className='hover-tip-main';
@@ -1574,7 +1716,7 @@
   function showSimpleHoverTip(targetEl, titleText, bodyText, extraClass=''){ 
     hoverTipEl._targetEl = targetEl;
     hoverTipEl.innerHTML='';
-    hoverTipEl.classList.remove('locked-tooltip-stack', 'hazard-tooltip');
+    hoverTipEl.classList.remove('locked-tooltip-stack', 'debuff-tooltip-stack', 'hazard-tooltip');
     const panel=document.createElement('div');
     panel.className='hover-tip-main';
     if(extraClass) hoverTipEl.classList.add(extraClass);
@@ -1896,7 +2038,7 @@
       clearTimeout(boardRevealTimer);
       boardRevealTimer=null;
     }
-    document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup').forEach(el=>el.remove());
+    document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup, .block-exit-tooltip').forEach(el=>el.remove());
     ballClickSelection=null;
     suppressBallClickUntil=0;
 
@@ -2025,30 +2167,37 @@
     return placed;
   }
 
-  function getLockedCellCount(level){
-    if(level < 7) return 0;
-    if(level < 10) return 1;
-    if(level < 13) return 2;
-    if(level < 16) return 3;
+  // ---------- adverse cells (locks + debuffs) ----------
+  // Progression: 7-9 = 1 lock; 10 = 1 lock + 1 debuff;
+  // 11-12 = 2 random adverse cells; 13-15 = 3; 16-18 = 4;
+  // 19+ = 5, then 6/7/8/9 are rolled in sequence. Each new slot starts
+  // at 20% and increases by 20% per level until guaranteed.
+  function getAdverseCellPlan(level){
+    if(level < 7) return [];
+    if(level <= 9) return ['lock'];
+    if(level === 10) return ['lock','debuff'];
+    if(level <= 12) return [null,null];
+    if(level <= 15) return [null,null,null];
+    if(level <= 18) return [null,null,null,null];
 
-    // Level 16+: always 4 locks, with a 5th lock chance starting at 10%
-    // and increasing by 10% each level until it reaches 100%.
-    const fifthChance = Math.min(1, (level - 15) * 0.10);
-    let count = 4 + (Math.random() < fifthChance ? 1 : 0);
-
-    // After the 5th lock becomes guaranteed, a 6th lock starts at 10%
-    // on the following level and increases by 10% per level, capped at 80%.
-    if(level >= 26){
-      const sixthChance = Math.min(0.80, (level - 25) * 0.10);
-      if(Math.random() < sixthChance) count += 1;
+    const plan=[null,null,null,null,null];
+    // Slot 6: 20% at level 19, then +20%/level, guaranteed at level 23.
+    for(let slot=6; slot<=9; slot++){
+      const startLevel=19 + (slot-6)*5;
+      if(level < startLevel) break;
+      const chance=Math.min(1, 0.20*(level-startLevel+1));
+      if(Math.random() < chance || chance >= 1){
+        plan.push(null);
+      } else {
+        break;
+      }
     }
-
-    return count;
+    return plan;
   }
 
-  function placeLockedCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, level){
-    const count=getLockedCellCount(level);
-    if(!count) return [];
+  function placeAdverseCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, level){
+    const plan=getAdverseCellPlan(level);
+    if(!plan.length) return [];
 
     const candidates=[];
     for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
@@ -2057,8 +2206,14 @@
       candidates.push([r,c]);
     }
     shuffle(candidates);
-    const placed=candidates.slice(0,Math.min(count,candidates.length));
-    for(const [r,c] of placed) cells[r][c].locked=true;
+    const placed=candidates.slice(0,Math.min(plan.length,candidates.length));
+
+    for(let i=0;i<placed.length;i++){
+      const [r,c]=placed[i];
+      const kind=plan[i] || (Math.random()<0.5 ? 'lock' : 'debuff');
+      if(kind==='lock') cells[r][c].locked=true;
+      else cells[r][c].debuff=true;
+    }
     return placed;
   }
 
@@ -2129,7 +2284,7 @@
     cells[holeR][holeC] = {type:'hole', block:null};
 
     placeBlackBlocks(cells, rows, cols, nodeR, nodeC, nodeDir, holeR, holeC, state.level);
-    placeLockedCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, state.level);
+    placeAdverseCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, state.level);
 
     state.rows = rows; state.cols = cols; state.cells = cells;
     state.node = {r:nodeR, c:nodeC, dir:nodeDir};
@@ -2301,7 +2456,7 @@
   function showLockedCellHoverTip(targetEl, block){
     hoverTipEl._targetEl = targetEl;
     hoverTipEl.innerHTML = '';
-    hoverTipEl.classList.remove('hazard-tooltip');
+    hoverTipEl.classList.remove('hazard-tooltip', 'debuff-tooltip-stack');
     hoverTipEl.classList.add('locked-tooltip-stack');
 
     if(block){
@@ -2379,6 +2534,74 @@
     el.addEventListener('mouseleave', hideHoverTip);
   }
 
+  function showDebuffCellHoverTip(targetEl, block){
+    hoverTipEl._targetEl=targetEl;
+    hoverTipEl.innerHTML='';
+    hoverTipEl.classList.remove('locked-tooltip-stack','hazard-tooltip');
+    hoverTipEl.classList.add('debuff-tooltip-stack');
+
+    if(block){
+      const info=blockTooltip(block);
+      const main=document.createElement('div');
+      main.className='hover-tip-main';
+      const title=document.createElement('div');
+      title.className='tip-title';
+      const left=document.createElement('div');
+      left.className='tip-title-left';
+      const base=document.createElement('span');
+      base.className='tip-title-base';
+      base.textContent=info.title;
+      left.appendChild(base);
+      if(info.property) left.appendChild(createTooltipPill(info.property,'property'));
+      if(info.enhancement) left.appendChild(createTooltipPill(info.enhancement,'enhancement'));
+      title.appendChild(left);
+      const lv=document.createElement('span');
+      lv.className='tip-level';
+      lv.textContent=`Lv.${info.level}`;
+      lv.style.color=levelColor(info.level);
+      title.appendChild(lv);
+      main.appendChild(title);
+      info.lines.forEach(line=>{
+        const d=document.createElement('div');
+        if(typeof line==='string') d.textContent=line;
+        else { d.textContent=line.text; d.style.color=line.color; }
+        main.appendChild(d);
+      });
+      hoverTipEl.appendChild(main);
+      if(info.property || info.enhancement){
+        const details=document.createElement('div');
+        details.className='hover-tip-details';
+        if(info.property) details.appendChild(createTooltipDetail(info.property,'property'));
+        if(info.enhancement) details.appendChild(createTooltipDetail(info.enhancement,'enhancement'));
+        hoverTipEl.appendChild(details);
+      }
+    }
+
+    const panel=document.createElement('div');
+    panel.className='debuff-tooltip-main';
+    const title=document.createElement('div');
+    title.className='debuff-tooltip-title';
+    title.textContent='Ô debuff';
+    const desc=document.createElement('div');
+    desc.className='debuff-tooltip-desc';
+    desc.textContent='Khối được đặt vào ô này không tăng điểm và vô hiệu hóa toàn bộ hiệu ứng của khối.';
+    panel.appendChild(title);
+    panel.appendChild(desc);
+    hoverTipEl.appendChild(panel);
+
+    hoverTipEl.classList.remove('hidden');
+    placeHoverTip(targetEl);
+  }
+
+  function debuffCellTooltip(el){
+    el.addEventListener('mouseenter', ()=>{
+      const r=+el.dataset.r, c=+el.dataset.c;
+      const block=state?.cells?.[r]?.[c]?.block || null;
+      showDebuffCellHoverTip(el, block);
+    });
+    el.addEventListener('mouseleave', hideHoverTip);
+  }
+
   function renderBlockCell(el, r, c, block){
     renderBlockArms(el, block);
     attachBoardBlockDrag(el);
@@ -2403,7 +2626,7 @@
     const cellData = state.cells[r][c];
     const el = document.createElement('div');
     el.dataset.r=r; el.dataset.c=c;
-    el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '') + (cellData.locked ? ' locked-cell' : '');
+    el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '') + (cellData.locked ? ' locked-cell' : '') + (cellData.debuff ? ' debuff-cell' : '');
     applyBoardCellAnimation(el, r, c, boardReveal, boardHide);
 
     if(cellData.type==='node'){
@@ -2420,7 +2643,27 @@
       renderLockIcon(el, !!cellData.block);
       lockedCellTooltip(el);
     }
+    if(cellData.debuff){
+      const x=document.createElement('div');
+      x.className='cell-debuff-x';
+      el.appendChild(x);
+      debuffCellTooltip(el);
+    }
     boardEl.appendChild(el);
+  }
+
+
+  // Runtime-only visual feedback for debuff cells.
+  function pulseDebuffBlock(cellEl){
+    if(!cellEl || !cellEl.classList.contains('debuff-cell') || !cellEl.classList.contains('hasblock')) return;
+    const visual = cellEl.querySelector('.block-visual');
+    if(!visual) return;
+    cellEl.classList.remove('debuff-block-feedback');
+    void cellEl.offsetWidth;
+    cellEl.classList.add('debuff-block-feedback');
+    setTimeout(()=>{
+      if(cellEl.isConnected) cellEl.classList.remove('debuff-block-feedback');
+    }, scaledDuration(380));
   }
 
   function renderBoardSwapAnimation(){
@@ -2463,6 +2706,14 @@
 
   function renderBoard(boardReveal, boardHide, revealToken){
     prepareBoardRender(boardReveal);
+
+    // The board DOM is rebuilt on every render. Remember old debuff occupancy
+    // so the X animates only when a block is actually added/removed.
+    const previousDebuffBlocks = new Map();
+    boardEl.querySelectorAll('.cell.debuff-cell').forEach(el=>{
+      previousDebuffBlocks.set(`${el.dataset.r},${el.dataset.c}`, el.classList.contains('hasblock'));
+    });
+
     boardEl.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
     boardEl.style.gridTemplateRows = `repeat(${state.rows}, 1fr)`;
     boardWrapEl.style.aspectRatio = `${state.cols} / ${state.rows}`;
@@ -2472,10 +2723,28 @@
       for(let c=0;c<state.cols;c++) renderBoardCell(r, c, boardReveal, boardHide);
     }
 
+    if(!boardReveal && !boardHide){
+      for(const [key, hadBlock] of previousDebuffBlocks){
+        const [r,c] = key.split(',').map(Number);
+        const cellData = state.cells?.[r]?.[c];
+        if(!cellData?.debuff) continue;
+
+        const hasBlock = !!cellData.block;
+        const cellEl = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+        const x = cellEl?.querySelector('.cell-debuff-x');
+        if(!cellEl || !x) continue;
+
+        if(!hadBlock && hasBlock){
+          x.classList.add('debuff-x-grow');
+        }else if(hadBlock && !hasBlock){
+          x.classList.add('debuff-x-shrink');
+        }
+      }
+    }
+
     renderBoardSwapAnimation();
     placeAnimCell = null;
   }
-
   function renderHUD(){
     bagCountEl.textContent = `Túi khối còn lại: ${formatNumber(state.bag.length)}`;
     discardCountEl.textContent = `(${formatNumber(state.discardsLeft)}/${formatNumber(getMaxDiscards())})`;
@@ -3108,7 +3377,12 @@
     if(cellEl){
       const r=+cellEl.dataset.r, c=+cellEl.dataset.c;
       if(drag.origin==='hand'){
-        state.cells[r][c] = {type:'empty', block: drag.block, locked: !!state.cells[r][c].locked};
+        state.cells[r][c] = {
+          type:'empty',
+          block: drag.block,
+          locked: !!state.cells[r][c].locked,
+          debuff: !!state.cells[r][c].debuff
+        };
         state.hand[drag.idx] = null;
         refillHand(true);
       } else if(drag.origin==='board'){
@@ -3310,9 +3584,49 @@
   };
 
   const ENHANCEMENT_EFFECTS = {
-    spark: { blockExit:(bs)=>{ bs.total *= 1.5; }, ballExit:(bs)=>{ bs.total *= 1.5; } },
+    spark: { blockExit:(bs,multiplier)=>{ bs.total *= multiplier; }, ballExit:(bs,multiplier)=>{ bs.total *= multiplier; } },
     holo:  { blockExit:(bs)=>{ bs.total += 50; }, ballExit:(bs)=>{ bs.total += 50; } },
   };
+
+  // Spark multiplier state is runtime-only and scoped to the current shot.
+  // Each Spark block starts at x1.5 on the first encounter of the shot, then
+  // loses 0.1 after every use during that shot, never going below x1.
+  // The Map is shared by all branches of the shot and is recreated for the
+  // next shot, so every Spark block resets back to x1.5 between shots.
+  const SPARK_START_MULTIPLIER = 1.5;
+  const SPARK_DECAY = 0.1;
+  const SPARK_MIN_MULTIPLIER = 1.0;
+  function getBlockSparkMultiplier(block, ballState){
+    if(!block || !ballState?.shotMeta) return SPARK_MIN_MULTIPLIER;
+    const meta=ballState.shotMeta;
+    if(!meta.sparkBlockMultipliers) meta.sparkBlockMultipliers=new Map();
+    let value=meta.sparkBlockMultipliers.get(block);
+    if(!Number.isFinite(value)) value=SPARK_START_MULTIPLIER;
+    value=Math.max(SPARK_MIN_MULTIPLIER, Math.round(value*10)/10);
+    meta.sparkBlockMultipliers.set(block,value);
+    return value;
+  }
+  function consumeBlockSparkMultiplier(block, ballState){
+    if(!ballState?.shotMeta) return SPARK_MIN_MULTIPLIER;
+    const current=getBlockSparkMultiplier(block, ballState);
+    const next=Math.max(SPARK_MIN_MULTIPLIER, Math.round((current-SPARK_DECAY)*10)/10);
+    ballState.shotMeta.sparkBlockMultipliers.set(block,next);
+    return next;
+  }
+  function getBallSparkMultiplier(ballState){
+    const meta=ballState?.shotMeta;
+    const value=Number.isFinite(meta?.sparkMultiplier) ? meta.sparkMultiplier : SPARK_START_MULTIPLIER;
+    if(meta && !Number.isFinite(meta.sparkMultiplier)) meta.sparkMultiplier=SPARK_START_MULTIPLIER;
+    return Math.max(SPARK_MIN_MULTIPLIER, Math.round(value*10)/10);
+  }
+  function consumeBallSparkMultiplier(ballState){
+    if(!ballState?.shotMeta) return SPARK_MIN_MULTIPLIER;
+    ballState.shotMeta.sparkMultiplier=Math.max(
+      SPARK_MIN_MULTIPLIER,
+      Math.round((getBallSparkMultiplier(ballState)-SPARK_DECAY)*10)/10
+    );
+    return ballState.shotMeta.sparkMultiplier;
+  }
 
   function syncMoneyHud(){
     moneyValEl.textContent = formatMoney(state.money);
@@ -3321,7 +3635,10 @@
   function blockExitEffects(block, ballState){
     const prop = block.property, enh = block.enhancement;
     let brokeBlock = false;
+    const tooltips=[];
 
+    // Property effects are no longer doubled by Spark. Spark is its own
+    // decaying multiplier applied after the normal block gain.
     const propFx = BLOCK_PROP_EFFECTS[prop];
     propFx?.onExit?.(ballState, 1);
     if(prop==='steel'){
@@ -3335,18 +3652,74 @@
     ballState.total += blockGain;
 
     if(propFx?.chanceToBreak && Math.random() < propFx.chanceToBreak) brokeBlock = true;
-    if(enh==='spark') ENHANCEMENT_EFFECTS.spark.blockExit(ballState);
+
+    if(prop==='stone') tooltips.push({text:'+50',kind:'stone'});
+
+    if(enh==='spark'){
+      const multiplier=getBlockSparkMultiplier(block, ballState);
+      if(multiplier>SPARK_MIN_MULTIPLIER){
+        ENHANCEMENT_EFFECTS.spark.blockExit(ballState,multiplier);
+        tooltips.push({text:`x${multiplier.toFixed(1)}`,kind:'spark'});
+        consumeBlockSparkMultiplier(block, ballState);
+      }
+    }
     if(enh==='holo') ENHANCEMENT_EFFECTS.holo.blockExit(ballState);
 
     ballState.total += (state.typeBonus[block.type] || 0);
-    return brokeBlock;
+    return {brokeBlock, tooltips};
   }
 
   function ballExitEffects(ballState){
     const prop = ballState.prop, enh = ballState.enh;
+    const tooltips=[];
     BALL_PROP_EFFECTS[prop]?.onExit?.(ballState, 1);
-    if(enh==='spark') ENHANCEMENT_EFFECTS.spark.ballExit(ballState);
+    if(enh==='spark'){
+      const multiplier=getBallSparkMultiplier(ballState);
+      if(multiplier>SPARK_MIN_MULTIPLIER){
+        ENHANCEMENT_EFFECTS.spark.ballExit(ballState,multiplier);
+        tooltips.push({text:`x${multiplier.toFixed(1)}`,kind:'spark'});
+        consumeBallSparkMultiplier(ballState);
+      }
+    }
     if(enh==='holo') ENHANCEMENT_EFFECTS.holo.ballExit(ballState);
+    return tooltips;
+  }
+
+  function createBlockExitTooltip(row,col,text,kind){
+    if(!Number.isInteger(row)||!Number.isInteger(col)||!boardWrapEl) return null;
+    const tip=document.createElement('div');
+    tip.className=`block-exit-tooltip ${kind||''}`.trim();
+    tip.textContent=text;
+    const p=cellPercent(row,col);
+    tip.style.left=p.left+'%';
+    tip.style.top=p.top+'%';
+    boardWrapEl.appendChild(tip);
+    return tip;
+  }
+
+  // Non-blocking block-exit tooltip sequence. Tooltips are visual feedback only,
+  // so the ball continues travelling while they appear. Multiple tooltips are
+  // staggered in the requested order: property first, enhancement second.
+  function animateBlockExitTooltips(row,col,tooltips,generation){
+    if(!Array.isArray(tooltips)||!tooltips.length) return true;
+    const sequence=tooltips.slice();
+    sequence.forEach((item,index)=>{
+      const delay=scaledDuration(index*190);
+      setTimeout(()=>{
+        if(generation!==runGeneration || !state) return;
+        const tip=createBlockExitTooltip(row,col,item.text,item.kind);
+        if(!tip) return;
+        requestAnimationFrame(()=>tip.classList.add('show'));
+        setTimeout(()=>{
+          if(!tip.isConnected) return;
+          if(generation!==runGeneration || !state){ tip.remove(); return; }
+          tip.classList.remove('show');
+          tip.classList.add('hide');
+          setTimeout(()=>tip.remove(), scaledDuration(100));
+        }, scaledDuration(180));
+      }, delay);
+    });
+    return true;
   }
 
   function removeBallPermanently(ballId){
@@ -3850,10 +4223,29 @@
       return loseBall(ball, tip, nr, nc, ballState);
     }
 
+    if(cellData.debuff){
+      // Keep the same ball entity and continue immediately; no re-spawn means no visible pause.
+      const exits=sides.filter(s=>s!==entrySide);
+      if(!exits.length) return loseBall(ball,tip,nr,nc,ballState);
+
+      const debuffCellEl = boardEl.querySelector(`.cell.debuff-cell[data-r="${nr}"][data-c="${nc}"]`);
+      pulseDebuffBlock(debuffCellEl);
+
+      const exitDir=pick(exits);
+      return travel(ball,tip,nr,nc,exitDir,ballState,counter,generation);
+    }
+
     const previousTotal = ballState.total;
-    const brokeBlock = blockExitEffects(blockRef, ballState);
-    ballExitEffects(ballState);
+    const blockExitResult = blockExitEffects(blockRef, ballState);
+    const ballExitTooltips = ballExitEffects(ballState);
     const invertBlock = blockRef.enhancement === 'invert';
+
+    // Property tooltip first, then enhancement tooltip(s).
+    const exitTooltips = [...(blockExitResult?.tooltips || []), ...ballExitTooltips];
+    // Tooltips are non-blocking visual feedback; do not pause the ball.
+    animateBlockExitTooltips(nr,nc,exitTooltips,generation);
+
+    const brokeBlock = !!blockExitResult?.brokeBlock;
     if(brokeBlock) breakBlockAt(nr,nc);
 
     // A glass ball checks its 10% break chance after every block exit. If it breaks,
@@ -3940,7 +4332,13 @@
     renderBallQueue();
 
     const counter = {launched:0, scored:0, broke:0, points:0};
-    const shotMeta = { invertSpawns:0, maxInvertSpawns:2, counter };
+    const shotMeta = {
+      invertSpawns:0,
+      maxInvertSpawns:2,
+      counter,
+      sparkMultiplier:SPARK_START_MULTIPLIER,
+      sparkBlockMultipliers:new Map()
+    };
     const glassShot = queued.property==='glass' ? {
       ballId:queued._id, active:1,
       spawnedExtra:false, lossChecked:false, finished:false
@@ -4091,7 +4489,7 @@
       recycleCurrentLevelBlocksToBag();
       state.ballsFired=0;
       state.ballQueue=makeBallQueue();
-      document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup').forEach(el=>el.remove());
+      document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup, .block-exit-tooltip').forEach(el=>el.remove());
       moneyValEl.textContent=formatMoney(state.money);
       scoreValEl.textContent=formatNumber(state.score);
       renderBallQueue();
@@ -4191,7 +4589,7 @@
     state.resolving = false;
     state.targeting = null;
     state.phase = 'playing';
-    document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup, .steel-multiplier-tooltip, .gold-reward-tooltip').forEach(el=>el.remove());
+    document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup, .steel-multiplier-tooltip, .gold-reward-tooltip, .block-exit-tooltip').forEach(el=>el.remove());
     state.score = Math.max(state.score, state.target);
     scoreValEl.textContent = formatNumber(state.score);
 

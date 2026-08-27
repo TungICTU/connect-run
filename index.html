@@ -226,6 +226,90 @@
   .cell.empty.drop-hover,.cell.hasblock.drop-hover{ background: rgba(94,200,216,0.14); border-color: var(--cyan); }
   .cell.hasblock{ cursor: grab; border-style: solid; border-color: rgba(94,200,216,0.08); }
   .cell.hasblock:active{ cursor: grabbing; }
+
+  /* Locked cells: blocks placed here cannot be dragged or rotated until the level ends. */
+  .cell.locked-cell{
+    background:rgba(255,92,136,0.10);
+    border-color:rgba(255,92,136,0.72);
+    box-shadow:inset 0 0 12px rgba(255,92,136,0.14);
+  }
+  .cell.locked-cell.hasblock{
+    cursor:default !important;
+  }
+  .cell.locked-cell.hasblock .block-visual{
+    cursor:default;
+  }
+  .cell.locked-cell.hasblock::after{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:inherit;
+    background:rgba(255,79,131,.11);
+    pointer-events:none;
+    z-index:10;
+  }
+  .cell.locked-cell.hasblock.locked-block-feedback .block-visual{
+    animation:lockedBlockShakePulse calc(.42s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes lockedBlockShakePulse{
+    0%{ transform:scale(1) rotate(var(--block-base-rotation,0deg)); filter:drop-shadow(0 0 0 rgba(255,79,131,0)); }
+    18%{ transform:scale(1.05) translateX(-2px) rotate(calc(var(--block-base-rotation,0deg) - 4deg)); filter:drop-shadow(0 0 4px rgba(255,79,131,.75)); }
+    36%{ transform:scale(.98) translateX(2px) rotate(calc(var(--block-base-rotation,0deg) + 4deg)); filter:drop-shadow(0 0 7px rgba(255,79,131,.9)); }
+    54%{ transform:scale(1.03) translateX(-1.5px) rotate(calc(var(--block-base-rotation,0deg) - 2.5deg)); filter:drop-shadow(0 0 5px rgba(255,79,131,.8)); }
+    72%{ transform:scale(1.01) translateX(1px) rotate(calc(var(--block-base-rotation,0deg) + 1.5deg)); filter:drop-shadow(0 0 4px rgba(255,79,131,.65)); }
+    100%{ transform:scale(1) translateX(0) rotate(var(--block-base-rotation,0deg)); filter:drop-shadow(0 0 0 rgba(255,79,131,0)); }
+  }
+  .cell-lock-icon{
+    position:absolute;
+    top:3px;
+    right:3px;
+    width:16px;
+    height:18px;
+    z-index:20;
+    pointer-events:none;
+    color:rgba(255,92,136,0.35);
+    opacity:0.35;
+    transform-origin:50% 70%;
+    filter:drop-shadow(0 1px 2px rgba(255,92,136,0.12));
+  }
+  .cell-lock-icon::before{
+    content:"";
+    position:absolute;
+    left:4px; top:1px;
+    width:8px; height:9px;
+    border:2px solid currentColor;
+    border-bottom:0;
+    border-radius:7px 7px 0 0;
+    box-sizing:border-box;
+  }
+  .cell-lock-icon::after{
+    content:"";
+    position:absolute;
+    left:1px; top:7px;
+    width:14px; height:10px;
+    border-radius:3px;
+    background:currentColor;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+  .cell-lock-icon .lock-keyhole{
+    position:absolute;
+    left:7px; top:10px;
+    width:2px; height:4px;
+    border-radius:2px;
+    background:rgba(25,15,20,.75);
+    z-index:2;
+  }
+  .cell-lock-icon.is-empty{
+    animation:lockedIconFloat 1.9s ease-in-out infinite;
+  }
+  .cell-lock-icon.is-filled{
+    color:#ff4f83;
+    opacity:1;
+    filter:drop-shadow(0 0 3px rgba(255,79,131,.48));
+  }
+  @keyframes lockedIconFloat{
+    0%,100%{ transform:translateY(0) rotate(-8deg); }
+    50%{ transform:translateY(-2px) rotate(8deg); }
+  }
   .cell.targetable{ cursor:pointer; animation: cellTargetPulse calc(1s / var(--anim-speed)) ease-in-out infinite; }
   @keyframes cellTargetPulse{ 0%,100%{ box-shadow:inset 0 0 0 2px var(--green);} 50%{ box-shadow:inset 0 0 0 2px var(--green), 0 0 10px var(--green);} }
 
@@ -494,6 +578,45 @@
     z-index:200; pointer-events:none; white-space:nowrap;
     max-width:calc(100vw - 16px);
     max-height:calc(100vh - 16px);
+  }
+  .hover-tip.locked-tooltip-stack{
+    flex-direction:row;
+    align-items:flex-start;
+    gap:6px;
+    white-space:normal;
+  }
+  .hover-tip.locked-tooltip-stack .locked-tooltip-main{
+    flex:0 1 260px;
+    width:min(260px, calc(100vw - 280px));
+    min-width:220px;
+    background:rgba(10,26,44,0.96);
+    border:1px solid rgba(255,79,131,0.92);
+    border-radius:8px;
+    padding:7px 10px;
+    box-shadow:0 4px 18px rgba(0,0,0,.3);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:#ff4f83;
+    line-height:1.65;
+  }
+  .hover-tip.locked-tooltip-stack .locked-tooltip-title{
+    color:#ff4f83;
+    font-weight:700;
+    margin-bottom:4px;
+  }
+  .hover-tip.locked-tooltip-stack .locked-tooltip-desc{
+    color:var(--ink);
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    line-height:1.55;
+  }
+  .hover-tip.hazard-tooltip .hover-tip-main{
+    border-color:rgba(255,79,131,.92);
+    box-shadow:0 4px 18px rgba(255,79,131,.16);
+  }
+  .hover-tip.hazard-tooltip .tip-title{
+    color:#ff4f83;
   }
   .hover-tip.hidden{ display:none; }
   .hover-tip-main, .hover-tip-details{
@@ -1113,6 +1236,10 @@
       </div>
     </div>
     <div class="debug-section">
+      <span class="debug-label">Tiến trình màn</span>
+      <div class="debug-actions"><button class="debug-apply" id="debugAdvanceLevelBtn">Qua màn</button></div>
+    </div>
+    <div class="debug-section">
       <span class="debug-label">Thẻ nâng cấp → tay</span>
       <div class="debug-select-row"><select class="debug-select" id="debugUpgradeSelect"></select></div>
       <div class="debug-actions"><button class="debug-apply" id="debugAddUpgradeBtn">+ Thêm thẻ nâng cấp</button></div>
@@ -1388,6 +1515,7 @@
   function showHoverTip(targetEl, info){
     hoverTipEl._targetEl = targetEl;
     hoverTipEl.innerHTML = '';
+    hoverTipEl.classList.remove('locked-tooltip-stack', 'hazard-tooltip');
 
     const main = document.createElement('div');
     main.className='hover-tip-main';
@@ -1443,11 +1571,13 @@
     el.addEventListener('mouseleave', hideHoverTip);
   }
 
-  function showSimpleHoverTip(targetEl, titleText, bodyText){
+  function showSimpleHoverTip(targetEl, titleText, bodyText, extraClass=''){ 
     hoverTipEl._targetEl = targetEl;
     hoverTipEl.innerHTML='';
+    hoverTipEl.classList.remove('locked-tooltip-stack', 'hazard-tooltip');
     const panel=document.createElement('div');
     panel.className='hover-tip-main';
+    if(extraClass) hoverTipEl.classList.add(extraClass);
     const title=document.createElement('div');
     title.className='tip-title';
     title.textContent=titleText;
@@ -1461,7 +1591,7 @@
   }
 
   function blackBlockTooltip(el){
-    el.addEventListener('mouseenter', ()=>showSimpleHoverTip(el, 'Vật cản', 'Không thể đặt khối lên ô này'));
+    el.addEventListener('mouseenter', ()=>showSimpleHoverTip(el, 'Vật cản', 'Không thể đặt khối lên ô này', 'hazard-tooltip'));
     el.addEventListener('mouseleave', hideHoverTip);
   }
 
@@ -1895,6 +2025,43 @@
     return placed;
   }
 
+  function getLockedCellCount(level){
+    if(level < 7) return 0;
+    if(level < 10) return 1;
+    if(level < 13) return 2;
+    if(level < 16) return 3;
+
+    // Level 16+: always 4 locks, with a 5th lock chance starting at 10%
+    // and increasing by 10% each level until it reaches 100%.
+    const fifthChance = Math.min(1, (level - 15) * 0.10);
+    let count = 4 + (Math.random() < fifthChance ? 1 : 0);
+
+    // After the 5th lock becomes guaranteed, a 6th lock starts at 10%
+    // on the following level and increases by 10% per level, capped at 80%.
+    if(level >= 26){
+      const sixthChance = Math.min(0.80, (level - 25) * 0.10);
+      if(Math.random() < sixthChance) count += 1;
+    }
+
+    return count;
+  }
+
+  function placeLockedCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, level){
+    const count=getLockedCellCount(level);
+    if(!count) return [];
+
+    const candidates=[];
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      if((r===nodeR && c===nodeC) || (r===holeR && c===holeC)) continue;
+      if(cells[r][c].type!=='empty' || cells[r][c].block) continue;
+      candidates.push([r,c]);
+    }
+    shuffle(candidates);
+    const placed=candidates.slice(0,Math.min(count,candidates.length));
+    for(const [r,c] of placed) cells[r][c].locked=true;
+    return placed;
+  }
+
   function newLevel(){
     rewardGeneration++;
     const rewardBtn = document.getElementById('overlayBtn');
@@ -1962,6 +2129,7 @@
     cells[holeR][holeC] = {type:'hole', block:null};
 
     placeBlackBlocks(cells, rows, cols, nodeR, nodeC, nodeDir, holeR, holeC, state.level);
+    placeLockedCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, state.level);
 
     state.rows = rows; state.cols = cols; state.cells = cells;
     state.node = {r:nodeR, c:nodeC, dir:nodeDir};
@@ -2028,6 +2196,7 @@
     if(block.enhancement) visual.dataset.enh = block.enhancement;
     const deg = block.rotation*90;
     visual.dataset.deg = deg;
+    visual.style.setProperty('--block-base-rotation', `${deg}deg`);
     visual.style.transform = `rotate(${deg}deg)`;
     const hub = document.createElement('div'); hub.className='hub';
     visual.appendChild(hub);
@@ -2120,6 +2289,96 @@
     blackBlockTooltip(el);
   }
 
+  function renderLockIcon(el, isFilled){
+    const icon=document.createElement('div');
+    icon.className='cell-lock-icon ' + (isFilled ? 'is-filled' : 'is-empty');
+    const keyhole=document.createElement('div');
+    keyhole.className='lock-keyhole';
+    icon.appendChild(keyhole);
+    el.appendChild(icon);
+  }
+
+  function showLockedCellHoverTip(targetEl, block){
+    hoverTipEl._targetEl = targetEl;
+    hoverTipEl.innerHTML = '';
+    hoverTipEl.classList.remove('hazard-tooltip');
+    hoverTipEl.classList.add('locked-tooltip-stack');
+
+    if(block){
+      const blockInfo = blockTooltip(block);
+      const blockWrap = document.createElement('div');
+      blockWrap.className='hover-tip';
+      blockWrap.style.position='static';
+      blockWrap.style.maxWidth='none';
+      blockWrap.style.maxHeight='none';
+      blockWrap.style.whiteSpace='normal';
+      blockWrap.style.flexDirection='row';
+      blockWrap.style.alignItems='flex-start';
+      blockWrap.style.gap='6px';
+      blockWrap.style.pointerEvents='none';
+
+      const main = document.createElement('div');
+      main.className='hover-tip-main';
+      const t = document.createElement('div');
+      t.className='tip-title';
+      const titleLeft = document.createElement('div');
+      titleLeft.className='tip-title-left';
+      const baseTitle = document.createElement('span');
+      baseTitle.className='tip-title-base';
+      baseTitle.textContent=blockInfo.title;
+      titleLeft.appendChild(baseTitle);
+      if(blockInfo.property) titleLeft.appendChild(createTooltipPill(blockInfo.property, 'property'));
+      if(blockInfo.enhancement) titleLeft.appendChild(createTooltipPill(blockInfo.enhancement, 'enhancement'));
+      t.appendChild(titleLeft);
+      const levelEl=document.createElement('span');
+      levelEl.className='tip-level';
+      levelEl.textContent=`Lv.${blockInfo.level}`;
+      levelEl.style.color=levelColor(blockInfo.level);
+      t.appendChild(levelEl);
+      main.appendChild(t);
+      blockInfo.lines.forEach(line=>{
+        const d=document.createElement('div');
+        if(typeof line==='string') d.textContent=line;
+        else { d.textContent=line.text; d.style.color=line.color; }
+        main.appendChild(d);
+      });
+      blockWrap.appendChild(main);
+
+      if(blockInfo.property || blockInfo.enhancement){
+        const details=document.createElement('div');
+        details.className='hover-tip-details';
+        if(blockInfo.property) details.appendChild(createTooltipDetail(blockInfo.property, 'property'));
+        if(blockInfo.enhancement) details.appendChild(createTooltipDetail(blockInfo.enhancement, 'enhancement'));
+        blockWrap.appendChild(details);
+      }
+      hoverTipEl.appendChild(blockWrap);
+    }
+
+    const lockPanel=document.createElement('div');
+    lockPanel.className='locked-tooltip-main';
+    const lockTitle=document.createElement('div');
+    lockTitle.className='locked-tooltip-title';
+    lockTitle.textContent='Ô khóa';
+    const lockDesc=document.createElement('div');
+    lockDesc.className='locked-tooltip-desc';
+    lockDesc.textContent='Khối được đặt vào ô này sẽ bị khóa và không thể kéo hoặc xoay cho đến khi qua màn.';
+    lockPanel.appendChild(lockTitle);
+    lockPanel.appendChild(lockDesc);
+    hoverTipEl.appendChild(lockPanel);
+
+    hoverTipEl.classList.remove('hidden');
+    placeHoverTip(targetEl);
+  }
+
+  function lockedCellTooltip(el){
+    el.addEventListener('mouseenter', ()=>{
+      const r=+el.dataset.r, c=+el.dataset.c;
+      const block=state?.cells?.[r]?.[c]?.block || null;
+      showLockedCellHoverTip(el, block);
+    });
+    el.addEventListener('mouseleave', hideHoverTip);
+  }
+
   function renderBlockCell(el, r, c, block){
     renderBlockArms(el, block);
     attachBoardBlockDrag(el);
@@ -2127,10 +2386,16 @@
       el.classList.add('targetable');
       if(state.targeting.targets.some(t=>t.obj===block)) el.classList.add('target-selected');
     }
+    // A freshly placed block gets exactly one place-in animation, including
+    // when it is placed onto a locked cell. The class is removed after the
+    // animation so later renders/lock feedback can never replay it.
     if(placeAnimCell && placeAnimCell.r===r && placeAnimCell.c===c){
       el.classList.add('just-placed');
       const visual = el.querySelector('.block-visual');
-      if(visual) visual.style.setProperty('--place-deg', (block.rotation*90)+'deg');
+      if(visual){
+        visual.style.setProperty('--place-deg', (block.rotation*90)+'deg');
+        setTimeout(()=>el.classList.remove('just-placed'), scaledDuration(360));
+      }
     }
   }
 
@@ -2138,7 +2403,7 @@
     const cellData = state.cells[r][c];
     const el = document.createElement('div');
     el.dataset.r=r; el.dataset.c=c;
-    el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '');
+    el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '') + (cellData.locked ? ' locked-cell' : '');
     applyBoardCellAnimation(el, r, c, boardReveal, boardHide);
 
     if(cellData.type==='node'){
@@ -2151,6 +2416,10 @@
       renderBlockCell(el, r, c, cellData.block);
     }
 
+    if(cellData.locked){
+      renderLockIcon(el, !!cellData.block);
+      lockedCellTooltip(el);
+    }
     boardEl.appendChild(el);
   }
 
@@ -2696,11 +2965,25 @@
       startDrag(e, {origin:'hand', idx, block: state.hand[idx]});
     });
   }
+  function pulseLockedBlock(cellEl){
+    if(!cellEl) return;
+    cellEl.classList.remove('locked-block-feedback');
+    void cellEl.offsetWidth;
+    cellEl.classList.add('locked-block-feedback');
+    clearTimeout(cellEl._lockedFeedbackTimer);
+    cellEl._lockedFeedbackTimer=setTimeout(()=>cellEl.classList.remove('locked-block-feedback'), scaledDuration(460));
+  }
+
   function attachBoardBlockDrag(cellEl){
     cellEl.addEventListener('pointerdown', e=>{
       const r=+cellEl.dataset.r, c=+cellEl.dataset.c;
       if(state.targeting){ e.preventDefault(); handleTargetClick({obj: state.cells[r][c].block, kind:'block'}); return; }
       if(state.resolving || state.phase!=='playing') return;
+      if(state.cells[r]?.[c]?.locked){
+        e.preventDefault();
+        pulseLockedBlock(cellEl);
+        return;
+      }
       startDrag(e, {origin:'board', r, c, block: state.cells[r][c].block});
     });
   }
@@ -2743,7 +3026,12 @@
   function dropTargetCell(el){
     const cellEl = el && el.closest ? el.closest('.cell') : null;
     if(!cellEl || cellEl.classList.contains('node') || cellEl.classList.contains('hole') || cellEl.classList.contains('black-block')) return null;
-    if(drag.origin==='hand' && cellEl.classList.contains('hasblock')) return null;
+    const targetLocked = cellEl.classList.contains('locked-cell');
+    const targetOccupied = cellEl.classList.contains('hasblock');
+    // A locked block itself can never be moved, and a normal block may not swap it
+    // out of a locked cell. An empty locked cell is still a valid placement target.
+    if(targetLocked && targetOccupied) return null;
+    if(drag.origin==='hand' && targetOccupied) return null;
     if(drag.origin==='board' && +cellEl.dataset.r===drag.r && +cellEl.dataset.c===drag.c) return null;
     return cellEl;
   }
@@ -2778,6 +3066,12 @@
     if(drag.raf) cancelAnimationFrame(drag.raf);
 
     if(!drag.moved){
+      if(drag.origin==='board' && state.cells[drag.r]?.[drag.c]?.locked){
+        const lockedEl=boardEl.querySelector(`.cell[data-r="${drag.r}"][data-c="${drag.c}"]`);
+        pulseLockedBlock(lockedEl);
+        drag=null;
+        return;
+      }
       drag.block.rotation = (drag.block.rotation+1)%4;
       const containerEl = drag.origin==='hand'
         ? handEl.querySelector(`.hand-slot[data-idx="${drag.idx}"]`)
@@ -2814,7 +3108,7 @@
     if(cellEl){
       const r=+cellEl.dataset.r, c=+cellEl.dataset.c;
       if(drag.origin==='hand'){
-        state.cells[r][c] = {type:'empty', block: drag.block};
+        state.cells[r][c] = {type:'empty', block: drag.block, locked: !!state.cells[r][c].locked};
         state.hand[drag.idx] = null;
         refillHand(true);
       } else if(drag.origin==='board'){
@@ -3887,6 +4181,24 @@
     if(state){ debugLevelInput.value=state.level||1; }
     populateDebugCardSelects();
   }
+  async function debugAdvanceLevel(){
+    if(!state || state.resolving || state.phase==='reward') return;
+
+    // Route the debug action through the normal win pipeline. This gives the
+    // debug button the same board animation, gold rewards, win overlay and
+    // reward-collection flow as a genuine completed level.
+    runGeneration++;
+    state.resolving = false;
+    state.targeting = null;
+    state.phase = 'playing';
+    document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup, .steel-multiplier-tooltip, .gold-reward-tooltip').forEach(el=>el.remove());
+    state.score = Math.max(state.score, state.target);
+    scoreValEl.textContent = formatNumber(state.score);
+
+    await checkEndState();
+    scheduleAutoSave();
+  }
+
   function debugSetLevel(){
     const level=Math.max(1,Math.floor(Number(debugLevelInput.value)||1));
     if(!state) return;
@@ -3923,6 +4235,7 @@
   document.getElementById('debugCloseBtn').addEventListener('click',()=>debugOverlayEl.classList.add('hidden'));
   document.getElementById('debugAddMoneyBtn').addEventListener('click',()=>{ const amount=Number(document.getElementById('debugMoneyInput').value)||0; state.money+=amount; moneyValEl.textContent=formatMoney(state.money); if(!shopOverlayEl.classList.contains('hidden')) renderShop(); scheduleAutoSave(); });
   document.getElementById('debugSetLevelBtn').addEventListener('click',debugSetLevel);
+  document.getElementById('debugAdvanceLevelBtn').addEventListener('click',debugAdvanceLevel);
   document.getElementById('debugAddUpgradeBtn').addEventListener('click',()=>debugAddCard('upgrade',debugUpgradeSelect.value));
   document.getElementById('debugAddPowerBtn').addEventListener('click',()=>debugAddCard('power',debugPowerSelect.value));
   document.getElementById('debugApplyTargetBtn').addEventListener('click',debugApplyTarget);

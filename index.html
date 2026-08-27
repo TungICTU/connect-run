@@ -1226,13 +1226,13 @@
     steel:'Nhân 1.5x điểm khi bóng vào lỗ cho mỗi khối thép bóng đi qua',
     stone:'+50 điểm khi bóng thoát khối',
     wood:'+5 tỉ lệ cộng điểm khi bóng thoát khối',
-    glass:'Nhân 1.5x điểm hiện tại; 20% khối vỡ sau khi bóng thoát',
+    glass:'Nhân 1.5x điểm hiện tại; 10% khối vỡ sau khi bóng thoát',
     gold:'Sau khi thắng màn: +3$ cho mỗi khối vàng còn trên bảng',
   };
   const BLOCK_ENH_DESC = {
     holo:'+50 điểm khi bóng thoát khối',
-    spark:'Nhân đôi hiệu ứng thuộc tính của khối (không có thuộc tính thì +tỉ lệ cộng điểm)',
-    invert:'Bóng thoát khối này bị nhân bản: 1 bản giữ Âm bản, 1 bản mất Âm bản',
+    spark:'Nhân 1.5x điểm bóng chứa mỗi lần bóng thoát khối',
+    invert:'Cho phép khối sinh bóng thêm tối đa 2 lần trong một lần bắn; mỗi lần sinh phân nhánh theo các hướng thoát của khối như T/Dấu Cộng',
   };
   const BALL_PROP_DESC = {
     striped:'Nhân 1.5x điểm mà khối cho bóng thoát ra',
@@ -1243,8 +1243,8 @@
   };
   const BALL_ENH_DESC = {
     holo:'+50 điểm mỗi lần bóng thoát khối',
-    spark:'Không có thuộc tính: nhân đôi điểm mỗi lần thoát khối. Có thuộc tính: nhân đôi hiệu ứng thuộc tính đó',
-    invert:'Bắn thành 2 bản: 1 bản giữ Âm bản, 1 bản mất Âm bản (bắn như bóng thường)',
+    spark:'Nhân 1.5x điểm bóng chứa mỗi lần bóng thoát khối',
+    invert:'Khi bóng bị mất, vẫn được tính 1/2 số điểm bóng đang chứa vào điểm màn',
   };
 
   function blockTooltip(block){
@@ -3003,7 +3003,7 @@
     steel: { onExit:()=>{} },
     stone: { onExit:(bs, x)=>{ bs.total += 50*x; } },
     wood:  { onExit:(bs, x)=>{ bs.rate += 5*x; } },
-    glass: { onExit:(bs, x)=>{ for(let i=0;i<x;i++) bs.total *= 1.5; }, chanceToBreak:0.20 },
+    glass: { onExit:(bs, x)=>{ for(let i=0;i<x;i++) bs.total *= 1.5; }, chanceToBreak:0.10 },
     gold:  { onExit:()=>{} },
   };
 
@@ -3016,7 +3016,7 @@
   };
 
   const ENHANCEMENT_EFFECTS = {
-    spark: { blockExit:(bs)=>{ bs.total += bs.rate; }, ballExit:(bs)=>{ bs.total *= 2; } },
+    spark: { blockExit:(bs)=>{ bs.total *= 1.5; }, ballExit:(bs)=>{ bs.total *= 1.5; } },
     holo:  { blockExit:(bs)=>{ bs.total += 50; }, ballExit:(bs)=>{ bs.total += 50; } },
   };
 
@@ -3026,11 +3026,10 @@
 
   function blockExitEffects(block, ballState){
     const prop = block.property, enh = block.enhancement;
-    const sparkX = enh==='spark' ? 2 : 1;
     let brokeBlock = false;
 
     const propFx = BLOCK_PROP_EFFECTS[prop];
-    propFx?.onExit?.(ballState, sparkX);
+    propFx?.onExit?.(ballState, 1);
     if(prop==='steel'){
       if(!ballState.steelBlocks) ballState.steelBlocks = new Set();
       ballState.steelBlocks.add(block);
@@ -3042,7 +3041,7 @@
     ballState.total += blockGain;
 
     if(propFx?.chanceToBreak && Math.random() < propFx.chanceToBreak) brokeBlock = true;
-    if(!prop && enh==='spark') ENHANCEMENT_EFFECTS.spark.blockExit(ballState);
+    if(enh==='spark') ENHANCEMENT_EFFECTS.spark.blockExit(ballState);
     if(enh==='holo') ENHANCEMENT_EFFECTS.holo.blockExit(ballState);
 
     ballState.total += (state.typeBonus[block.type] || 0);
@@ -3051,9 +3050,8 @@
 
   function ballExitEffects(ballState){
     const prop = ballState.prop, enh = ballState.enh;
-    const sparkX = enh==='spark' ? 2 : 1;
-    BALL_PROP_EFFECTS[prop]?.onExit?.(ballState, sparkX);
-    if(!prop && enh==='spark') ENHANCEMENT_EFFECTS.spark.ballExit(ballState);
+    BALL_PROP_EFFECTS[prop]?.onExit?.(ballState, 1);
+    if(enh==='spark') ENHANCEMENT_EFFECTS.spark.ballExit(ballState);
     if(enh==='holo') ENHANCEMENT_EFFECTS.holo.ballExit(ballState);
   }
 
@@ -3328,20 +3326,137 @@
   }
 
   function ballGoalEffects(ballState){
-    const prop=ballState.prop, enh=ballState.enh;
-    const sparkX=enh==='spark'?2:1;
+    const prop=ballState.prop;
     // Steel block multipliers are resolved visually/sequentially in travel() so the
     // player can see exactly which steel block grants each x1.5.
-    BALL_PROP_EFFECTS[prop]?.onGoal?.(ballState,sparkX);
+    BALL_PROP_EFFECTS[prop]?.onGoal?.(ballState,1);
     if(prop==='gold' || prop==='steel') syncMoneyHud();
+  }
+
+  function createLostBallScorePopup(ballState, row, col){
+    if(!ballState || !Number.isInteger(row) || !Number.isInteger(col) || !boardWrapEl) return null;
+
+    const payoutState={
+      total:Math.round(ballState.total/2),
+      initialTotal:Math.round(ballState.total/2)
+    };
+    const popup=document.createElement('div');
+    popup.className='ball-goal-popup steel-sequence';
+    const value=document.createElement('span');
+    value.className='ball-goal-popup-value';
+    value.textContent=formatNumber(payoutState.total);
+    popup._valueEl=value;
+    popup._lastTotal=payoutState.total;
+
+    const scale=computeScoreTooltipScale(payoutState.total, payoutState.initialTotal, state.target);
+    popup.style.fontSize=`${getScoreDisplayFontSize(scale)}px`;
+    const goalColor = ballState.enh ? ENH_COLOR[ballState.enh] : (ballState.prop ? PROP_COLOR[ballState.prop] : 'var(--amber)');
+    popup.style.color=goalColor || 'var(--amber)';
+
+    const pos=cellPercent(row,col);
+    popup.style.left=pos.left+'%';
+    popup.style.top=pos.top+'%';
+    popup.appendChild(value);
+    boardWrapEl.appendChild(popup);
+    startGoalPopupFlight(popup,row,col);
+    requestAnimationFrame(()=>pulseGoalPopupValue(popup));
+    return {popup,payoutState};
+  }
+
+  async function animateSteelLostBallMultipliers(ballState, payoutState, popup, generation){
+    const steelBlocks=Array.from(ballState.steelBlocks || []);
+    let activeTip=null;
+
+    for(let i=0;i<steelBlocks.length;i++){
+      if(generation!==runGeneration || !state) return false;
+      const nextTip=createSteelMultiplierTooltip(steelBlocks[i]);
+      if(!nextTip){
+        payoutState.total*=1.5;
+        updateGoalPopupScore(popup,payoutState,{impact:true,rise:40});
+        continue;
+      }
+
+      requestAnimationFrame(()=>nextTip.classList.add('show'));
+      await wait(70);
+      if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
+
+      payoutState.total*=1.5;
+      updateGoalPopupScore(popup,payoutState,{impact:true,rise:40});
+
+      if(activeTip){
+        activeTip.classList.remove('show');
+        activeTip.classList.add('hide');
+        await wait(100);
+        if(generation!==runGeneration || !state){ nextTip.remove(); activeTip.remove(); return false; }
+        activeTip.remove();
+      }
+
+      activeTip=nextTip;
+      await wait(i < steelBlocks.length-1 ? 90 : 260);
+    }
+
+    if(activeTip){
+      if(generation!==runGeneration || !state){ activeTip.remove(); return false; }
+      activeTip.classList.remove('show');
+      activeTip.classList.add('hide');
+      await wait(100);
+      activeTip.remove();
+    }
+    return true;
+  }
+
+  async function awardLostInvertBall(ballState, row, col, generation=runGeneration){
+    if(ballState?.enh!=='invert' || ballState.lostScorePaid) return true;
+    ballState.lostScorePaid=true;
+
+    const created=createLostBallScorePopup(ballState,row,col);
+    if(!created){
+      const points=Math.round((ballState.total/2));
+      state.score += points;
+      if(ballState.counter) ballState.counter.points=(ballState.counter.points||0)+points;
+      scoreValEl.textContent=formatNumber(state.score);
+      return true;
+    }
+
+    const {popup,payoutState}=created;
+    await wait(GOAL_POPUP_FIRST_IMPACT_DELAY);
+    if(generation!==runGeneration || !state){ popup.remove(); return false; }
+
+    const steelResolved=await animateSteelLostBallMultipliers(ballState,payoutState,popup,generation);
+    if(!steelResolved || generation!==runGeneration || !state){ popup.remove(); return false; }
+
+    await finishGoalPopup(popup,generation);
+    if(generation!==runGeneration || !state){ popup.remove(); return false; }
+
+    popup.remove();
+    const points=Math.round(payoutState.total);
+    state.score += points;
+    if(ballState.counter) ballState.counter.points=(ballState.counter.points||0)+points;
+    scoreValEl.textContent=formatNumber(state.score);
+    return true;
   }
 
   async function loseBall(ball, tip, r, c, ballState=null){
     if(Number.isInteger(r) && Number.isInteger(c)) flashBlocked(r,c);
     ball.classList.add('lost');
     tip.style.opacity='0';
+
+    // Invert balls show the same upward score popup as a goal, paying half of
+    // their currently accumulated score. Steel-block multipliers are still applied
+    // to that 50% payout before it is added to the stage score.
+    const generation=runGeneration;
     await wait(300);
     removeEntity(ball,tip);
+    if(Number.isInteger(r) && Number.isInteger(c)){
+      const ok=await awardLostInvertBall(ballState,r,c,generation);
+      if(!ok) return [];
+    } else {
+      await awardLostInvertBall(ballState,
+        Number.isInteger(ballState?.lastRow) ? ballState.lastRow : 0,
+        Number.isInteger(ballState?.lastCol) ? ballState.lastCol : 0,
+        generation);
+    }
+
     finishGlassBranch(ballState,false);
     return [];
   }
@@ -3352,6 +3467,8 @@
       return [];
     }
     counter.launched++;
+    ballState.lastRow=row;
+    ballState.lastCol=col;
     const [dx,dy] = DIR_VEC[dir];
     const nr=row+dy, nc=col+dx;
 
@@ -3450,7 +3567,14 @@
     if(ballState.prop==='glass' && Math.random() < 0.10){
       ballState.broke=true;
       counter.broke=(counter.broke||0)+1;
+      ball.classList.add('lost');
+      tip.style.opacity='0';
+      await wait(300);
       removeEntity(ball,tip);
+      if(ballState.enh==='invert'){
+        const ok=await awardLostInvertBall(ballState,nr,nc,generation);
+        if(!ok) return [];
+      }
       if(ballState.glassShot?.spawnedExtra){
         finishGlassBranch(ballState,false);
       } else {
@@ -3460,20 +3584,27 @@
       return [0];
     }
 
-    // First pass in a shot: preserve the split. Later passes use one random exit.
+    // Normal first pass splits across every valid exit; later passes choose one exit.
+    // Invert gives the shot up to two additional split opportunities. Each such
+    // opportunity uses the same exit fan-out as T / Plus blocks.
     const allExits = sides.filter(s=>s!==entrySide);
+    const canInvertSplit = invertBlock && ballState.shotMeta && ballState.shotMeta.invertSpawns < ballState.shotMeta.maxInvertSpawns;
     let exits;
-    if(blockRef._splitUsed){
-      exits = [pick(allExits)];
-    } else {
+    if(!blockRef._splitUsed){
       blockRef._splitUsed = true;
       exits = allExits;
+      if(invertBlock) ballState.shotMeta.invertSpawns++;
+    } else if(canInvertSplit){
+      ballState.shotMeta.invertSpawns++;
+      exits = allExits;
+    } else {
+      exits = [pick(allExits)];
     }
     removeEntity(ball,tip);
 
     const branches = [];
     if(ballState.prop==='glass' && ballState.glassShot){
-      const childCount=exits.length*(invertBlock?2:1);
+      const childCount=exits.length;
       ballState.glassShot.active += childCount-1;
       if(childCount>1) ballState.glassShot.spawnedExtra=true;
     }
@@ -3481,20 +3612,11 @@
       const childState={
         total:ballState.total, rate:ballState.rate, prop:ballState.prop, enh:ballState.enh,
         initialTotal:ballState.initialTotal, _ballId:ballState._ballId, broke:ballState.broke,
-        steelBlocks:new Set(ballState.steelBlocks||[]), glassShot:ballState.glassShot
+        steelBlocks:new Set(ballState.steelBlocks||[]), glassShot:ballState.glassShot,
+        shotMeta:ballState.shotMeta, counter:ballState.counter, lostScorePaid:false
       };
       const c1=createBallEntity(nr,nc,childState,true,previousTotal);
       branches.push(travel(c1.ball,c1.tip,nr,nc,exitDir,childState,counter));
-      if(invertBlock){
-        const cloneState={
-          total:ballState.total, rate:ballState.rate, prop:ballState.prop,
-          enh:ballState.enh==='invert'?null:ballState.enh, initialTotal:ballState.initialTotal,
-          _ballId:ballState._ballId, broke:ballState.broke,
-          steelBlocks:new Set(ballState.steelBlocks||[]), glassShot:ballState.glassShot
-        };
-        const c2=createBallEntity(nr,nc,cloneState,true,previousTotal);
-        branches.push(travel(c2.ball,c2.tip,nr,nc,exitDir,cloneState,counter));
-      }
     });
     const results = await Promise.all(branches);
     return results.flat();
@@ -3523,21 +3645,22 @@
     state.ballsFired++;
     renderBallQueue();
 
-    const counter = {launched:0, scored:0, broke:0};
+    const counter = {launched:0, scored:0, broke:0, points:0};
+    const shotMeta = { invertSpawns:0, maxInvertSpawns:2, counter };
     const glassShot = queued.property==='glass' ? {
-      ballId:queued._id, active:queued.enhancement==='invert' ? 2 : 1,
-      spawnedExtra:queued.enhancement==='invert', lossChecked:false, finished:false
+      ballId:queued._id, active:1,
+      spawnedExtra:false, lossChecked:false, finished:false
     } : null;
-    function makeBallState(stripInvert){
+    function makeBallState(){
       const initialTotal=50+state.startBonus;
       return {
         initialTotal, total:initialTotal, rate:10+state.baseRateBonus, prop:queued.property, _ballId:queued._id,
-        enh:(stripInvert && queued.enhancement==='invert') ? null : queued.enhancement,
-        broke:false, steelBlocks:new Set(), glassShot
+        enh:queued.enhancement,
+        broke:false, steelBlocks:new Set(), glassShot, shotMeta, counter, lostScorePaid:false
       };
     }
+    // Ball Invert no longer duplicates the ball on launch; its effect is paid on loss.
     const initialStates=[makeBallState(false)];
-    if(queued.enhancement==='invert') initialStates.push(makeBallState(true));
 
     const branchPromises = initialStates.map(bs=>{
       const ent = createBallEntity(state.node.r, state.node.c, bs);
@@ -3871,11 +3994,11 @@
   function hideGachaChoice(){ activeRefreshGachaBalls=null; gachaOverlayEl.classList.add('hidden'); gachaOverlayEl.innerHTML=''; }
 
   function genBlockOptions(tier){
-    const arr=[]; for(let i=0;i<tier.options;i++){ const type=pick(Object.keys(BASE_SIDES)); arr.push({type,property:rollProp(BLOCK_PROPS,0.5),enhancement:rollProp(ENHANCEMENTS,0.25),color:null}); }
+    const arr=[]; for(let i=0;i<tier.options;i++){ const type=pick(Object.keys(BASE_SIDES)); arr.push({type,property:rollProp(BLOCK_PROPS,0.33),enhancement:rollProp(ENHANCEMENTS,0.10),color:null}); }
     return arr;
   }
   function genBallOptions(tier){
-    const arr=[]; for(let i=0;i<tier.options;i++){ const property=pick(BALL_PROPS); arr.push({property,enhancement:rollProp(ENHANCEMENTS,0.25),color:PROP_COLOR[property]}); }
+    const arr=[]; for(let i=0;i<tier.options;i++){ const property=rollProp(BALL_PROPS,0.25); arr.push({property,enhancement:rollProp(ENHANCEMENTS,0.10),color:property?PROP_COLOR[property]:null}); }
     return arr;
   }
   function genUpgradeOptions(tier){ return Array.from({length:tier.options},()=>({defId:pick(UPGRADE_POOL).id})); }

@@ -348,23 +348,29 @@
     line-height:1; font-weight:900; text-shadow:0 0 6px rgba(255,72,48,.14);
   }
   .cell.debuff-cell.hasblock .cell-debuff-x{ color:rgba(255,72,48,0.52); text-shadow:0 0 5px rgba(255,72,48,.20); }
+  /* Empty debuff cells show a tiny dot; filled debuff cells show the full X.
+     The state is attached to the X itself so a board re-render cannot make an
+     occupied debuff cell temporarily shrink just because another cell changed. */
   .cell-debuff-x::before, .cell-debuff-x::after{
     --x-arm-rotate:45deg; content:""; position:absolute; left:50%; top:50%; width:76%; height:10%;
     border-radius:999px; background:currentColor; box-shadow:0 0 5px rgba(255,72,48,.12); transform-origin:center center;
-    transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(.18);
+    transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(.30);
+  }
+  .cell-debuff-x.debuff-x-filled::before, .cell-debuff-x.debuff-x-filled::after{
+    transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(1);
   }
   .cell-debuff-x::after{ --x-arm-rotate:-45deg; }
   .cell-debuff-x.debuff-x-grow::before, .cell-debuff-x.debuff-x-grow::after{ animation:debuffXReachOut calc(.30s / var(--anim-speed)) cubic-bezier(.22,.9,.24,1.05) both; }
   .cell-debuff-x.debuff-x-shrink::before, .cell-debuff-x.debuff-x-shrink::after{ animation:debuffXReachIn calc(.22s / var(--anim-speed)) cubic-bezier(.55,.08,.68,.53) both; }
   @keyframes debuffXReachOut{
-    0%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(.18); }
-    72%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1.12); }
-    100%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1); }
+    0%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(.30); }
+    72%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(1.12); }
+    100%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(1); }
   }
   @keyframes debuffXReachIn{
-    0%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1); }
-    28%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(1.06); }
-    100%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scaleX(.18); }
+    0%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(1); }
+    28%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(1.06); }
+    100%{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(.30); }
   }
   .cell.debuff-cell.hasblock.debuff-block-feedback .block-visual{ animation:debuffBlockShake calc(.36s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1); }
   @keyframes debuffBlockShake{
@@ -1022,7 +1028,10 @@
     .cell.debuff-cell.hasblock.debuff-block-feedback .block-visual{
       animation:none !important;
     }
-    .cell-debuff-x{ transform:scaleX(1); }
+    .cell-debuff-x.debuff-x-filled::before,
+    .cell-debuff-x.debuff-x-filled::after{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(1); }
+    .cell-debuff-x.debuff-x-empty::before,
+    .cell-debuff-x.debuff-x-empty::after{ transform:translate(-50%,-50%) rotate(var(--x-arm-rotate)) scale(.30); }
     .cell.board-reveal-cell{ animation:none; opacity:1; transform:none; }
     .cell.board-hide-cell{ animation:none; opacity:0; transform:scale(.02) rotate(var(--hide-rotate,0deg)); }
     .board.board-reveal-running,.board.board-hide-running{ pointer-events:auto; }
@@ -1500,8 +1509,8 @@
   };
   const BLOCK_ENH_DESC = {
     holo:'+50 điểm khi bóng thoát khối',
-    spark:'Nhân 1.5x điểm bóng chứa mỗi lần bóng thoát khối',
-    invert:'Cho phép khối sinh bóng thêm tối đa 2 lần trong một lần bắn; mỗi lần sinh phân nhánh theo các hướng thoát của khối như T/Dấu Cộng',
+    spark:'Nhân x1.5 điểm bóng chứa khi bóng thoát khối, rồi giảm bởi 0.05, tối thiểu x1',
+    invert:'Cho phép khối sinh bóng thêm 1 lần trong một lần bắn',
   };
   const BALL_PROP_DESC = {
     striped:'Nhân 1.5x điểm mà khối cho bóng thoát ra',
@@ -1512,7 +1521,7 @@
   };
   const BALL_ENH_DESC = {
     holo:'+50 điểm mỗi lần bóng thoát khối',
-    spark:'Nhân 1.5x điểm bóng chứa mỗi lần bóng thoát khối',
+    spark:'Nhân x1.5 điểm bóng chứa mỗi khi bóng thoát một khối mà bóng chưa từng thoát qua',
     invert:'Khi bóng bị mất, vẫn được tính 1/2 số điểm bóng đang chứa vào điểm màn',
   };
 
@@ -2066,7 +2075,12 @@
       12000, 16500, 21000, 33000, 45000, 60000, 76000, 87000, 100000
     ];
     if(level <= EARLY_TARGETS.length) return EARLY_TARGETS[Math.max(0, level - 1)];
-    return Math.round(100000 * Math.pow(1.5, level - 18));
+    const n = level - 18;
+    const target =
+      100000 *
+      Math.pow(2.25, n) *
+      Math.pow(1.1, (n * (n - 1)) / 2);
+    return Math.round(target);
   }
 
   // kho đồ (bag) is generated once per run and persists (recycled level to level) until loss/restart
@@ -2182,7 +2196,7 @@
 
     const plan=[null,null,null,null,null];
     // Slot 6: 20% at level 19, then +20%/level, guaranteed at level 23.
-    for(let slot=6; slot<=9; slot++){
+    for(let slot=6; slot<=18; slot++){
       const startLevel=19 + (slot-6)*5;
       if(level < startLevel) break;
       const chance=Math.min(1, 0.20*(level-startLevel+1));
@@ -2584,7 +2598,7 @@
     title.textContent='Ô debuff';
     const desc=document.createElement('div');
     desc.className='debuff-tooltip-desc';
-    desc.textContent='Khối được đặt vào ô này không tăng điểm và vô hiệu hóa toàn bộ hiệu ứng của khối.';
+    desc.textContent='Khối được đặt vào ô này bị vô hiệu hóa toàn bộ hiệu ứng của khối và không tăng điểm khi bóng đi qua khối.';
     panel.appendChild(title);
     panel.appendChild(desc);
     hoverTipEl.appendChild(panel);
@@ -2645,7 +2659,7 @@
     }
     if(cellData.debuff){
       const x=document.createElement('div');
-      x.className='cell-debuff-x';
+      x.className='cell-debuff-x ' + (cellData.block ? 'debuff-x-filled' : 'debuff-x-empty');
       el.appendChild(x);
       debuffCellTooltip(el);
     }
@@ -3589,12 +3603,13 @@
   };
 
   // Spark multiplier state is runtime-only and scoped to the current shot.
-  // Each Spark block starts at x1.5 on the first encounter of the shot, then
-  // loses 0.1 after every use during that shot, never going below x1.
+  // Each Spark block starts at x1.5 on its first exit and loses 0.05
+  // after every subsequent exit through that same block during the shot,
+  // never going below x1. The multiplier is tracked per Spark block.
   // The Map is shared by all branches of the shot and is recreated for the
   // next shot, so every Spark block resets back to x1.5 between shots.
   const SPARK_START_MULTIPLIER = 1.5;
-  const SPARK_DECAY = 0.1;
+  const SPARK_DECAY = 0.05;
   const SPARK_MIN_MULTIPLIER = 1.0;
   function getBlockSparkMultiplier(block, ballState){
     if(!block || !ballState?.shotMeta) return SPARK_MIN_MULTIPLIER;
@@ -3602,30 +3617,27 @@
     if(!meta.sparkBlockMultipliers) meta.sparkBlockMultipliers=new Map();
     let value=meta.sparkBlockMultipliers.get(block);
     if(!Number.isFinite(value)) value=SPARK_START_MULTIPLIER;
-    value=Math.max(SPARK_MIN_MULTIPLIER, Math.round(value*10)/10);
+    value=Math.max(SPARK_MIN_MULTIPLIER, Math.round(value*100)/100);
     meta.sparkBlockMultipliers.set(block,value);
     return value;
   }
   function consumeBlockSparkMultiplier(block, ballState){
     if(!ballState?.shotMeta) return SPARK_MIN_MULTIPLIER;
     const current=getBlockSparkMultiplier(block, ballState);
-    const next=Math.max(SPARK_MIN_MULTIPLIER, Math.round((current-SPARK_DECAY)*10)/10);
+    const next=Math.max(SPARK_MIN_MULTIPLIER, Math.round((current-SPARK_DECAY)*100)/100);
     ballState.shotMeta.sparkBlockMultipliers.set(block,next);
     return next;
   }
-  function getBallSparkMultiplier(ballState){
-    const meta=ballState?.shotMeta;
-    const value=Number.isFinite(meta?.sparkMultiplier) ? meta.sparkMultiplier : SPARK_START_MULTIPLIER;
-    if(meta && !Number.isFinite(meta.sparkMultiplier)) meta.sparkMultiplier=SPARK_START_MULTIPLIER;
-    return Math.max(SPARK_MIN_MULTIPLIER, Math.round(value*10)/10);
-  }
-  function consumeBallSparkMultiplier(ballState){
-    if(!ballState?.shotMeta) return SPARK_MIN_MULTIPLIER;
-    ballState.shotMeta.sparkMultiplier=Math.max(
-      SPARK_MIN_MULTIPLIER,
-      Math.round((getBallSparkMultiplier(ballState)-SPARK_DECAY)*10)/10
-    );
-    return ballState.shotMeta.sparkMultiplier;
+  // Ball Spark is different from Block Spark: it never decays.
+  // During one shot, each distinct block may trigger the ball's Spark only once.
+  function triggerBallSpark(ballState, blockRef){
+    if(ballState?.enh!=='spark' || !ballState?.shotMeta || !blockRef) return false;
+    const meta=ballState.shotMeta;
+    if(!meta.sparkVisitedBlocks) meta.sparkVisitedBlocks=new Set();
+    if(meta.sparkVisitedBlocks.has(blockRef)) return false;
+    meta.sparkVisitedBlocks.add(blockRef);
+    ENHANCEMENT_EFFECTS.spark.ballExit(ballState, SPARK_START_MULTIPLIER);
+    return true;
   }
 
   function syncMoneyHud(){
@@ -3637,8 +3649,8 @@
     let brokeBlock = false;
     const tooltips=[];
 
-    // Property effects are no longer doubled by Spark. Spark is its own
-    // decaying multiplier applied after the normal block gain.
+    // Property effects are independent of Spark. Block Spark applies its own
+    // per-block multiplier after the normal block gain, then decays by 0.05.
     const propFx = BLOCK_PROP_EFFECTS[prop];
     propFx?.onExit?.(ballState, 1);
     if(prop==='steel'){
@@ -3659,7 +3671,7 @@
       const multiplier=getBlockSparkMultiplier(block, ballState);
       if(multiplier>SPARK_MIN_MULTIPLIER){
         ENHANCEMENT_EFFECTS.spark.blockExit(ballState,multiplier);
-        tooltips.push({text:`x${multiplier.toFixed(1)}`,kind:'spark'});
+        tooltips.push({text:`x${multiplier.toFixed(2)}`,kind:'spark'});
         consumeBlockSparkMultiplier(block, ballState);
       }
     }
@@ -3669,17 +3681,12 @@
     return {brokeBlock, tooltips};
   }
 
-  function ballExitEffects(ballState){
+  function ballExitEffects(ballState, blockRef){
     const prop = ballState.prop, enh = ballState.enh;
     const tooltips=[];
     BALL_PROP_EFFECTS[prop]?.onExit?.(ballState, 1);
-    if(enh==='spark'){
-      const multiplier=getBallSparkMultiplier(ballState);
-      if(multiplier>SPARK_MIN_MULTIPLIER){
-        ENHANCEMENT_EFFECTS.spark.ballExit(ballState,multiplier);
-        tooltips.push({text:`x${multiplier.toFixed(1)}`,kind:'spark'});
-        consumeBallSparkMultiplier(ballState);
-      }
+    if(enh==='spark' && triggerBallSpark(ballState, blockRef)){
+      tooltips.push({text:`x${SPARK_START_MULTIPLIER.toFixed(1)}`,kind:'spark'});
     }
     if(enh==='holo') ENHANCEMENT_EFFECTS.holo.ballExit(ballState);
     return tooltips;
@@ -4237,7 +4244,7 @@
 
     const previousTotal = ballState.total;
     const blockExitResult = blockExitEffects(blockRef, ballState);
-    const ballExitTooltips = ballExitEffects(ballState);
+    const ballExitTooltips = ballExitEffects(ballState, blockRef);
     const invertBlock = blockRef.enhancement === 'invert';
 
     // Property tooltip first, then enhancement tooltip(s).
@@ -4336,8 +4343,8 @@
       invertSpawns:0,
       maxInvertSpawns:2,
       counter,
-      sparkMultiplier:SPARK_START_MULTIPLIER,
-      sparkBlockMultipliers:new Map()
+      sparkBlockMultipliers:new Map(),
+      sparkVisitedBlocks:new Set()
     };
     const glassShot = queued.property==='glass' ? {
       ballId:queued._id, active:1,

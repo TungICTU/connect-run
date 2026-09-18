@@ -30,6 +30,7 @@ const CORE_DEFS = {
     label: CORE_LABEL.red,
     color: CORE_COLOR.red,
     desc: 'Lặp lại chức năng của khối 1 lần.',
+    tooltip: null,
     hasCount: false,
     initialCount: null,
   },
@@ -38,6 +39,7 @@ const CORE_DEFS = {
     label: CORE_LABEL.orange,
     color: CORE_COLOR.orange,
     desc: 'x1.5 điểm bóng chứa khi bóng thoát khối.',
+    tooltip: 'x1.5',
     hasCount: true,
     initialCount: 1,
   },
@@ -46,6 +48,7 @@ const CORE_DEFS = {
     label: CORE_LABEL.yellow,
     color: CORE_COLOR.yellow,
     desc: '+3$ khi bóng thoát khối.',
+    tooltip: '+3$',
     hasCount: true,
     initialCount: 1,
   },
@@ -54,6 +57,7 @@ const CORE_DEFS = {
     label: CORE_LABEL.green,
     color: CORE_COLOR.green,
     desc: '25% x2 điểm bóng chứa khi bóng thoát khối; 5% nhận 20$ khi bóng thoát khối.',
+    tooltip: null,
     hasCount: false,
     initialCount: null,
   },
@@ -62,6 +66,7 @@ const CORE_DEFS = {
     label: CORE_LABEL.blue,
     color: CORE_COLOR.blue,
     desc: 'Khối của lõi này không bao giờ bị phá hủy bởi bất kỳ cơ chế nào.',
+    tooltip: null,
     hasCount: false,
     initialCount: null,
   },
@@ -70,6 +75,7 @@ const CORE_DEFS = {
     label: CORE_LABEL.purple,
     color: CORE_COLOR.purple,
     desc: 'Cho phép khối sinh thêm bóng một lần split nữa.',
+    tooltip: 'Split +1',
     hasCount: true,
     initialCount: 1,
   },
@@ -78,6 +84,7 @@ const CORE_DEFS = {
     label: CORE_LABEL.pink,
     color: CORE_COLOR.pink,
     desc: 'Vô hiệu hóa mọi hiệu ứng bất lợi của ô mà khối đang ở.',
+    tooltip: null,
     hasCount: false,
     initialCount: null,
   },
@@ -147,10 +154,37 @@ function refreshCoreCountVisual(block, count){
   });
 }
 
+// Build the tooltip for a red-core replay from the exact tooltip produced by
+// the repeated property/enhancement effect. The text is intentionally kept
+// identical; only the visual accent changes to the red-core color.
+function makeRedCoreReplayTooltip(item){
+  if(!item?.text) return null;
+  return {
+    ...item,
+    kind:`core-red-${item.kind || 'effect'}`,
+    color:CORE_COLOR.red,
+    coreReplay:true,
+  };
+}
+
 function coreCanUse(block, shotMeta){
   if(!block?.core || !CORE_DEFS[block.core.id]) return false;
   if(!coreHasCount(block.core)) return true;
   return getCoreUses(block, shotMeta) > 0;
+}
+
+// Red core is a one-time replay per block during a single shot.
+// This is separate from counted-core uses because the red core itself has no count.
+function redCoreCanReplay(block, shotMeta){
+  if(!blockHasCore(block, 'red') || !shotMeta) return false;
+  if(!shotMeta.redCoreReplayedBlocks) shotMeta.redCoreReplayedBlocks = new Set();
+  return !shotMeta.redCoreReplayedBlocks.has(block);
+}
+
+function markRedCoreReplayed(block, shotMeta){
+  if(!blockHasCore(block, 'red') || !shotMeta) return;
+  if(!shotMeta.redCoreReplayedBlocks) shotMeta.redCoreReplayedBlocks = new Set();
+  shotMeta.redCoreReplayedBlocks.add(block);
 }
 
 function consumeCoreUse(block, shotMeta){

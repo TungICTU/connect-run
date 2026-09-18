@@ -40,6 +40,10 @@ function renderBlockArms(container, block){
     coreDot.className='block-core-dot';
     coreDot.dataset.core=block.core.id;
     coreDot._coreBlock = block;
+    // The core is intentionally a sibling of .block-visual so it never rotates
+    // with the block. Make the core visibly larger than the old 22% socket.
+    coreDot.style.width='30%';
+    coreDot.style.height='30%';
     if(coreHasCount(block.core)){
       coreDot.textContent=String(getCoreDisplayCount(block));
     }

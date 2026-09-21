@@ -129,7 +129,7 @@ function replaceBallInPool(index, ball){
 function applyPowerPick(opt, targets){
   const def=POWER_CARD_DEFS[opt.defId];
   if(!def) return false;
-  if(def.targetCount===0){ def.use([]); return true; }
+  if(def.targetCount===0){ def.use([]); recordPowerUse(def.id); return true; }
   const minTargets = def.targetMinCount ?? def.targetCount;
   const maxTargets = def.targetCount;
   if(!targets || targets.length<minTargets || targets.length>maxTargets) return false;
@@ -139,6 +139,7 @@ function applyPowerPick(opt, targets){
     return false;
   }
   def.use(targets);
+  recordPowerUse(def.id);
   rememberLastUsedCard(def);
   syncBallMutationTargets(targets);
   renderBallQueue();
@@ -148,7 +149,7 @@ function applyPowerPick(opt, targets){
 function applyUpgradePick(opt){
   const def=UPGRADE_POOL.find(x=>x.id===opt.defId);
   if(!def) return false;
-  def.apply(); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id};
+  def.apply(); recordUpgradeUse(def.id); state.lastUpgrade=def; state.lastUsedCard={kind:'upgrade',defId:def.id};
   return true;
 }
 
@@ -528,6 +529,7 @@ function renderShop(){
   bb.addEventListener('click',()=>{
     state.money-=buffCost;
     bo.apply();
+    recordBuffPurchase(bo.id);
     bo.bought=true;
     markBuffOwned(bo.id);
     state.shopBuffBought=true;

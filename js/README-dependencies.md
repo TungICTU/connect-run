@@ -1,22 +1,20 @@
-# JavaScript dependency order
+# JS dependency order
 
-These scripts are loaded as classic scripts with `defer`, in this order:
+`index.html` loads the game in dependency order. These files share the same global scope intentionally (the original game was split from one script without converting gameplay code to ES modules).
 
-1. `utils.js` — shared formatting, animation helpers, generic utilities.
-2. `core.js` — core definitions, creation/normalization, runtime count handling, immunity/hazard policy.
-3. `config.js` — game constants, property/enhancement data, tooltip/debug helpers, upgrades/buffs/power cards.
-4. `state-save.js` — state, save/load, new-run lifecycle, state normalization.
-5. `level.js` — level generation, board setup, adverse cells.
-6. `render.js` — DOM references and rendering.
-7. `targeting.js` — power-card targeting and target predicates.
-8. `input.js` — pointer/drag/rotate interactions.
-9. `simulation.js` — ball entities and movement helpers.
-10. `effects.js` — scoring, block/ball effects, core effects, shot simulation.
-11. `overlay.js` — win/lose/reward overlays.
-12. `inventory.js` — inventory and debug UI.
-13. `shop.js` — shop, gacha, purchases and gacha choices.
-14. `main.js` — persistence boot and lifecycle hooks.
-
-Core dependency rule:
-
-`core.js` must load before `config.js`, `state-save.js`, `shop.js`, `render.js`, and `effects.js` because those modules use `CORE_DEFS`, `CORE_IDS`, `makeCore`, `cloneCore`, `normalizeCore`, `coreHasCount`, `coreCanUse`, `consumeCoreUse`, `blockHasCore`, or `blockIgnoresCellHazards`.
+1. `utils.js` — formatting, speed runtime, shared timing helpers.
+2. `core.js` — core definitions, core normalization, runtime core counts.
+3. `config.js` — board constants, properties, enhancements, card/buff definitions, tooltips/debug data.
+4. `stats.js` — per-run block/card/buff statistics.
+5. `state-save.js` — run state, save/load, new run.
+6. `level.js` — level generation and hand refill/discard.
+7. `render.js` — DOM rendering and HUD/board/hand/card views.
+8. `targeting.js` — card targeting flow.
+9. `input.js` — pointer/drag/rotate interaction.
+10. `simulation.js` — ball entities and movement.
+11. `effects.js` — gameplay effects and shot resolution.
+12. `overlay.js` — win/lose overlays.
+13. `inventory.js` — inventory/debug UI helpers.
+14. `shop.js` — common shop and gacha.
+15. `settings.js` — settings panel, run statistics UI, persistent speed slider.
+16. `main.js` — persistence/lifecycle boot.

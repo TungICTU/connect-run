@@ -18,5 +18,4 @@ function showOverlay(kind, title, text){
 }
 function hideOverlay(){ overlayEl.classList.add('hidden'); overlayEl.classList.remove('reward-clear'); }
 document.getElementById('overlayBtn').onclick = newRun;
-document.getElementById('newGameBtn').addEventListener('click', newRun);
 

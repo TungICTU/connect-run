@@ -81,6 +81,7 @@ function restoreKnownObjects(){
   state.holeConnections = new Set(state.holeConnections || []);
   state.targeting = null;
   state.resolving = false;
+  ensureRunStats();
 
   state.lastUpgrade = state.lastUpgradeId
     ? (UPGRADE_POOL.find(x=>x.id===state.lastUpgradeId) || null)
@@ -218,7 +219,8 @@ function newRun(){
     cardHand: [], lastUpgrade: null, lastUsedCard: null, targeting: null,
     phase: 'playing',
     shopBuff: null, shopBuffBought: false, commonItems: null, commonRerollCost: 3,
-    bag: [], hand: [], discardPile: [], discardsLeft: 3, cells: null, holeConnections: new Set()
+    bag: [], hand: [], discardPile: [], discardsLeft: 3, cells: null, holeConnections: new Set(),
+    stats: createRunStats()
   };
   state.bag = makeInitialDeck();
   ensureBallIds();

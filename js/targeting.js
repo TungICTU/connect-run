@@ -23,7 +23,7 @@ function commitTargeting(){
   const def=t.def, min=def.targetMinCount||def.targetCount, max=def.targetCount;
   if(t.targets.length<min || t.targets.length>max) return false;
   if(!t.targets.every(x=>targetMatchesDef(def,x.obj,x.kind))) return false;
-  def.use(t.targets); rememberLastUsedCard(def); syncBallMutationTargets(t.targets); renderBallQueue();
+  def.use(t.targets); recordPowerUse(def.id); rememberLastUsedCard(def); syncBallMutationTargets(t.targets); renderBallQueue();
   state.cardHand.splice(t.handIdx,1); state.targeting=null; render(); renderTargetBanner();
   if(state.phase==='shop') refreshOpenShop();
   return true;
@@ -35,6 +35,7 @@ function activateCardFromHand(handIdx, def){
   if(!card) return;
   if(card.kind==='upgrade'){
     def.apply();
+    recordUpgradeUse(def.id);
     state.lastUpgrade=def;
     state.lastUsedCard={kind:'upgrade',defId:def.id};
     state.cardHand.splice(handIdx,1);
@@ -51,6 +52,7 @@ function activatePowerCardFromHand(handIdx, def){
   if(def.targetCount===0){
     state.cardHand.splice(handIdx,1);
     def.use([]);
+    recordPowerUse(def.id);
     rememberLastUsedCard(def);
     render();
     return;
@@ -61,7 +63,7 @@ function activatePowerCardFromHand(handIdx, def){
 function startTargeting(handIdx, def){
   if(def.targetCount===0){
     state.cardHand.splice(handIdx,1);
-    def.use([]); rememberLastUsedCard(def); render(); return;
+    def.use([]); recordPowerUse(def.id); rememberLastUsedCard(def); render(); return;
   }
   state.targeting={handIdx,def,need:def.targetCount,targets:[]};
   render();

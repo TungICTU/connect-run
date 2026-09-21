@@ -157,6 +157,7 @@ function onDragEnd(e){
         locked: !!state.cells[r][c].locked,
         debuff: !!state.cells[r][c].debuff
       };
+      recordBlockPlaced(drag.block);
       state.hand[drag.idx] = null;
       refillHand(true);
     } else if(drag.origin==='board'){

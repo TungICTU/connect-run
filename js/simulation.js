@@ -120,6 +120,7 @@ function breakBlockAt(r,c){
   const block=state.cells[r]?.[c]?.block;
   if(!block) return false;
   if(blockHasCore(block,'blue')) return false;
+  recordBlockLost(block);
   state.cells[r][c].block = null;
   for(const d of [0,1,2,3]){
     const [dx,dy]=DIR_VEC[d], hr=r+dy, hc=c+dx;

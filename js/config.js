@@ -378,12 +378,22 @@ POWER_CARD_DEFS['core_upgrade'] = { id:'core_upgrade', name:'Thẻ tăng cấp l
 POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', desc:'Loại bỏ tối đa 2 khối được chọn trên tay hoặc bảng chơi', cost:5, targetKind:'block', targetCount:2, targetMinCount:1, manualConfirm:true,
   use(targets){
     const selected = new Set(targets.map(t=>t.obj));
-    state.hand = state.hand.filter(block=>!selected.has(block));
+    const removed = new Set();
+    state.hand = state.hand.filter(block=>{
+      if(!selected.has(block)) return true;
+      removed.add(block);
+      return false;
+    });
     if(state.cells){
       for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
-        if(selected.has(state.cells[r][c].block)) state.cells[r][c].block = null;
+        const block=state.cells[r][c].block;
+        if(selected.has(block)){
+          removed.add(block);
+          state.cells[r][c].block = null;
+        }
       }
     }
+    removed.forEach(recordBlockLost);
     refillHand();
   } };
 POWER_CARD_DEFS['breed'] = { id:'breed', name:'Thẻ sinh sản', desc:'Tạo ra 2 thẻ sức mạnh ngẫu nhiên và đưa vào tay', cost:5, targetKind:null, targetCount:0,

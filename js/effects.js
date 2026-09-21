@@ -114,6 +114,7 @@ function coreExitEffects(block, ballState){
 
 function blockExitEffects(block, ballState, options={}){
   const prop = block.property, enh = block.enhancement;
+  if(!options.replay) recordBlockPassed(block);
   let brokeBlock = false;
   const tooltips=[];
   let sparkMultiplierUsed = null;
@@ -171,12 +172,8 @@ function blockExitEffects(block, ballState, options={}){
 
   ballState.total += (state.typeBonus[block.type] || 0);
 
-  // Gold normally pays at level completion. A red core repeats that function
-  // exactly once for this gold block in the current level. Gold's actual payout
-  // happens later in animateGoldBlockRewards().
-  if(prop==='gold' && options.replay){
-    block._redCoreGoldRewardRepeat = true;
-  }
+  // Gold pays only at level completion. Its red core is resolved there too,
+  // independently of whether a ball ever passes through this block.
 
   if(!options.skipCore && blockHasCore(block,'red') && redCoreCanReplay(block, ballState?.shotMeta)){
     // Mark BEFORE replaying so any recursive/re-entrant path cannot trigger
@@ -997,8 +994,9 @@ async function checkEndState(){
       if(b?.property==='gold') {
         // Gold's normal effect is exactly once when the level is won.
         goldBlocks.push({block:b,isRedCore:false});
-        // A red core repeats the level-end gold reward exactly once.
-        if(b._redCoreGoldRewardRepeat) goldBlocks.push({block:b,isRedCore:true});
+        // A red-core gold block automatically repeats the same level-end
+        // reward once. This is independent of ball traversal.
+        if(blockHasCore(b,'red')) goldBlocks.push({block:b,isRedCore:true});
       }
     }
 
@@ -1040,7 +1038,6 @@ function recycleCurrentLevelBlocksToBag(){
     for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
       const b=state.cells[r][c]?.block;
       if(b){
-        delete b._redCoreGoldRewardRepeat;
         state.bag.push(b);
         state.cells[r][c].block=null;
       }
@@ -1048,7 +1045,6 @@ function recycleCurrentLevelBlocksToBag(){
   }
   state.bag.push(...state.hand.filter(Boolean));
   state.bag.push(...state.discardPile.filter(Boolean));
-  state.bag.forEach(block=>{ if(block) delete block._redCoreGoldRewardRepeat; });
   state.hand=[];
   state.discardPile=[];
   state.discardsLeft=getMaxDiscards();

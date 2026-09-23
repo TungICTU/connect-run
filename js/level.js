@@ -1,27 +1,32 @@
-// ---------- adverse cells (locks + debuffs) ----------
-// Progression: 7-9 = 1 lock; 10 = 1 lock + 1 debuff;
-// 11-12 = 2 random adverse cells; 13-15 = 3; 16-18 = 4;
-// 19+ = 5, then 6/7/8/9 are rolled in sequence. Each new slot starts
-// at 20% and increases by 20% per level until guaranteed.
+// ---------- adverse cells ----------
+// Progression: 7-9 = 1 adverse cell; 10 = 2; 11-12 = 2;
+// 13-15 = 3; 16-18 = 4; 19+ = 5, then 6/7/8/9 are rolled in sequence.
+// Every generated adverse slot draws from the full adverse-cell pool.
+const ADVERSE_CELL_TYPES = ['locked','debuff','nerf','controlled','assassinTarget'];
 function getAdverseCellPlan(level){
   if(level < 7) return [];
-  if(level <= 9) return ['lock'];
-  if(level === 10) return ['lock','debuff'];
-  if(level <= 12) return [null,null];
-  if(level <= 15) return [null,null,null];
-  if(level <= 18) return [null,null,null,null];
+  let count;
+  if(level <= 9) count=1;
+  else if(level <= 12) count=2;
+  else if(level <= 15) count=3;
+  else if(level <= 18) count=4;
+  else count=5;
 
-  const plan=[null,null,null,null,null];
-  // Slot 6: 20% at level 19, then +20%/level, guaranteed at level 23.
-  for(let slot=6; slot<=18; slot++){
-    const startLevel=19 + (slot-6)*5;
-    if(level < startLevel) break;
-    const chance=Math.min(1, 0.20*(level-startLevel+1));
-    if(Math.random() < chance || chance >= 1){
-      plan.push(null);
-    } else {
-      break;
+  if(level >= 19){
+    // Slot 6: 20% at level 19, then +20%/level, guaranteed at level 23.
+    for(let slot=6; slot<=18; slot++){
+      const startLevel=19 + (slot-6)*5;
+      if(level < startLevel) break;
+      const chance=Math.min(1, 0.20*(level-startLevel+1));
+      if(Math.random() < chance || chance >= 1) count++;
+      else break;
     }
+  }
+  const plan=[];
+  let pool=shuffle([...ADVERSE_CELL_TYPES]);
+  while(plan.length<count){
+    if(!pool.length) pool=shuffle([...ADVERSE_CELL_TYPES]);
+    plan.push(pool.shift());
   }
   return plan;
 }
@@ -30,10 +35,13 @@ function placeAdverseCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, level)
   const plan=getAdverseCellPlan(level);
   if(!plan.length) return [];
 
+  const adverseKeys = Array.isArray(BOSS_ADVERSE_KEYS) ? BOSS_ADVERSE_KEYS : ['locked','debuff','nerf','controlled','assassinTarget'];
   const candidates=[];
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
     if((r===nodeR && c===nodeC) || (r===holeR && c===holeC)) continue;
-    if(cells[r][c].type!=='empty' || cells[r][c].block) continue;
+    const cell=cells[r][c];
+    if(cell.type!=='empty' || cell.block) continue;
+    if(adverseKeys.some(key=>!!cell[key])) continue;
     candidates.push([r,c]);
   }
   shuffle(candidates);
@@ -41,14 +49,13 @@ function placeAdverseCells(cells, rows, cols, nodeR, nodeC, holeR, holeC, level)
 
   for(let i=0;i<placed.length;i++){
     const [r,c]=placed[i];
-    const kind=plan[i] || (Math.random()<0.5 ? 'lock' : 'debuff');
-    if(kind==='lock') cells[r][c].locked=true;
-    else cells[r][c].debuff=true;
+    const kind=plan[i];
+    cells[r][c][kind]=true;
   }
   return placed;
 }
 
-function newLevel(){
+function newLevel(options={}){
   rewardGeneration++;
   const rewardBtn = document.getElementById('overlayBtn');
   if(rewardBtn){
@@ -56,8 +63,12 @@ function newLevel(){
     rewardBtn.disabled=false;
     rewardBtn.onclick=newRun;
   }
+  clearBossTransientBlockFlags();
+
+  const locationTransition = !!options.locationTransition;
   state.level += 1;
-  state.target = computeTarget(state.level);
+  ensureBossForLevel(state.level);
+  state.target = getBossTarget(computeTarget(state.level));
   state.score = 0;
   state.ballsFired = 0;
   state.resolving = false;
@@ -124,6 +135,7 @@ function newLevel(){
 
   state.hand = [];
   refillHand();
+  applyBossStartEffects();
   state.ballQueue = makeBallQueue();
 
   state._boardReveal = true;
@@ -131,6 +143,7 @@ function newLevel(){
   state._handHide = false;
   state._handRewardHidden = false;
   render();
+  renderLocationBar?.(locationTransition);
   hideOverlay();
   hideShop();
   renderTargetBanner();
@@ -140,6 +153,10 @@ function refillHand(animate=false){
   if(state.hand.some(Boolean)) return;
   state.hand = [];
   while(state.hand.length < getMaxHandSize() && state.bag.length > 0) state.hand.push(state.bag.shift());
+  // Hand-targeting Bosses reapply their block flags every time a completely
+  // new hand is drawn. The flags live on the physical blocks and therefore
+  // travel with them until the Boss screen ends.
+  applyBossHandEffects?.();
   if(animate && typeof refreshAnimSlots !== 'undefined') refreshAnimSlots = new Set(state.hand.map((_,i)=>i));
 }
 

@@ -151,11 +151,17 @@ function onDragEnd(e){
   if(cellEl){
     const r=+cellEl.dataset.r, c=+cellEl.dataset.c;
     if(drag.origin==='hand'){
+      // The Illusioner only hides the block while it is in hand. The moment the
+      // block is placed on the board, its real shape/properties are revealed.
+      drag.block.bossHidden = false;
       state.cells[r][c] = {
         type:'empty',
         block: drag.block,
         locked: !!state.cells[r][c].locked,
-        debuff: !!state.cells[r][c].debuff
+        debuff: !!state.cells[r][c].debuff,
+        nerf: !!state.cells[r][c].nerf,
+        controlled: !!state.cells[r][c].controlled,
+        assassinTarget: !!state.cells[r][c].assassinTarget
       };
       recordBlockPlaced(drag.block);
       state.hand[drag.idx] = null;

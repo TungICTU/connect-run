@@ -3,7 +3,16 @@ const settingsOverlayEl = document.getElementById('settingsOverlay');
 const settingsBtnEl = document.getElementById('settingsBtn');
 const settingsCloseBtnEl = document.getElementById('settingsCloseBtn');
 const restartGameBtnEl = document.getElementById('restartGameBtn');
-const settingsStatsEl = document.getElementById('settingsStats');
+const settingsGameTabEl = document.getElementById('settingsGameTab');
+const settingsStatsTabEl = document.getElementById('settingsStatsTab');
+const settingsGamePanelEl = document.getElementById('settingsGamePanel');
+const settingsStatsPanelEl = document.getElementById('settingsStatsPanel');
+const statsBlocksTabEl = document.getElementById('statsBlocksTab');
+const statsUpgradesTabEl = document.getElementById('statsUpgradesTab');
+const statsBuffsTabEl = document.getElementById('statsBuffsTab');
+const statsBlocksPanelEl = document.getElementById('statsBlocksPanel');
+const statsUpgradesPanelEl = document.getElementById('statsUpgradesPanel');
+const statsBuffsPanelEl = document.getElementById('statsBuffsPanel');
 const gameSpeedRangeEl = document.getElementById('gameSpeedRange');
 const gameSpeedValueEl = document.getElementById('gameSpeedValue');
 
@@ -82,32 +91,51 @@ function settingsCardStatRows(defs, counts, valueLabel){
 }
 
 function refreshSettingsStats(){
-  if(!settingsStatsEl || !state) return;
+  if(!state) return;
   ensureRunStats();
-  settingsStatsEl.innerHTML=`
-    <section class="settings-section compact-section">
-      <div class="settings-section-title">Khối</div>
-      <div class="settings-stat-cards">${STAT_BLOCK_TYPES.map(settingsStatBlock).join('')}</div>
-    </section>
+  if(statsBlocksPanelEl){
+    statsBlocksPanelEl.innerHTML=`<div class="settings-stat-cards">${STAT_BLOCK_TYPES.map(settingsStatBlock).join('')}</div>`;
+  }
+  if(statsUpgradesPanelEl){
+    statsUpgradesPanelEl.innerHTML=`<div class="settings-list">${settingsCardStatRows(UPGRADE_POOL, state.stats.upgrades, 'Đã dùng:')}</div>`;
+  }
+  if(statsBuffsPanelEl){
+    statsBuffsPanelEl.innerHTML=`<div class="settings-list">${settingsCardStatRows(BUFF_POOL, state.stats.buffs, 'Đã mua:')}</div>`;
+  }
+}
 
-    <section class="settings-section compact-section">
-      <div class="settings-section-title">Thẻ buff — đã mua</div>
-      <div class="settings-list">${settingsCardStatRows(BUFF_POOL, state.stats.buffs, 'Đã mua:')}</div>
-    </section>
+function setStatsSubTab(name){
+  const tabs={blocks:statsBlocksTabEl, upgrades:statsUpgradesTabEl, buffs:statsBuffsTabEl};
+  const panels={blocks:statsBlocksPanelEl, upgrades:statsUpgradesPanelEl, buffs:statsBuffsPanelEl};
+  Object.entries(tabs).forEach(([key,el])=>{
+    const active=key===name;
+    el?.classList.toggle('active', active);
+    el?.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  Object.entries(panels).forEach(([key,el])=>{
+    el?.classList.toggle('hidden', key!==name);
+  });
+}
 
-    <section class="settings-section compact-section">
-      <div class="settings-section-title">Thẻ nâng cấp — đã sử dụng</div>
-      <div class="settings-list">${settingsCardStatRows(UPGRADE_POOL, state.stats.upgrades, 'Đã dùng:')}</div>
-    </section>
+function setSettingsTab(name){
+  const isStats=name==='stats';
+  settingsGameTabEl?.classList.toggle('active', !isStats);
+  settingsStatsTabEl?.classList.toggle('active', isStats);
+  settingsGameTabEl?.setAttribute('aria-selected', !isStats ? 'true' : 'false');
+  settingsStatsTabEl?.setAttribute('aria-selected', isStats ? 'true' : 'false');
+  settingsGamePanelEl?.classList.toggle('hidden', isStats);
+  settingsStatsPanelEl?.classList.toggle('hidden', !isStats);
 
-    <section class="settings-section compact-section">
-      <div class="settings-section-title">Thẻ sức mạnh — đã sử dụng</div>
-      <div class="settings-list">${settingsCardStatRows(Object.values(POWER_CARD_DEFS), state.stats.powers, 'Đã dùng:')}</div>
-    </section>`;
+  // Each visit to Số liệu starts on the default Khối tab.
+  if(isStats){
+    refreshSettingsStats();
+    setStatsSubTab('blocks');
+  }
 }
 
 function openSettings(){
-  refreshSettingsStats();
+  // Cài đặt always opens on the Game tab.
+  setSettingsTab('game');
   refreshSpeedControl();
   settingsOverlayEl?.classList.remove('hidden');
 }
@@ -115,6 +143,11 @@ function closeSettings(){ settingsOverlayEl?.classList.add('hidden'); }
 
 settingsBtnEl?.addEventListener('click', openSettings);
 settingsCloseBtnEl?.addEventListener('click', closeSettings);
+settingsGameTabEl?.addEventListener('click',()=>setSettingsTab('game'));
+settingsStatsTabEl?.addEventListener('click',()=>setSettingsTab('stats'));
+statsBlocksTabEl?.addEventListener('click',()=>setStatsSubTab('blocks'));
+statsUpgradesTabEl?.addEventListener('click',()=>setStatsSubTab('upgrades'));
+statsBuffsTabEl?.addEventListener('click',()=>setStatsSubTab('buffs'));
 settingsOverlayEl?.addEventListener('pointerdown', e=>{ if(e.target===settingsOverlayEl) closeSettings(); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden')) closeSettings(); });
 restartGameBtnEl?.addEventListener('click',()=>{
@@ -122,4 +155,5 @@ restartGameBtnEl?.addEventListener('click',()=>{
   newRun();
 });
 
+setStatsSubTab('blocks');
 refreshSpeedControl();

@@ -87,7 +87,19 @@ const hoverTipEl = document.createElement('div'); hoverTipEl.className='hover-ti
 document.body.appendChild(hoverTipEl);
 
 let debugHoverTarget = null;
+let debugHoverCellTarget = null;
 function markDebugTarget(el, obj, kind){ el.__debugTarget = {el, obj, kind}; return el; }
+function markDebugCellTarget(el, cell){ el.__debugCellTarget = {el, cell}; return el; }
+function debugCellKindLabel(cell){
+  if(!cell) return 'Ô';
+  if(cell.type==='black') return 'Vật cản';
+  if(cell.assassinTarget) return 'Ô mục tiêu';
+  if(cell.locked) return 'Ô khóa';
+  if(cell.debuff) return 'Ô debuff';
+  if(cell.nerf) return 'Ô giảm sức mạnh';
+  if(cell.controlled) return 'Ô bị điều khiển';
+  return 'Ô trống';
+}
 function debugDescribeTarget(target){
   if(!target || !target.obj) return '<span class="debug-none">Chưa có khối hoặc bóng nào dưới con trỏ.</span>';
   const obj=target.obj;
@@ -208,7 +220,8 @@ function placeHoverTip(targetEl){
 function showHoverTip(targetEl, info){
   hoverTipEl._targetEl = targetEl;
   hoverTipEl.innerHTML = '';
-  hoverTipEl.classList.remove('locked-tooltip-stack', 'debuff-tooltip-stack', 'hazard-tooltip');
+  hoverTipEl.classList.remove('locked-tooltip-stack', 'debuff-tooltip-stack', 'hazard-tooltip', 'boss-tooltip', 'boss-nerf-tooltip', 'boss-controlled-tooltip', 'boss-assassin-tooltip', 'cell-hazard-tooltip-stack');
+  hoverTipEl.style.removeProperty('--tooltip-accent');
 
   const main = document.createElement('div');
   main.className='hover-tip-main';
@@ -269,7 +282,8 @@ function attachObjectTooltip(el, obj, kind){
 function showSimpleHoverTip(targetEl, titleText, bodyText, extraClass=''){ 
   hoverTipEl._targetEl = targetEl;
   hoverTipEl.innerHTML='';
-  hoverTipEl.classList.remove('locked-tooltip-stack', 'debuff-tooltip-stack', 'hazard-tooltip');
+  hoverTipEl.classList.remove('locked-tooltip-stack', 'debuff-tooltip-stack', 'hazard-tooltip', 'boss-tooltip', 'boss-nerf-tooltip', 'boss-controlled-tooltip', 'boss-assassin-tooltip', 'cell-hazard-tooltip-stack');
+  hoverTipEl.style.removeProperty('--tooltip-accent');
   const panel=document.createElement('div');
   panel.className='hover-tip-main';
   if(extraClass) hoverTipEl.classList.add(extraClass);
@@ -283,6 +297,28 @@ function showSimpleHoverTip(targetEl, titleText, bodyText, extraClass=''){
   hoverTipEl.appendChild(panel);
   hoverTipEl.classList.remove('hidden');
   placeHoverTip(targetEl);
+}
+
+function showColorHoverTip(targetEl,titleText,bodyText,color,extraClass=''){
+  showSimpleHoverTip(targetEl,titleText,bodyText,extraClass);
+  const accent=color || 'var(--cyan)';
+  hoverTipEl.style.setProperty('--tooltip-accent', accent);
+  // Set the visible panel styles inline as well as through CSS so Boss
+  // tooltips keep their Boss-coloured border even when another tooltip rule
+  // is loaded later in the stylesheet.
+  const main=hoverTipEl.querySelector('.hover-tip-main');
+  if(main){
+    main.style.borderColor=accent;
+    main.style.boxShadow='0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055)';
+  }
+  const title=hoverTipEl.querySelector('.tip-title');
+  if(title) title.style.color=accent;
+}
+
+function showBossHoverTip(targetEl,boss){
+  if(!boss) return;
+  const desc = typeof getBossDisplayDescription==='function' ? getBossDisplayDescription(boss) : (boss.desc || '');
+  showColorHoverTip(targetEl,boss.name,desc,boss.color,'boss-tooltip');
 }
 
 function blackBlockTooltip(el){
@@ -335,9 +371,9 @@ const BUFF_POOL = [
 ];
 
 function getOwnedBuffIds(){ return Array.isArray(state?.ownedBuffIds) ? state.ownedBuffIds : []; }
-function getMaxHandSize(){ return HAND_SIZE + (state?.handSizeBonus || 0); }
+function getMaxHandSize(){ return Math.max(1, HAND_SIZE + (state?.handSizeBonus || 0) + getBossHandSizeModifier()); }
 function getMaxCardHand(){ return MAX_CARD_HAND; }
-function getMaxDiscards(){ return 3 + (state?.discardBonus || 0); }
+function getMaxDiscards(){ return Math.max(0, getBossMaxDiscards(3 + (state?.discardBonus || 0))); }
 function isBuffOwned(id){ return getOwnedBuffIds().includes(id); }
 function markBuffOwned(id){ if(id==='empty' || isBuffOwned(id)) return; state.ownedBuffIds.push(id); }
 function pickAvailableBuff(){

@@ -69,42 +69,43 @@ function coreExitEffects(block, ballState){
   const shotMeta=ballState?.shotMeta;
   const tooltips=[];
   const def=CORE_DEFS[core.id];
-  const coreTooltip = def.tooltip
-    ? {text:def.tooltip, kind:`core-${core.id}`, color:def.color}
-    : null;
+  const coreMultiplier=getCoreEffectMultiplier(block, core.id);
+  const formatCoreValue=value=>{
+    const rounded=Math.round(value*100)/100;
+    return Number.isInteger(rounded) ? formatNumber(rounded) : String(rounded);
+  };
 
   if(core.id==='red'){
-    // Red has no count, but it may replay this block only once per shot.
-    // The actual replay is performed inside blockExitEffects() with skipCore:true.
-    return {
-      tooltips:[],
-      purpleSplit:false,
-      repeatBlock:redCoreCanReplay(block, shotMeta)
-    };
+    return {tooltips:[], purpleSplit:false, repeatBlock:redCoreCanReplay(block, shotMeta)};
   }
 
   if(core.id==='orange' && coreCanUse(block,shotMeta)){
-    ballState.total *= 1.5;
+    const multiplier=1 + 0.5*coreMultiplier;
+    ballState.total *= multiplier;
     consumeCoreUse(block,shotMeta);
-    if(coreTooltip) tooltips.push(coreTooltip);
+    tooltips.push({text:`x${multiplier.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`,kind:'core-orange',color:def.color});
   } else if(core.id==='yellow' && coreCanUse(block,shotMeta)){
-    state.money += 3;
+    const reward=3*coreMultiplier;
+    state.money += reward;
     syncMoneyHud();
     consumeCoreUse(block,shotMeta);
-    if(coreTooltip) tooltips.push(coreTooltip);
+    tooltips.push({text:`+${formatCoreValue(reward)}$`,kind:'core-yellow',color:def.color});
   } else if(core.id==='green' && coreCanUse(block,shotMeta)){
     if(Math.random()<0.25){
-      ballState.total *= 2;
-      tooltips.push({text:'x2',kind:'core-green',color:def.color});
+      const multiplier=1 + coreMultiplier;
+      ballState.total *= multiplier;
+      tooltips.push({text:`x${multiplier.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`,kind:'core-green',color:def.color});
     }
     if(Math.random()<0.05){
-      state.money += 20;
+      const reward=20*coreMultiplier;
+      state.money += reward;
       syncMoneyHud();
-      tooltips.push({text:'+20$',kind:'core-green-money',color:def.color});
+      tooltips.push({text:`+${formatCoreValue(reward)}$`,kind:'core-green-money',color:def.color});
     }
   } else if(core.id==='purple' && coreCanUse(block,shotMeta)){
-    // Purple performs its split in travel() after the normal first split.
+    // Purple consumes its count when the split actually occurs in travel().
   }
+
   return {
     tooltips,
     purpleSplit:core.id==='purple' && coreCanUse(block,shotMeta),
@@ -115,12 +116,12 @@ function coreExitEffects(block, ballState){
 function blockExitEffects(block, ballState, options={}){
   const prop = block.property, enh = block.enhancement;
   if(!options.replay) recordBlockPassed(block);
+  if(!options.replay) triggerBossThiefOnBlockPass(block, options);
+
   let brokeBlock = false;
   const tooltips=[];
   let sparkMultiplierUsed = null;
-
-  const propFx = BLOCK_PROP_EFFECTS[prop];
-  propFx?.onExit?.(ballState, 1);
+  const effectMultiplier=getBlockEffectMultiplier(block);
 
   if(prop==='steel'){
     if(!ballState.steelBlocks) ballState.steelBlocks = new Set();
@@ -130,9 +131,6 @@ function blockExitEffects(block, ballState, options={}){
       ballState.steelBlocks.add(block);
       ballState.steelBlockCounts.set(block,1);
     } else if(options.replay){
-      // A normal repeat visit through the same steel block does not stack.
-      // Red core explicitly repeats the steel effect, so it adds one more x1.5
-      // and remembers that this multiplier belongs to the red replay for THIS shot.
       const current=Math.max(1,Math.floor(Number(ballState.steelBlockCounts.get(block)||1)));
       ballState.steelBlockCounts.set(block,current+1);
       if(!ballState.shotMeta.redCoreSteelReplayBlocks) ballState.shotMeta.redCoreSteelReplayBlocks=new Set();
@@ -140,44 +138,49 @@ function blockExitEffects(block, ballState, options={}){
     }
   }
 
-  // Striped balls multiply only the points granted by this block.
-  const blockGain = ballState.prop==='striped' ? ballState.rate * 1.5 : ballState.rate;
-  ballState.total += blockGain;
+  // The boss reduction applies to the value produced by the block. Ball-side
+  // multipliers such as Striped are preserved and therefore multiply the reduced
+  // block contribution rather than being reduced themselves.
+  const blockGainBase = ballState.prop==='striped' ? ballState.rate*1.5 : ballState.rate;
+  ballState.total += blockGainBase*effectMultiplier;
 
-  if(!blockHasCore(block,'blue') && propFx?.chanceToBreak && Math.random() < propFx.chanceToBreak){
+  if(!blockHasCore(block,'blue') && prop==='glass' && Math.random() < 0.10){
+    // Glass's break probability is intentionally NOT reduced by boss/nerf.
     brokeBlock = true;
   }
 
-  if(prop==='stone') tooltips.push({text:'+50',kind:'stone'});
+  if(prop==='stone') tooltips.push({text:`+${Math.round(50*effectMultiplier*100)/100}`,kind:'stone'});
+
+  if(prop==='glass'){
+    const glassMultiplier=1 + 0.5*effectMultiplier;
+    ballState.total *= glassMultiplier;
+    if(effectMultiplier<1) tooltips.push({text:`x${glassMultiplier.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`,kind:'glass'});
+  }
 
   if(enh==='spark'){
-    // A red-core replay must reuse the exact multiplier used by the primary
-    // pass. This prevents x1.5 -> x1.45 when the intended result is x1.5 -> x1.5.
-    const multiplier = Number.isFinite(options.sparkMultiplierOverride)
+    const baseMultiplier = Number.isFinite(options.sparkMultiplierOverride)
       ? options.sparkMultiplierOverride
       : getBlockSparkMultiplier(block, ballState);
-
-    if(multiplier>SPARK_MIN_MULTIPLIER){
+    const multiplier=1 + (baseMultiplier-1)*effectMultiplier;
+    if(multiplier>1){
       ENHANCEMENT_EFFECTS.spark.blockExit(ballState,multiplier);
-      tooltips.push({text:`x${multiplier.toFixed(2)}`,kind:'spark'});
+      tooltips.push({text:`x${multiplier.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`,kind:'spark'});
       sparkMultiplierUsed=multiplier;
       if(!options.replay) consumeBlockSparkMultiplier(block, ballState);
     }
   }
 
   if(enh==='holo'){
+    const bonus=50*effectMultiplier;
     ENHANCEMENT_EFFECTS.holo.blockExit(ballState);
-    tooltips.push({text:'+50',kind:'holo'});
+    ballState.total -= 50;
+    ballState.total += bonus;
+    tooltips.push({text:`+${Math.round(bonus*100)/100}`,kind:'holo'});
   }
 
-  ballState.total += (state.typeBonus[block.type] || 0);
-
-  // Gold pays only at level completion. Its red core is resolved there too,
-  // independently of whether a ball ever passes through this block.
+  ballState.total += (state.typeBonus[block.type] || 0)*effectMultiplier;
 
   if(!options.skipCore && blockHasCore(block,'red') && redCoreCanReplay(block, ballState?.shotMeta)){
-    // Mark BEFORE replaying so any recursive/re-entrant path cannot trigger
-    // the red core a second time for the same block during this shot.
     markRedCoreReplayed(block, ballState.shotMeta);
 
     const repeat=blockExitEffects(block, ballState, {
@@ -187,10 +190,6 @@ function blockExitEffects(block, ballState, options={}){
     });
     brokeBlock = brokeBlock || !!repeat.brokeBlock;
 
-    // The red-core tooltip is the same text as the tooltip(s) produced by the
-    // repeated property/enhancement effect, but rendered in the red core color.
-    // Do this from the repeat result itself so Spark keeps the exact multiplier
-    // used by the original pass (e.g. x1.5, not x1.45).
     for(const item of (repeat.tooltips || [])){
       const replayTip=makeRedCoreReplayTooltip(item);
       if(replayTip) tooltips.push(replayTip);
@@ -304,12 +303,13 @@ function findBlockCell(blockRef){
   return null;
 }
 
-function createSteelMultiplierTooltip(blockRef, isRedCore=false){
+function createSteelMultiplierTooltip(blockRef, isRedCore=false, multiplier=1.5){
   const pos=findBlockCell(blockRef);
   if(!pos) return null;
   const tip=document.createElement('div');
   tip.className='steel-multiplier-tooltip' + (isRedCore ? ' core-red-steel-tooltip' : '');
-  tip.textContent='x1.5';
+  const rounded=Math.round(multiplier*100)/100;
+  tip.textContent=`x${Number.isInteger(rounded)?rounded:rounded.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`;
   if(isRedCore){
     tip.style.color=CORE_COLOR.red;
     tip.style.borderColor=CORE_COLOR.red;
@@ -323,12 +323,13 @@ function createSteelMultiplierTooltip(blockRef, isRedCore=false){
   return tip;
 }
 
-function createGoldRewardTooltip(blockRef, isRedCore=false){
+function createGoldRewardTooltip(blockRef, isRedCore=false, amount=3){
   const pos=findBlockCell(blockRef);
   if(!pos) return null;
   const tip=document.createElement('div');
   tip.className='gold-reward-tooltip' + (isRedCore ? ' core-red-gold-tooltip' : '');
-  tip.textContent='+3$';
+  const rounded=Math.round(amount*100)/100;
+  tip.textContent=`+${Number.isInteger(rounded)?rounded:rounded.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}$`;
   if(isRedCore){
     tip.style.color=CORE_COLOR.red;
     tip.style.borderColor=CORE_COLOR.red;
@@ -351,8 +352,9 @@ function getSteelMultiplierEntries(ballState){
     const count=Math.max(1,Math.floor(Number(counts?.get(block)||1)));
     const redRepeats=redRepeatSet?.has(block) ? 1 : 0;
     const normalCount=Math.max(1, count-redRepeats);
-    for(let i=0;i<normalCount;i++) entries.push({block,isRedCore:false});
-    if(redRepeats>0) entries.push({block,isRedCore:true});
+    const multiplier=1 + 0.5*getBlockEffectMultiplier(block);
+    for(let i=0;i<normalCount;i++) entries.push({block,isRedCore:false,multiplier});
+    if(redRepeats>0) entries.push({block,isRedCore:true,multiplier});
   }
   return entries;
 }
@@ -365,9 +367,9 @@ async function animateSteelGoalMultipliers(ballState, goalPopup, generation){
     if(generation!==runGeneration || !state) return false;
 
     const entry=steelBlocks[i];
-    const nextTip=createSteelMultiplierTooltip(entry.block, entry.isRedCore);
+    const nextTip=createSteelMultiplierTooltip(entry.block, entry.isRedCore, entry.multiplier);
     if(!nextTip){
-      ballState.total*=1.5;
+      ballState.total*=entry.multiplier;
       updateGoalPopupScore(goalPopup, ballState);
       continue;
     }
@@ -378,7 +380,7 @@ async function animateSteelGoalMultipliers(ballState, goalPopup, generation){
     await wait(70);
     if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
 
-    ballState.total*=1.5;
+    ballState.total*=entry.multiplier;
     updateGoalPopupScore(goalPopup, ballState, {impact:true, rise:40});
 
     if(activeTip){
@@ -408,14 +410,17 @@ async function animateSteelGoalMultipliers(ballState, goalPopup, generation){
 
 async function animateGoldBlockRewards(goldBlocks, generation){
   let activeTip = null;
+  let activeEntry = null;
 
   for(let i=0;i<goldBlocks.length;i++){
     if(generation!==runGeneration || !state) return false;
 
     const entry=goldBlocks[i];
-    const nextTip=createGoldRewardTooltip(entry.block, entry.isRedCore);
+    const amount=3*getBlockEffectMultiplier(entry.block);
+    const nextTip=createGoldRewardTooltip(entry.block, entry.isRedCore, amount);
     if(!nextTip) continue;
 
+    nextTip._goldEntry=entry;
     requestAnimationFrame(()=>nextTip.classList.add('show'));
     await wait(70);
     if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
@@ -423,19 +428,17 @@ async function animateGoldBlockRewards(goldBlocks, generation){
     if(activeTip){
       activeTip.classList.remove('show');
       activeTip.classList.add('hide');
-    }
-
-    if(activeTip){
       await wait(100);
       if(generation!==runGeneration || !state){ nextTip.remove(); activeTip.remove(); return false; }
       activeTip.remove();
-
-      // Each gold block pays exactly once when its tooltip finishes disappearing.
-      state.money += 3;
-      syncMoneyHud();
+      if(activeEntry?.block){
+        state.money += 3*getBlockEffectMultiplier(activeEntry.block);
+        syncMoneyHud();
+      }
     }
 
     activeTip=nextTip;
+    activeEntry=entry;
     await wait(i < goldBlocks.length-1 ? 90 : 260);
   }
 
@@ -445,9 +448,10 @@ async function animateGoldBlockRewards(goldBlocks, generation){
     activeTip.classList.add('hide');
     await wait(100);
     activeTip.remove();
-
-    state.money += 3;
-    syncMoneyHud();
+    if(activeEntry?.block){
+      state.money += 3*getBlockEffectMultiplier(activeEntry.block);
+      syncMoneyHud();
+    }
   }
 
   return true;
@@ -613,9 +617,9 @@ async function animateSteelLostBallMultipliers(ballState, payoutState, popup, ge
   for(let i=0;i<steelBlocks.length;i++){
     if(generation!==runGeneration || !state) return false;
     const entry=steelBlocks[i];
-    const nextTip=createSteelMultiplierTooltip(entry.block, entry.isRedCore);
+    const nextTip=createSteelMultiplierTooltip(entry.block, entry.isRedCore, entry.multiplier);
     if(!nextTip){
-      payoutState.total*=1.5;
+      payoutState.total*=entry.multiplier;
       updateGoalPopupScore(popup,payoutState,{impact:true,rise:40});
       continue;
     }
@@ -624,7 +628,7 @@ async function animateSteelLostBallMultipliers(ballState, payoutState, popup, ge
     await wait(70);
     if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
 
-    payoutState.total*=1.5;
+    payoutState.total*=entry.multiplier;
     updateGoalPopupScore(popup,payoutState,{impact:true,rise:40});
 
     if(activeTip){
@@ -800,13 +804,18 @@ async function travel(ball, tip, row, col, dir, ballState, counter, generation=r
     return loseBall(ball, tip, nr, nc, ballState);
   }
 
-  if(cellData.debuff && !blockIgnoresCellHazards(blockRef)){
-    // Keep the same ball entity and continue immediately; no re-spawn means no visible pause.
+  // Pink Core neutralizes adverse *cell* effects. The Silencer is a boss
+  // debuff attached to the block itself, so Pink Core does not remove it.
+  const cellHazardActive = cellData.debuff && !blockIgnoresCellHazards(blockRef);
+  const silencedActive = !!blockRef.bossSilenced;
+  if(cellHazardActive || silencedActive){
     const exits=sides.filter(s=>s!==entrySide);
     if(!exits.length) return loseBall(ball,tip,nr,nc,ballState);
 
-    const debuffCellEl = boardEl.querySelector(`.cell.debuff-cell[data-r="${nr}"][data-c="${nc}"]`);
-    pulseDebuffBlock(debuffCellEl);
+    const debuffCellEl = cellHazardActive ? boardEl.querySelector(`.cell.debuff-cell[data-r="${nr}"][data-c="${nc}"]`) : null;
+    if(debuffCellEl) pulseDebuffBlock(debuffCellEl);
+    const silencedCellEl = silencedActive ? boardEl.querySelector(`.cell[data-r="${nr}"][data-c="${nc}"]`) : null;
+    if(silencedCellEl) pulseDebuffBlock(silencedCellEl);
 
     const exitDir=pick(exits);
     return travel(ball,tip,nr,nc,exitDir,ballState,counter,generation);
@@ -906,6 +915,16 @@ async function onNodeClick(){
   const generation = runGeneration;
   state.resolving = true;
 
+  // Controlled cells change the orientation of their contained blocks before
+  // the ball is actually launched. For The Hacker, its 5 controlled positions
+  // are replaced after the shot; ordinary controlled cells persist until changed.
+  if(state.cells && state.cells.some(row=>row.some(cell=>cell?.controlled))){
+    await prepareControlledCellsBeforeShot();
+    if(generation!==runGeneration || !state){
+      return;
+    }
+  }
+
   for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
     const b = state.cells[r][c].block;
     if(b) b._splitUsed = false;
@@ -969,6 +988,7 @@ async function onNodeClick(){
   } else {
   }
 
+  await applyBossAfterShot();
   state.resolving = false;
   state._activeShotMeta = null;
   render();
@@ -983,6 +1003,7 @@ function getWinBonus(){
 
 async function checkEndState(){
   if(state.score >= state.target){
+    if(state.boss?.id) markBossDefeated(state.boss.id);
     const unfired = state.ballQueue.length - state.ballsFired;
     const interestCap = 5 + state.interestCapBonus;
     const interest = Math.min(Math.floor(state.money/5), interestCap);

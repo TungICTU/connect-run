@@ -11,7 +11,7 @@ function ensureBallIds(){ state.ballPool.forEach(b=>{ if(!b._id) b._id=ballUid()
 // ---------- persistent save / load ----------
 // Saves the current run locally in the browser. No account or server is required.
 const SAVE_KEY = 'connect-run-save-v1';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 5;
 let saveTimer = null;
 let savePending = false;
 
@@ -34,6 +34,7 @@ function snapshotGameState(){
     if(key === 'lastUpgrade') return undefined;
     if(key === 'shopBuff') return undefined;
     if(key === 'holeConnections') return [...state.holeConnections];
+    if(key === '_bossRuntime') return undefined;
     return value;
   }));
 
@@ -82,6 +83,10 @@ function restoreKnownObjects(){
   state.targeting = null;
   state.resolving = false;
   ensureRunStats();
+  normalizeBossState();
+  state.defeatedBosses = Array.isArray(state.defeatedBosses) ? [...new Set(state.defeatedBosses)] : [];
+  state.bossDebugOverrides = (state.bossDebugOverrides && typeof state.bossDebugOverrides==='object') ? state.bossDebugOverrides : {};
+  state.bossHistoryMeta = (state.bossHistoryMeta && typeof state.bossHistoryMeta==='object') ? state.bossHistoryMeta : {};
 
   state.lastUpgrade = state.lastUpgradeId
     ? (UPGRADE_POOL.find(x=>x.id===state.lastUpgradeId) || null)
@@ -124,6 +129,10 @@ function restoreKnownObjects(){
   state.discardsLeft = Number.isFinite(state.discardsLeft) ? state.discardsLeft : 3;
   state.commonRerollCost = Number.isFinite(state.commonRerollCost) ? state.commonRerollCost : 3;
 
+  // Persist the location-bar rail position so reloads reconstruct the same
+  // visible history instead of starting again from current - 2.
+  state.locationBarFirstLevel = Math.max(1, Math.floor(Number(state.locationBarFirstLevel) || Math.max(1, Number(state.level || 1) - 2)));
+
   ensureBallIds();
   syncSaveCounters();
 }
@@ -141,6 +150,7 @@ function loadGame(){
 
     if(state.phase === 'playing'){
       render();
+      renderLocationBar?.(false);
       renderTargetBanner();
       hideOverlay();
       hideShop();
@@ -149,6 +159,7 @@ function loadGame(){
 
     if(state.phase === 'shop'){
       render();
+      renderLocationBar?.(false);
       hideOverlay();
       renderCardHand();
       openShop();
@@ -163,12 +174,14 @@ function loadGame(){
       const interest = Math.min(Math.floor(state.money/5), interestCap);
       state._boardHide = false;
       render();
+      renderLocationBar?.(false);
       runBoardHideAnimation(()=>showLevelReward({winBonus:getWinBonus(), unfired, ballBonus:unfired*2, interest}));
       return true;
     }
 
     // gameover (or unknown terminal state): reconstruct the standard lose overlay.
     render();
+    renderLocationBar?.(false);
     renderCardHand();
     hideShop();
     showOverlay('lose', 'GAME OVER', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
@@ -211,6 +224,7 @@ function newRun(){
 
   state = {
     money: 3, level: 0,
+    locationBarFirstLevel: 1,
     baseRateBonus: 0, typeBonus: { straight:0, L:0, T:0, plus:0 },
     maxBallsBonus: 0, bagBonus: 0, startBonus: 0, interestCapBonus: 0,
     discardBonus: 0, handSizeBonus: 0, discountBonus: false, ownedBuffIds: [],
@@ -220,7 +234,12 @@ function newRun(){
     phase: 'playing',
     shopBuff: null, shopBuffBought: false, commonItems: null, commonRerollCost: 3,
     bag: [], hand: [], discardPile: [], discardsLeft: 3, cells: null, holeConnections: new Set(),
-    stats: createRunStats()
+    stats: createRunStats(),
+    boss: null,
+    bossHistory: {},
+    bossHistoryMeta: {},
+    defeatedBosses: [],
+    bossDebugOverrides: {}
   };
   state.bag = makeInitialDeck();
   ensureBallIds();
@@ -253,11 +272,14 @@ function makeInitialDeck(){
 }
 
 function makeBallQueue(){
-  const max = BASE_MAX_BALLS + state.maxBallsBonus;
-  while(state.ballPool.length < max) state.ballPool.push({_id:ballUid(),property:null, enhancement:null});
-  if(state.ballPool.length > max) state.ballPool.length = max;
+  // The boss Dart limits only the balls available for this level; it must not
+  // permanently delete balls from the player's persistent ball pool.
+  const persistentMax = BASE_MAX_BALLS + state.maxBallsBonus;
+  while(state.ballPool.length < persistentMax) state.ballPool.push({_id:ballUid(),property:null, enhancement:null});
+  if(state.ballPool.length > persistentMax) state.ballPool.length = persistentMax;
   ensureBallIds();
-  const queue = state.ballPool.map(b => ({_id:b._id, fired:false, property:b.property||null, enhancement:b.enhancement||null}));
+  const queueMax = Math.max(0, Math.min(persistentMax, getBossMaxBalls(persistentMax)));
+  const queue = state.ballPool.slice(0, queueMax).map(b => ({_id:b._id, fired:false, property:b.property||null, enhancement:b.enhancement||null}));
   if(state.nextBallPreset){
     queue[0].property = state.nextBallPreset.property;
     queue[0].enhancement = state.nextBallPreset.enhancement;

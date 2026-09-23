@@ -12,6 +12,7 @@ const targetBannerEl = document.getElementById('targetBanner');
 const boardWrapEl = document.querySelector('.board-wrap');
 const discardBtnEl = document.getElementById('discardBtn');
 const discardCountEl = document.getElementById('discardCount');
+const locationBarEl = document.getElementById('locationBar');
 let refreshAnimSlots = new Set();
 let boardRevealTimer = null;
 let boardRevealToken = 0;
@@ -19,8 +20,39 @@ discardBtnEl.addEventListener('click', discardHand);
 let placeAnimCell = null; // {r,c} of the block placed by the most recent drop, for the pop-in animation
 let swapAnim = null; // {source:{r,c},target:{r,c}} for two-block movement animation
 
-function renderBlockArms(container, block){
-  container.querySelectorAll('.block-visual, .block-core-dot').forEach(n=>n.remove());
+function getBoardCellTintColor(container){
+  const cell=container?.closest?.('.cell');
+  if(!cell) return null;
+  if(cell.classList.contains('controlled-cell')) return BOSS_CONTROLLED_COLOR;
+  if(cell.classList.contains('nerf-cell')) return '#f7b267';
+  if(cell.classList.contains('debuff-cell')) return '#ff5836';
+  if(cell.classList.contains('locked-cell')) return '#ff4f83';
+  if(cell.classList.contains('boss-assassin-target')) return '#8b1e3f';
+  return null;
+}
+
+function appendBlockCellTint(element, color){
+  if(!element || !color) return;
+  const tint=document.createElement('span');
+  tint.className='block-cell-tint';
+  tint.style.setProperty('--cell-tint', color);
+  element.appendChild(tint);
+}
+
+function renderBlockArms(container, block, options={}){
+  container.querySelectorAll('.block-visual, .block-core-dot, .boss-hidden-block, .boss-silenced-x, .boss-block-nerf-indicator').forEach(n=>n.remove());
+
+  if(block.bossHidden){
+    const hidden=document.createElement('div');
+    hidden.className='boss-hidden-block';
+    hidden.textContent='?';
+    container.appendChild(hidden);
+    markDebugTarget(container, block, 'block');
+    container.addEventListener('mouseenter', ()=> showHoverTip(container, {title:'Khối ẩn',level:1,lines:['Khối này đang bị The Illusioner che giấu. Đặt lên bảng để lộ hình dạng.']}));
+    container.addEventListener('mouseleave', hideHoverTip);
+    return;
+  }
+
   const visual = document.createElement('div'); visual.className='block-visual';
   if(block.property) visual.dataset.prop = block.property;
   if(block.enhancement) visual.dataset.enh = block.enhancement;
@@ -28,35 +60,48 @@ function renderBlockArms(container, block){
   visual.dataset.deg = deg;
   visual.style.setProperty('--block-base-rotation', `${deg}deg`);
   visual.style.transform = `rotate(${deg}deg)`;
+  const cellTint=getBoardCellTintColor(container);
   const hub = document.createElement('div'); hub.className='hub';
+  appendBlockCellTint(hub, cellTint);
   visual.appendChild(hub);
   BASE_SIDES[block.type].forEach(side=>{
     const arm = document.createElement('div');
     arm.className = 'arm arm-' + DIR_NAMES[side];
+    appendBlockCellTint(arm, cellTint);
     visual.appendChild(arm);
   });
+  container.appendChild(visual);
+
   if(block.core && CORE_DEFS[block.core.id]){
     const coreDot=document.createElement('div');
     coreDot.className='block-core-dot';
     coreDot.dataset.core=block.core.id;
     coreDot._coreBlock = block;
-    // The core is intentionally a sibling of .block-visual so it never rotates
-    // with the block. Make the core visibly larger than the old 22% socket.
-    coreDot.style.width='30%';
-    coreDot.style.height='30%';
-    if(coreHasCount(block.core)){
-      coreDot.textContent=String(getCoreDisplayCount(block));
-    }
-    container.appendChild(visual);
+    if(coreHasCount(block.core)) coreDot.textContent=String(getCoreDisplayCount(block));
     container.appendChild(coreDot);
-  } else {
-    container.appendChild(visual);
   }
+
+  if(block.bossSilenced){
+    const x=document.createElement('div');
+    x.className='boss-silenced-x';
+    container.appendChild(x);
+  }
+
+  if(getCurrentBossTypeReduction(block)<1){
+    const nerf=document.createElement('div');
+    nerf.className='boss-block-nerf-indicator';
+    nerf.textContent='≫';
+    nerf.title='Boss giảm 50% hiệu ứng của khối này';
+    container.appendChild(nerf);
+  }
+
   markDebugTarget(container, block, 'block');
   if(block.property) container.style.setProperty('--prop-color', PROP_COLOR[block.property]);
   if(block.enhancement) container.style.setProperty('--enh-color', ENH_COLOR[block.enhancement]);
-  container.addEventListener('mouseenter', ()=> showHoverTip(container, blockTooltip(block)));
-  container.addEventListener('mouseleave', hideHoverTip);
+  if(!options.suppressTooltip){
+    container.addEventListener('mouseenter', ()=> showHoverTip(container, blockTooltip(block)));
+    container.addEventListener('mouseleave', hideHoverTip);
+  }
 }
 
 function prepareBoardRender(boardReveal){
@@ -144,15 +189,17 @@ function renderLockIcon(el, isFilled){
   el.appendChild(icon);
 }
 
-function showLockedCellHoverTip(targetEl, block){
-  hoverTipEl._targetEl = targetEl;
-  hoverTipEl.innerHTML = '';
-  hoverTipEl.classList.remove('hazard-tooltip', 'debuff-tooltip-stack');
-  hoverTipEl.classList.add('locked-tooltip-stack');
+function showCellHazardHoverTip(targetEl, block, titleText, bodyText, color, extraClass='cell-hazard-tooltip-stack'){
+  hoverTipEl._targetEl=targetEl;
+  hoverTipEl.innerHTML='';
+  hoverTipEl.classList.remove('locked-tooltip-stack','debuff-tooltip-stack','hazard-tooltip','boss-tooltip','boss-nerf-tooltip','boss-controlled-tooltip','boss-assassin-tooltip','cell-hazard-tooltip-stack');
+  hoverTipEl.classList.add('cell-hazard-tooltip-stack');
+  if(extraClass) hoverTipEl.classList.add(extraClass);
+  hoverTipEl.style.setProperty('--tooltip-accent', color || 'var(--cyan)');
 
   if(block){
-    const blockInfo = blockTooltip(block);
-    const blockWrap = document.createElement('div');
+    const info=blockTooltip(block);
+    const blockWrap=document.createElement('div');
     blockWrap.className='hover-tip';
     blockWrap.style.position='static';
     blockWrap.style.maxWidth='none';
@@ -163,78 +210,6 @@ function showLockedCellHoverTip(targetEl, block){
     blockWrap.style.gap='6px';
     blockWrap.style.pointerEvents='none';
 
-    const main = document.createElement('div');
-    main.className='hover-tip-main';
-    const t = document.createElement('div');
-    t.className='tip-title';
-    const titleLeft = document.createElement('div');
-    titleLeft.className='tip-title-left';
-    const baseTitle = document.createElement('span');
-    baseTitle.className='tip-title-base';
-    baseTitle.textContent=blockInfo.title;
-    titleLeft.appendChild(baseTitle);
-    if(blockInfo.property) titleLeft.appendChild(createTooltipPill(blockInfo.property, 'property'));
-    if(blockInfo.enhancement) titleLeft.appendChild(createTooltipPill(blockInfo.enhancement, 'enhancement'));
-    if(blockInfo.core) titleLeft.appendChild(createTooltipPill(blockInfo.core, 'core'));
-    t.appendChild(titleLeft);
-    const levelEl=document.createElement('span');
-    levelEl.className='tip-level';
-    levelEl.textContent=`Lv.${blockInfo.level}`;
-    levelEl.style.color=levelColor(blockInfo.level);
-    t.appendChild(levelEl);
-    main.appendChild(t);
-    blockInfo.lines.forEach(line=>{
-      const d=document.createElement('div');
-      if(typeof line==='string') d.textContent=line;
-      else { d.textContent=line.text; d.style.color=line.color; }
-      main.appendChild(d);
-    });
-    blockWrap.appendChild(main);
-
-    if(blockInfo.property || blockInfo.enhancement || blockInfo.core){
-      const details=document.createElement('div');
-      details.className='hover-tip-details';
-      if(blockInfo.property) details.appendChild(createTooltipDetail(blockInfo.property, 'property'));
-      if(blockInfo.enhancement) details.appendChild(createTooltipDetail(blockInfo.enhancement, 'enhancement'));
-      if(blockInfo.core) details.appendChild(createTooltipDetail(blockInfo.core, 'core'));
-      blockWrap.appendChild(details);
-    }
-    hoverTipEl.appendChild(blockWrap);
-  }
-
-  const lockPanel=document.createElement('div');
-  lockPanel.className='locked-tooltip-main';
-  const lockTitle=document.createElement('div');
-  lockTitle.className='locked-tooltip-title';
-  lockTitle.textContent='Ô khóa';
-  const lockDesc=document.createElement('div');
-  lockDesc.className='locked-tooltip-desc';
-  lockDesc.textContent='Khối được đặt vào ô này sẽ bị khóa và không thể kéo hoặc xoay cho đến khi qua màn.';
-  lockPanel.appendChild(lockTitle);
-  lockPanel.appendChild(lockDesc);
-  hoverTipEl.appendChild(lockPanel);
-
-  hoverTipEl.classList.remove('hidden');
-  placeHoverTip(targetEl);
-}
-
-function lockedCellTooltip(el){
-  el.addEventListener('mouseenter', ()=>{
-    const r=+el.dataset.r, c=+el.dataset.c;
-    const block=state?.cells?.[r]?.[c]?.block || null;
-    showLockedCellHoverTip(el, block);
-  });
-  el.addEventListener('mouseleave', hideHoverTip);
-}
-
-function showDebuffCellHoverTip(targetEl, block){
-  hoverTipEl._targetEl=targetEl;
-  hoverTipEl.innerHTML='';
-  hoverTipEl.classList.remove('locked-tooltip-stack','hazard-tooltip');
-  hoverTipEl.classList.add('debuff-tooltip-stack');
-
-  if(block){
-    const info=blockTooltip(block);
     const main=document.createElement('div');
     main.className='hover-tip-main';
     const title=document.createElement('div');
@@ -247,6 +222,7 @@ function showDebuffCellHoverTip(targetEl, block){
     left.appendChild(base);
     if(info.property) left.appendChild(createTooltipPill(info.property,'property'));
     if(info.enhancement) left.appendChild(createTooltipPill(info.enhancement,'enhancement'));
+    if(info.core) left.appendChild(createTooltipPill(info.core,'core'));
     title.appendChild(left);
     const lv=document.createElement('span');
     lv.className='tip-level';
@@ -260,24 +236,27 @@ function showDebuffCellHoverTip(targetEl, block){
       else { d.textContent=line.text; d.style.color=line.color; }
       main.appendChild(d);
     });
-    hoverTipEl.appendChild(main);
-    if(info.property || info.enhancement){
+    blockWrap.appendChild(main);
+
+    if(info.property || info.enhancement || info.core){
       const details=document.createElement('div');
       details.className='hover-tip-details';
       if(info.property) details.appendChild(createTooltipDetail(info.property,'property'));
       if(info.enhancement) details.appendChild(createTooltipDetail(info.enhancement,'enhancement'));
-      hoverTipEl.appendChild(details);
+      if(info.core) details.appendChild(createTooltipDetail(info.core,'core'));
+      blockWrap.appendChild(details);
     }
+    hoverTipEl.appendChild(blockWrap);
   }
 
   const panel=document.createElement('div');
-  panel.className='debuff-tooltip-main';
+  panel.className='cell-hazard-tooltip-panel';
   const title=document.createElement('div');
-  title.className='debuff-tooltip-title';
-  title.textContent='Ô debuff';
+  title.className='cell-hazard-tooltip-title';
+  title.textContent=titleText;
   const desc=document.createElement('div');
-  desc.className='debuff-tooltip-desc';
-  desc.textContent='Khối được đặt vào ô này bị vô hiệu hóa toàn bộ hiệu ứng của khối và không tăng điểm khi bóng đi qua khối.';
+  desc.className='cell-hazard-tooltip-desc';
+  desc.textContent=bodyText;
   panel.appendChild(title);
   panel.appendChild(desc);
   hoverTipEl.appendChild(panel);
@@ -286,17 +265,28 @@ function showDebuffCellHoverTip(targetEl, block){
   placeHoverTip(targetEl);
 }
 
+function lockedCellTooltip(el){
+  el.addEventListener('mouseenter', ()=>{
+    const r=+el.dataset.r, c=+el.dataset.c;
+    const block=state?.cells?.[r]?.[c]?.block || null;
+    showCellHazardHoverTip(el, block, 'Ô khóa', 'Khối được đặt vào ô này sẽ bị khóa và không thể kéo hoặc xoay cho đến khi qua màn.', '#ff4f83', 'locked-tooltip-stack');
+  });
+  el.addEventListener('mouseleave', hideHoverTip);
+}
+
 function debuffCellTooltip(el){
   el.addEventListener('mouseenter', ()=>{
     const r=+el.dataset.r, c=+el.dataset.c;
     const block=state?.cells?.[r]?.[c]?.block || null;
-    showDebuffCellHoverTip(el, block);
+    showCellHazardHoverTip(el, block, 'Ô debuff', 'Khối được đặt vào ô này bị vô hiệu hóa toàn bộ hiệu ứng của khối và không tăng điểm khi bóng đi qua khối.', '#ff5836', 'debuff-tooltip-stack');
   });
   el.addEventListener('mouseleave', hideHoverTip);
 }
 
 function renderBlockCell(el, r, c, block){
-  renderBlockArms(el, block);
+  const cell=state.cells?.[r]?.[c];
+  const suppressTooltip=!!(cell?.locked || cell?.debuff || cell?.nerf || cell?.controlled || cell?.assassinTarget);
+  renderBlockArms(el, block, {suppressTooltip});
   attachBoardBlockDrag(el);
   if(state.targeting && targetMatchesDef(state.targeting.def, block, 'block')){
     el.classList.add('targetable');
@@ -315,11 +305,50 @@ function renderBlockCell(el, r, c, block){
   }
 }
 
+function renderBossCellIndicators(el, r, c, cellData){
+  if(isBossAssassinTarget(r,c) || cellData.assassinTarget){
+    el.classList.add('boss-assassin-target');
+    const icon=document.createElement('div');
+    icon.className='boss-assassin-target-icon';
+    icon.setAttribute('aria-hidden','true');
+    el.appendChild(icon);
+    attachBossHazardTooltip(el, 'Ô mục tiêu', 'Sau mỗi lần bắn, nếu có khối trong ô này thì khối sẽ bị triệt tiêu và ô mục tiêu biến mất.', '#8b1e3f', 'boss-assassin-tooltip');
+  }
+
+  if(cellData.nerf){
+    const icon=document.createElement('div');
+    icon.className='boss-nerf-cell-icon';
+    icon.textContent='≫';
+    el.appendChild(icon);
+    attachBossHazardTooltip(el, 'Ô giảm sức mạnh', 'Khối trong ô này chỉ nhận 50% giá trị của các hiệu ứng bị giảm sức mạnh.', '#f7b267', 'boss-nerf-tooltip');
+  }
+
+  if(cellData.controlled){
+    el.classList.add('boss-controlled-cell');
+    const icon=document.createElement('div');
+    icon.className='boss-controlled-icon';
+    icon.textContent='↻';
+    icon.style.color=BOSS_CONTROLLED_COLOR;
+    el.appendChild(icon);
+    attachBossHazardTooltip(el, 'Ô bị điều khiển', 'Trước mỗi lần bắn, khối trong ô này sẽ bị xoay về hướng ngẫu nhiên.', BOSS_CONTROLLED_COLOR, 'boss-controlled-tooltip');
+  }
+}
+
+function attachBossHazardTooltip(el,title,desc,color,tooltipClass=''){
+  el.addEventListener('mouseenter', ()=>{
+    const r=+el.dataset.r, c=+el.dataset.c;
+    const block=state?.cells?.[r]?.[c]?.block || null;
+    showCellHazardHoverTip(el, block, title, desc, color, tooltipClass || 'cell-hazard-tooltip-stack');
+  });
+  el.addEventListener('mouseleave', hideHoverTip);
+}
+
 function renderBoardCell(r, c, boardReveal, boardHide){
   const cellData = state.cells[r][c];
   const el = document.createElement('div');
   el.dataset.r=r; el.dataset.c=c;
-  el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '') + (cellData.locked ? ' locked-cell' : '') + (cellData.debuff ? ' debuff-cell' : '');
+  markDebugCellTarget(el, cellData);
+  el.className = 'cell ' + cellData.type + (cellData.block ? ' hasblock' : '') + (cellData.locked ? ' locked-cell' : '') + (cellData.debuff ? ' debuff-cell' : '') + (cellData.nerf ? ' nerf-cell' : '') + (cellData.controlled ? ' controlled-cell' : '');
   applyBoardCellAnimation(el, r, c, boardReveal, boardHide);
 
   if(cellData.type==='node'){
@@ -342,6 +371,7 @@ function renderBoardCell(r, c, boardReveal, boardHide){
     el.appendChild(x);
     debuffCellTooltip(el);
   }
+  renderBossCellIndicators(el,r,c,cellData);
   boardEl.appendChild(el);
 }
 
@@ -438,6 +468,274 @@ function renderBoard(boardReveal, boardHide, revealToken){
   renderBoardSwapAnimation();
   placeAnimCell = null;
 }
+const LOCATION_STEP_WIDTH = 62;
+const LOCATION_STEP_GAP = 4;
+const LOCATION_STEP_DISTANCE = LOCATION_STEP_WIDTH + LOCATION_STEP_GAP;
+const LOCATION_KEEP_AHEAD = 7;
+const LOCATION_KEEP_BEHIND = 8;
+let locationTransitionToken = 0;
+let locationTransitionTimer = null;
+
+function getLocationLevels(){
+  const current=Math.max(1,Number(state?.level)||1);
+  const persistedStart=Math.floor(Number(state?.locationBarFirstLevel));
+  const start=Number.isFinite(persistedStart) ? Math.max(1,persistedStart) : Math.max(1,current-2);
+  const end=current+4;
+  const items=[];
+  for(let level=start;level<=end;level++) items.push(level);
+  return {current,start,end,items};
+}
+
+function ensureLocationCurrentArrow(){
+  if(!locationBarEl) return null;
+  let arrow=locationBarEl.querySelector('.location-current-arrow');
+  if(!arrow){
+    arrow=document.createElement('div');
+    arrow.className='location-current-arrow';
+    arrow.textContent='▼';
+    arrow.setAttribute('aria-hidden','true');
+    locationBarEl.appendChild(arrow);
+  }
+  return arrow;
+}
+
+function createLocationStep(level, current){
+  const wrap=document.createElement('div');
+  wrap.className='location-step';
+  wrap.dataset.locationLevel=String(level);
+  wrap.__debugLocationTarget={level};
+  const boss=getBossDefForLevel?.(level) || null;
+  const node=document.createElement('div');
+  node.className='location-node' + (level===current ? ' current' : '') + (boss ? ' boss' : '');
+  node.textContent=String(level);
+  node.dataset.level=String(level);
+  if(boss){
+    node.style.setProperty('--boss-color',boss.color);
+    node.dataset.boss=boss.id;
+    node.addEventListener('mouseenter',()=>showBossHoverTip(node,boss));
+    node.addEventListener('mouseleave',hideHoverTip);
+  }
+  wrap.appendChild(node);
+  if(boss){
+    const name=document.createElement('div');
+    name.className='location-boss-name';
+    name.textContent=boss.name;
+    name.style.color=boss.color;
+    wrap.appendChild(name);
+  }
+  return wrap;
+}
+
+function buildLocationTrack(current, options={}){
+  const track=document.createElement('div');
+  track.className='location-track';
+  const persistedStart=Math.floor(Number(state?.locationBarFirstLevel));
+  const startLevel=Number.isFinite(options.startLevel) ? Math.max(1,Math.floor(Number(options.startLevel)))
+    : (Number.isFinite(persistedStart) ? Math.max(1,persistedStart) : Math.max(1,current-2));
+  track.dataset.locationFirstLevel=String(startLevel);
+  track.__locationFirstLevel=startLevel;
+  if(state) state.locationBarFirstLevel=startLevel;
+  try{ ensureBossHistoryThrough?.(Math.max(current+LOCATION_KEEP_AHEAD+2, Number(options.endLevel)||0)); }
+  catch(err){ console.error('Location bar boss history generation failed:',err); }
+  const start=track.__locationFirstLevel;
+  const end=Math.max(current+LOCATION_KEEP_AHEAD,start+4,Number(options.endLevel)||0);
+  for(let level=start;level<=end;level++) track.appendChild(createLocationStep(level,current));
+  track.__locationTranslateX=-(current-start)*LOCATION_STEP_DISTANCE;
+  track.style.transition='none';
+  track.style.transform=`translate3d(${track.__locationTranslateX}px,0,0)`;
+  track.style.left='calc(50% - 31px)';
+  return track;
+}
+
+function findLocationStep(track,level){
+  if(!track) return null;
+  return track.querySelector(`.location-step[data-location-level="${level}"]`);
+}
+
+function getLocationFirstLevel(track){
+  const n=Number(track?.dataset?.locationFirstLevel);
+  return Number.isFinite(n) ? n : 1;
+}
+
+function setLocationFirstLevel(track,level){
+  const n=Math.max(1,Math.floor(Number(level)||1));
+  if(!track) return;
+  track.__locationFirstLevel=n;
+  track.dataset.locationFirstLevel=String(n);
+  if(state) state.locationBarFirstLevel=n;
+}
+
+function getLocationTranslate(track){
+  if(!track) return 0;
+  if(Number.isFinite(track.__locationTranslateX)) return track.__locationTranslateX;
+  const transform=getComputedStyle(track).transform;
+  if(!transform || transform==='none') return 0;
+  const matrix3d=transform.match(/matrix3d\(([^)]+)\)/);
+  if(matrix3d){
+    const parts=matrix3d[1].split(',').map(Number);
+    return Number.isFinite(parts[12]) ? parts[12] : 0;
+  }
+  const matrix=transform.match(/matrix\(([^)]+)\)/);
+  if(matrix){
+    const parts=matrix[1].split(',').map(Number);
+    return Number.isFinite(parts[4]) ? parts[4] : 0;
+  }
+  return 0;
+}
+
+function setLocationTranslate(track,x){
+  if(!track) return;
+  track.__locationTranslateX=Number(x)||0;
+  track.style.transform=`translate3d(${track.__locationTranslateX}px,0,0)`;
+}
+
+function ensureLocationRightNodes(track,current){
+  if(!track) return;
+  let maxLevel=0;
+  for(const step of track.querySelectorAll('.location-step')){
+    maxLevel=Math.max(maxLevel,Number(step.dataset.locationLevel)||0);
+  }
+  const wanted=Math.max(current+LOCATION_KEEP_AHEAD,maxLevel);
+  try{ ensureBossHistoryThrough?.(wanted+2); }
+  catch(err){ console.error('Location bar Boss pre-roll failed:',err); }
+  for(let level=maxLevel+1;level<=wanted;level++) track.appendChild(createLocationStep(level,current));
+}
+
+function normalizeLocationCurrentNode(track,current){
+  if(!track) return false;
+  let node=findLocationStep(track,current)?.querySelector('.location-node');
+  if(!node) return false;
+  track.querySelectorAll('.location-node.current').forEach(n=>n.classList.remove('current'));
+  node.classList.add('current');
+  return true;
+}
+
+function syncLocationTrackImmediate(track,current){
+  if(!track) return false;
+  ensureLocationRightNodes(track,current);
+  if(!normalizeLocationCurrentNode(track,current)) return false;
+  const first=getLocationFirstLevel(track);
+  const translate=-(current-first)*LOCATION_STEP_DISTANCE;
+  track.style.transition='none';
+  track.style.left='calc(50% - 31px)';
+  setLocationTranslate(track,translate);
+  return true;
+}
+
+function removeFarOutsideLocationSteps(track){
+  if(!track || !locationBarEl) return 0;
+  const barRect=locationBarEl.getBoundingClientRect();
+  const current=Math.max(1,Number(state?.level)||1);
+  let removed=0;
+  const steps=[...track.querySelectorAll('.location-step')];
+  for(const step of steps){
+    const level=Number(step.dataset.locationLevel)||0;
+    if(level>=current-LOCATION_KEEP_BEHIND) continue;
+    const rect=step.getBoundingClientRect();
+    // Only recycle a step after it is safely and completely outside the bar.
+    // The extra margin prevents border/mask/sub-pixel changes from recycling a
+    // step at the exact visible edge.
+    if(rect.right < barRect.left-2){
+      step.remove();
+      removed++;
+    }
+  }
+  if(removed){
+    setLocationFirstLevel(track, getLocationFirstLevel(track)+removed);
+    setLocationTranslate(track, getLocationTranslate(track)+removed*LOCATION_STEP_DISTANCE);
+    // Keep the persisted rail position in sync with what is actually visible.
+    // This matters when the player leaves/reloads immediately after a transition.
+    scheduleAutoSave?.();
+  }
+  return removed;
+}
+
+function cancelLocationTransition(){
+  locationTransitionToken++;
+  if(locationTransitionTimer){
+    clearTimeout(locationTransitionTimer);
+    locationTransitionTimer=null;
+  }
+  const track=locationBarEl?.querySelector('.location-track');
+  if(track){
+    // Freeze exactly where the persistent rail is. Never clear/rebuild it here.
+    const x=getLocationTranslate(track);
+    track.style.transition='none';
+    setLocationTranslate(track,x);
+  }
+}
+
+function replaceLocationTrackSafely(current){
+  if(!locationBarEl) return null;
+  const old=locationBarEl.querySelector('.location-track');
+  const persistedStart=Math.floor(Number(state?.locationBarFirstLevel));
+  const startLevel=Number.isFinite(persistedStart) ? Math.max(1,persistedStart) : Math.max(1,current-2);
+  const next=buildLocationTrack(current,{startLevel});
+  // Insert first; never leave the bar empty even for one layout/frame.
+  if(old) old.replaceWith(next);
+  else locationBarEl.appendChild(next);
+  return next;
+}
+
+function renderLocationBar(animate=false){
+  if(!locationBarEl || !state) return;
+  const current=Math.max(1,Number(state.level)||1);
+  if(current===1 && !Number.isFinite(Number(state.locationBarFirstLevel))) state.locationBarFirstLevel=1;
+  ensureLocationCurrentArrow();
+
+  let track=locationBarEl.querySelector('.location-track');
+  if(!track){
+    track=replaceLocationTrackSafely(current);
+    syncLocationTrackImmediate(track,current);
+    return;
+  }
+
+  const oldCurrent=Number(track.querySelector('.location-node.current')?.dataset.level)||0;
+  const sequential=animate && oldCurrent===current-1;
+
+  if(!sequential){
+    cancelLocationTransition();
+    if(!syncLocationTrackImmediate(track,current)){
+      track=replaceLocationTrackSafely(current);
+      syncLocationTrackImmediate(track,current);
+    }
+    return;
+  }
+
+  cancelLocationTransition();
+  const token=locationTransitionToken;
+  ensureLocationRightNodes(track,current);
+  if(!normalizeLocationCurrentNode(track,current)){
+    syncLocationTrackImmediate(track,current);
+    return;
+  }
+
+  const currentX=getLocationTranslate(track);
+  const targetX=currentX-LOCATION_STEP_DISTANCE;
+  track.style.transition='transform calc(.46s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
+
+  requestAnimationFrame(()=>{
+    if(token!==locationTransitionToken || !track.isConnected) return;
+    setLocationTranslate(track,targetX);
+  });
+
+  locationTransitionTimer=setTimeout(()=>{
+    if(token!==locationTransitionToken || !track.isConnected){
+      locationTransitionTimer=null;
+      return;
+    }
+    track.style.transition='none';
+    setLocationTranslate(track,targetX);
+
+    // Keep the visible portion untouched. Recycling can only happen after a
+    // node is safely outside the viewport; the remaining rail compensates by
+    // exactly the same number of fixed 66px steps.
+    removeFarOutsideLocationSteps(track);
+    ensureLocationRightNodes(track,current);
+    locationTransitionTimer=null;
+  },scaledDuration(500));
+}
+
 function renderHUD(){
   bagCountEl.textContent = `Túi khối còn lại: ${formatNumber(state.bag.length)}`;
   discardCountEl.textContent = `(${formatNumber(state.discardsLeft)}/${formatNumber(getMaxDiscards())})`;

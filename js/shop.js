@@ -552,7 +552,7 @@ function renderShop(){
     state.commonItems=null;
     state.gachaStock=null;
     state.commonRerollCost=3;
-    newLevel();
+    newLevel({locationTransition:true});
   });
   cont.appendChild(cb); panel.appendChild(cont);
   shopOverlayEl.appendChild(panel);

@@ -79,6 +79,190 @@
     display:flex; align-items:center; justify-content:space-between; gap:10px;
   }
 
+
+  /* ---------- boss location bar ---------- */
+  .location-bar{
+    position:relative;
+    width:100%;
+    height:62px;
+    overflow:hidden;
+    isolation:isolate;
+    border-top:1px solid rgba(94,200,216,.05);
+    border-bottom:1px solid rgba(94,200,216,.05);
+    mask-image:linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%);
+    -webkit-mask-image:linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
+  .location-track{
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:0;
+    width:max-content;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:4px;
+    min-width:0;
+    padding:0;
+    transform:translateX(0);
+    transition:transform calc(.46s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1);
+    will-change:transform,left;
+  }
+  .location-track-enter{ transform:translateX(100%); }
+  .location-track-exit{ transform:translateX(-100%); }
+  .location-step{
+    position:relative;
+    width:62px;
+    flex:0 0 62px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+  }
+  .location-step::after{
+    content:"";
+    position:absolute;
+    left:calc(100% - 1px);
+    top:50%;
+    width:8px;
+    height:1px;
+    background:rgba(143,168,191,.28);
+    transform:translateY(-50%);
+  }
+  .location-node{
+    position:relative;
+    width:28px;
+    height:28px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid rgba(143,168,191,.35);
+    border-radius:50%;
+    background:rgba(10,26,44,.9);
+    color:var(--ink-dim);
+    font:700 10px 'JetBrains Mono',monospace;
+    z-index:2;
+  }
+  .location-node.current{
+    color:var(--ink);
+    border-color:var(--cyan);
+    box-shadow:0 0 9px rgba(94,200,216,.24);
+  }
+  .location-node.boss{
+    color:var(--boss-color);
+    border-color:var(--boss-color);
+    box-shadow:0 0 9px rgba(0,0,0,.28), 0 0 9px var(--boss-color);
+    cursor:pointer;
+  }
+  .location-node.boss.current{ box-shadow:0 0 12px var(--boss-color); }
+  .location-boss-name{
+    max-width:62px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font:700 7px/1.1 'JetBrains Mono',monospace;
+    text-align:center;
+    letter-spacing:.1px;
+  }
+  .location-current-arrow{
+    position:absolute;
+    left:50%;
+    top:3px;
+    width:16px;
+    height:12px;
+    transform:translateX(-50%);
+    color:var(--cyan);
+    text-align:center;
+    font:900 11px/1 'JetBrains Mono',monospace;
+    animation:locationArrowFloat calc(1.15s / var(--anim-speed)) ease-in-out infinite;
+    z-index:8;
+    pointer-events:none;
+  }
+  @keyframes locationArrowFloat{
+    0%,100%{ margin-top:-2px; }
+    50%{ margin-top:3px; }
+  }
+
+  /* Unified Boss / adverse-cell tooltip accent treatment. Title + border use the
+     hazard colour, the description remains white, and the glow stays subtle. */
+  .hover-tip.boss-tooltip .hover-tip-main,
+  .hover-tip.boss-nerf-tooltip .hover-tip-main,
+  .hover-tip.boss-controlled-tooltip .hover-tip-main,
+  .hover-tip.boss-assassin-tooltip .hover-tip-main{
+    border-color:var(--tooltip-accent);
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+  }
+
+  .hover-tip.boss-tooltip .hover-tip-main,
+  .hover-tip.boss-nerf-tooltip .hover-tip-main,
+  .hover-tip.boss-controlled-tooltip .hover-tip-main,
+  .hover-tip.boss-assassin-tooltip .hover-tip-main,
+  .hover-tip.cell-hazard-tooltip-stack{
+    flex-direction:row;
+    align-items:flex-start;
+    gap:6px;
+    white-space:normal;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .cell-hazard-tooltip-panel{
+    flex:0 1 260px;
+    width:min(260px, calc(100vw - 280px));
+    min-width:220px;
+    box-sizing:border-box;
+    background:rgba(10,26,44,0.96);
+    border:1px solid var(--tooltip-accent);
+    border-radius:8px;
+    padding:7px 10px;
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    line-height:1.65;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .cell-hazard-tooltip-title{
+    color:var(--tooltip-accent);
+    font-weight:700;
+    margin-bottom:4px;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .cell-hazard-tooltip-desc{
+    color:#fff;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    line-height:1.55;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .hover-tip-main{
+    border-color:var(--tooltip-accent);
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+  }
+  .hover-tip.cell-hazard-tooltip-stack .hover-tip-main > div:not(.tip-title){
+    color:#fff;
+  }
+
+  .hover-tip.hazard-tooltip .hover-tip-main{
+    border-color:var(--tooltip-accent);
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+  }
+  .hover-tip.locked-tooltip-stack .locked-tooltip-main{
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+  }
+  .hover-tip.debuff-tooltip-stack .debuff-tooltip-main{
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+  }
+  .hover-tip.boss-tooltip .tip-title,
+  .hover-tip.boss-nerf-tooltip .tip-title,
+  .hover-tip.boss-controlled-tooltip .tip-title,
+  .hover-tip.boss-assassin-tooltip .tip-title,
+  .hover-tip.hazard-tooltip .tip-title{
+    color:var(--tooltip-accent);
+  }
+  .hover-tip.boss-tooltip .hover-tip-main > div:not(.tip-title),
+  .hover-tip.boss-nerf-tooltip .hover-tip-main > div:not(.tip-title),
+  .hover-tip.boss-controlled-tooltip .hover-tip-main > div:not(.tip-title),
+  .hover-tip.boss-assassin-tooltip .hover-tip-main > div:not(.tip-title),
+  .hover-tip.hazard-tooltip .hover-tip-main > div:not(.tip-title){
+    color:#fff;
+  }
+
   .stats{ display:flex; gap: 14px; flex-wrap: wrap; }
   .stat{ display:flex; flex-direction:column; gap:1px; }
   .stat .label{ font-size: 9px; letter-spacing: 1px; color: var(--ink-dim); text-transform: uppercase; }
@@ -449,6 +633,105 @@
   .block-core-dot[data-core='pink']{ background:#eb6ba8; box-shadow:0 0 8px rgba(235,107,168,.7); }
   .mini-block .block-core-dot{ width:24%; height:24%; font-size:6px; }
 
+  /* A low-opacity tint is applied only to the physical block shape (arms + hub),
+     preserving the block's original colour while washing it toward the cell hazard. */
+  .block-cell-tint{
+    position:absolute; inset:0;
+    border-radius:inherit;
+    background:var(--cell-tint);
+    opacity:.30;
+    mix-blend-mode:soft-light;
+    pointer-events:none;
+    z-index:20;
+  }
+
+  /* ---------- boss block/cell indicators ---------- */
+  .boss-hidden-block{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--cyan); font:800 30px 'JetBrains Mono',monospace;
+    text-shadow:0 0 12px rgba(94,200,216,.35);
+  }
+  .boss-block-nerf-indicator{
+    position:absolute; right:2px; top:1px; z-index:12;
+    width:18px; height:18px; display:flex; align-items:center; justify-content:center;
+    color:#f7b267; font:900 11px/1 'JetBrains Mono',monospace;
+    transform:rotate(90deg);
+    transform-origin:center;
+    text-shadow:0 0 5px rgba(247,178,103,.5);
+    pointer-events:none;
+  }
+  .boss-silenced-x{
+    position:absolute; inset:9%; z-index:13; pointer-events:none;
+  }
+  .boss-silenced-x::before,.boss-silenced-x::after{
+    content:""; position:absolute; left:50%; top:50%; width:86%; height:9%;
+    border-radius:999px; background:rgba(255,72,48,.62);
+    box-shadow:0 0 5px rgba(255,72,48,.22);
+    transform:translate(-50%,-50%) rotate(45deg);
+  }
+  .boss-silenced-x::after{ transform:translate(-50%,-50%) rotate(-45deg); }
+  .boss-assassin-target{
+    background:rgba(139,30,63,.13) !important;
+    border-color:rgba(139,30,63,.86) !important;
+    box-shadow:inset 0 0 14px rgba(139,30,63,.20);
+  }
+  .boss-assassin-target-icon{
+    position:absolute; left:50%; top:50%; width:50%; height:58%; z-index:60;
+    transform:translate(-50%,-50%);
+    background:url('assets/assassin-skull.png') center / contain no-repeat;
+    opacity:.5;
+    filter:none;
+    pointer-events:none;
+  }
+  .cell.boss-assassin-target.hasblock .block-visual{
+    animation:bossTargetFear calc(.5s / var(--anim-speed)) ease-in-out infinite;
+  }
+  @keyframes bossTargetFear{
+    0%,100%{ transform:rotate(var(--block-base-rotation,0deg)) translate(0,0) scale(1); }
+    15%{ transform:rotate(calc(var(--block-base-rotation,0deg) - 3deg)) translate(-1px,1px) scale(1.01); }
+    30%{ transform:rotate(calc(var(--block-base-rotation,0deg) + 3deg)) translate(1px,-1px) scale(.99); }
+    45%{ transform:rotate(calc(var(--block-base-rotation,0deg) - 2deg)) translate(-1px,0) scale(1.01); }
+    60%{ transform:rotate(calc(var(--block-base-rotation,0deg) + 2deg)) translate(1px,0) scale(.995); }
+    75%{ transform:rotate(var(--block-base-rotation,0deg)) translate(-.5px,.5px) scale(1.005); }
+  }
+  .boss-nerf-cell-icon{
+    position:absolute; right:3px; top:3px; z-index:35;
+    color:#f7b267; font:900 14px/1 'JetBrains Mono',monospace;
+    transform:rotate(90deg); pointer-events:none;
+    text-shadow:0 0 4px rgba(247,178,103,.28);
+  }
+  .cell.nerf-cell{
+    background:rgba(247,178,103,.11);
+    border-color:rgba(247,178,103,.58);
+    box-shadow:inset 0 0 10px rgba(247,178,103,.09);
+  }
+  .cell.controlled-cell{
+    background:rgba(199,146,234,.10);
+    border-color:rgba(199,146,234,.62);
+    box-shadow:inset 0 0 10px rgba(199,146,234,.10);
+  }
+  .cell.boss-controlled-cell{
+    background:rgba(199,146,234,.10);
+    border-color:rgba(199,146,234,.62);
+    box-shadow:inset 0 0 10px rgba(199,146,234,.10);
+  }
+  .boss-controlled-icon{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    z-index:60; pointer-events:none;
+    color:#c792ea; opacity:.5;
+    font:900 64px/1 'Space Grotesk',sans-serif;
+    text-shadow:0 0 7px rgba(199,146,234,.22);
+  }
+  .boss-controlled-icon-trigger{
+    opacity:.5;
+    animation:bossControlledRotate calc(.68s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1) both;
+  }
+  @keyframes bossControlledRotate{
+    0%{ opacity:.5; transform:rotate(0deg); }
+    50%{ opacity:1; transform:rotate(180deg); }
+    100%{ opacity:.5; transform:rotate(360deg); }
+  }
+
   /* node: styled like a connector block with one amber arm + a launch-button hub */
   .cell.node{ cursor:pointer; }
   .cell.node .arm{ background: var(--amber); box-shadow: 0 0 9px var(--amber-dim); }
@@ -743,7 +1026,7 @@
     border:1px solid rgba(255,88,54,0.96);
     border-radius:8px;
     padding:7px 10px;
-    box-shadow:0 4px 18px rgba(255,88,54,.16);
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
     font-family:'JetBrains Mono',monospace;
     font-size:11px;
     color:#ff5836;
@@ -757,13 +1040,58 @@
     word-break:break-word;
     line-height:1.55;
   }
+  .hover-tip.cell-hazard-tooltip-stack{
+    flex-direction:row;
+    align-items:flex-start;
+    gap:6px;
+    white-space:normal;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .cell-hazard-tooltip-panel{
+    flex:0 1 260px;
+    width:min(260px, calc(100vw - 280px));
+    min-width:220px;
+    box-sizing:border-box;
+    background:rgba(10,26,44,0.96);
+    border:1px solid var(--tooltip-accent);
+    border-radius:8px;
+    padding:7px 10px;
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    line-height:1.65;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .cell-hazard-tooltip-title{
+    color:var(--tooltip-accent);
+    font-weight:700;
+    margin-bottom:4px;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .cell-hazard-tooltip-desc{
+    color:#fff;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    line-height:1.55;
+  }
+  .hover-tip.cell-hazard-tooltip-stack .hover-tip-main{
+    border-color:var(--tooltip-accent);
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+  }
+  .hover-tip.cell-hazard-tooltip-stack .hover-tip-main > div:not(.tip-title){
+    color:#fff;
+  }
+
   .hover-tip.hazard-tooltip .hover-tip-main{
-    border-color:rgba(255,79,131,.92);
-    box-shadow:0 4px 18px rgba(255,79,131,.16);
+    border-color:var(--tooltip-accent);
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
   }
-  .hover-tip.hazard-tooltip .tip-title{
-    color:#ff4f83;
+  .hover-tip.locked-tooltip-stack .locked-tooltip-main{
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
   }
+  .hover-tip.debuff-tooltip-stack .debuff-tooltip-main{
+    box-shadow:0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055);
+  }
+  .hover-tip.hazard-tooltip .tip-title{ color:var(--tooltip-accent); }
+  .hover-tip.hazard-tooltip .hover-tip-main > div:not(.tip-title){ color:#fff; }
   .hover-tip.hidden{ display:none; }
   .hover-tip-main, .hover-tip-details{
     font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink);
@@ -1012,8 +1340,17 @@
   .settings-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
   .settings-header h2{ margin:0; font:700 15px 'JetBrains Mono',monospace; letter-spacing:1px; color:var(--cyan); }
   .settings-close{ width:32px; height:32px; padding:0; font-size:22px; line-height:1; color:var(--ink-dim); background:rgba(255,255,255,.03); border-color:var(--panel-line); }
+  .settings-tabs{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-bottom:12px; }
+  .settings-tab{ width:100%; min-height:34px; padding:6px 10px; border-color:var(--panel-line); background:rgba(255,255,255,.03); color:var(--ink-dim); }
+  .settings-tab.active{ border-color:var(--cyan-dim); background:rgba(94,200,216,.12); color:var(--cyan); box-shadow:inset 0 0 0 1px rgba(94,200,216,.08); }
+  .settings-tab-panel.hidden{ display:none; }
   .settings-section{ margin-top:12px; padding-top:12px; border-top:1px solid var(--panel-line); }
+  .settings-section:first-child{ margin-top:0; padding-top:0; border-top:0; }
   .settings-section-title{ margin-bottom:8px; color:var(--cyan); font:700 11px/1.3 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:1px; }
+  .stats-subtabs{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin-bottom:10px; }
+  .stats-subtab{ width:100%; min-height:31px; padding:5px 6px; font-size:11px; border-color:rgba(94,200,216,.10); background:rgba(255,255,255,.025); color:var(--ink-dim); }
+  .stats-subtab.active{ border-color:var(--cyan-dim); background:rgba(94,200,216,.10); color:var(--cyan); }
+  .stats-subpanel.hidden{ display:none; }
   .compact-section{ margin-top:8px; padding-top:8px; }
   .settings-stat-cards{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
   .settings-stat-card{ min-width:0; background:rgba(255,255,255,.025); border:1px solid var(--panel-line); border-radius:8px; padding:9px; }
@@ -1036,10 +1373,15 @@
   .settings-hint{ margin-top:7px; color:var(--ink-dim); font-size:10px; text-align:center; }
   .settings-restart-section{ display:flex; justify-content:center; }
   .restart-game-btn{ min-width:140px; }
+  @media (max-width:420px){
+    .settings-panel{ padding:14px; }
+    .stats-subtab{ font-size:10px; padding-inline:4px; }
+    .settings-stat-cards{ grid-template-columns:1fr; }
+  }
 
-  .debug-overlay{ position:fixed; inset:0; background:rgba(7,19,34,.78); display:flex; align-items:flex-start; justify-content:center; z-index:1000; overflow-y:auto; padding:24px 14px; }
+  .debug-overlay{ position:fixed; inset:0; background:rgba(7,19,34,.78); display:flex; align-items:flex-start; justify-content:center; z-index:1000; overflow-y:auto; padding:24px 14px; pointer-events:none; }
   .debug-overlay.hidden{ display:none; }
-  .debug-panel{ width:min(92vw,420px); background:var(--panel); border:1px solid var(--red); border-radius:12px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.55); }
+  .debug-panel{ width:min(92vw,420px); background:var(--panel); border:1px solid var(--red); border-radius:12px; padding:16px; box-shadow:0 18px 50px rgba(0,0,0,.55); pointer-events:auto; }
   .debug-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
   .debug-head h2{ margin:0; color:var(--red); font-family:'JetBrains Mono',monospace; font-size:15px; letter-spacing:1px; }
   .debug-close{ border-color:rgba(232,93,78,.45); color:var(--red); }
@@ -1051,7 +1393,9 @@
   .debug-target{ min-height:42px; background:rgba(255,255,255,.03); border:1px solid var(--panel-line); border-radius:8px; padding:9px; font:11px/1.5 'JetBrains Mono',monospace; color:var(--ink-dim); }
   .debug-target strong{ color:var(--cyan); }
   .debug-actions{ display:flex; gap:8px; margin-top:10px; }
-  .debug-actions button{ flex:1 1 0; }
+  .debug-actions button{ flex:1 1 0; min-width:0; }
+  .debug-boss-actions{ flex-wrap:wrap; }
+  .debug-boss-actions button{ flex:1 1 30%; }
   .debug-apply{ border-color:var(--green); color:var(--green); background:rgba(111,207,151,.08); }
   .debug-apply:hover{ background:rgba(111,207,151,.16); }
   .debug-hint{ margin:8px 0 0; color:var(--ink-dim); font-size:10px; text-align:center; }
@@ -1357,6 +1701,8 @@
     <button class="settings-btn" id="settingsBtn" aria-label="Cài đặt" title="Cài đặt">⚙</button>
   </header>
 
+  <div class="location-bar" id="locationBar" aria-label="Tiến trình màn chơi"></div>
+
   <div class="ball-queue" id="ballQueue"></div>
 
   <div class="board-wrap">
@@ -1384,26 +1730,43 @@
       <button class="settings-close" id="settingsCloseBtn" aria-label="Đóng">×</button>
     </div>
 
-    <section class="settings-section">
-      <div class="settings-section-title">Số liệu</div>
-      <div id="settingsStats"></div>
-    </section>
+    <div class="settings-tabs" role="tablist" aria-label="Mục cài đặt">
+      <button class="settings-tab active" id="settingsGameTab" type="button" role="tab" aria-selected="true" aria-controls="settingsGamePanel">Game</button>
+      <button class="settings-tab" id="settingsStatsTab" type="button" role="tab" aria-selected="false" aria-controls="settingsStatsPanel">Số liệu</button>
+    </div>
 
-    <section class="settings-section">
-      <div class="settings-section-title">Tốc độ</div>
-      <div class="speed-settings">
-        <div class="speed-range-wrap">
-          <input id="gameSpeedRange" type="range" min="0.1" max="5" step="0.01" value="1" aria-label="Tốc độ game">
-          <button class="speed-value" id="gameSpeedValue" type="button">1.00x</button>
-          <span class="speed-min">0.10x</span>
-          <span class="speed-max">5.00x</span>
+    <section class="settings-tab-panel" id="settingsGamePanel" role="tabpanel" aria-labelledby="settingsGameTab">
+      <section class="settings-section">
+        <div class="settings-section-title">Tốc độ</div>
+        <div class="speed-settings">
+          <div class="speed-range-wrap">
+            <input id="gameSpeedRange" type="range" min="0.1" max="5" step="0.01" value="1" aria-label="Tốc độ game">
+            <button class="speed-value" id="gameSpeedValue" type="button">1.00x</button>
+            <span class="speed-min">0.10x</span>
+            <span class="speed-max">5.00x</span>
+          </div>
+          <div class="settings-hint">Nhấn vào giá trị tốc độ để nhập số tùy chỉnh.</div>
         </div>
-        <div class="settings-hint">Nhấn vào giá trị tốc độ để nhập số tùy chỉnh.</div>
-      </div>
+      </section>
+
+      <section class="settings-section settings-restart-section">
+        <button class="restart-game-btn gold" id="restartGameBtn">Chơi lại</button>
+      </section>
     </section>
 
-    <section class="settings-section settings-restart-section">
-      <button class="restart-game-btn gold" id="restartGameBtn">Chơi lại</button>
+    <section class="settings-tab-panel hidden" id="settingsStatsPanel" role="tabpanel" aria-labelledby="settingsStatsTab">
+      <section class="settings-section">
+        <div class="stats-subtabs" role="tablist" aria-label="Loại số liệu">
+          <button class="stats-subtab active" id="statsBlocksTab" type="button" role="tab" aria-selected="true" aria-controls="statsBlocksPanel">Khối</button>
+          <button class="stats-subtab" id="statsUpgradesTab" type="button" role="tab" aria-selected="false" aria-controls="statsUpgradesPanel">Thẻ nâng cấp</button>
+          <button class="stats-subtab" id="statsBuffsTab" type="button" role="tab" aria-selected="false" aria-controls="statsBuffsPanel">Thẻ buff</button>
+        </div>
+        <div id="settingsStats">
+          <div class="stats-subpanel" id="statsBlocksPanel" role="tabpanel" aria-labelledby="statsBlocksTab"></div>
+          <div class="stats-subpanel hidden" id="statsUpgradesPanel" role="tabpanel" aria-labelledby="statsUpgradesTab"></div>
+          <div class="stats-subpanel hidden" id="statsBuffsPanel" role="tabpanel" aria-labelledby="statsBuffsTab"></div>
+        </div>
+      </section>
     </section>
   </div>
 </div>
@@ -1459,6 +1822,32 @@
       <div class="debug-actions"><button class="debug-apply" id="debugAddPowerBtn">+ Thêm thẻ sức mạnh</button></div>
     </div>
     <div class="debug-section">
+      <span class="debug-label">Boss tại màn đang trỏ tới</span>
+      <div class="debug-target" id="debugBossTargetInfo"><span class="debug-none">Hãy đưa con trỏ tới một màn trên location bar.</span></div>
+      <div class="debug-select-row" style="margin-top:8px"><select class="debug-select" id="debugBossSelect" disabled></select></div>
+      <div class="debug-actions debug-boss-actions">
+        <button class="debug-apply" id="debugAddBossBtn" disabled>+ Thêm boss</button>
+        <button class="debug-apply" id="debugRemoveBossBtn" disabled>Xóa boss</button>
+        <button class="debug-apply" id="debugChangeBossBtn" disabled>Đổi boss</button>
+      </div>
+      <p class="debug-hint">Đưa chuột ra location bar để chọn màn; có thể thêm, xóa hoặc đổi boss ngay cả khi debug menu đang mở.</p>
+    </div>
+    <div class="debug-section">
+      <span class="debug-label">Ô đang trỏ tới</span>
+      <div class="debug-target" id="debugCellTargetInfo"><span class="debug-none">Hãy đưa con trỏ tới một ô trên bảng chơi.</span></div>
+      <div class="debug-select-row" style="margin-top:8px"><select class="debug-select" id="debugCellTypeSelect" disabled>
+        <option value="empty">Ô trống</option>
+        <option value="black">Vật cản</option>
+        <option value="locked">Ô khóa</option>
+        <option value="debuff">Ô debuff</option>
+        <option value="nerf">Ô giảm sức mạnh</option>
+        <option value="controlled">Ô bị điều khiển</option>
+        <option value="assassinTarget">Ô mục tiêu</option>
+      </select></div>
+      <div class="debug-actions"><button class="debug-apply" id="debugApplyCellBtn" disabled>Đổi ô</button></div>
+    </div>
+
+    <div class="debug-section">
       <span class="debug-label">Đối tượng đang trỏ tới</span>
       <div class="debug-target" id="debugTargetInfo"><span class="debug-none">Chưa có khối hoặc bóng nào dưới con trỏ.</span></div>
     </div>
@@ -1479,6 +1868,7 @@
 <script src="js/utils.js" defer></script>
 <script src="js/core.js" defer></script>
 <script src="js/config.js" defer></script>
+<script src="js/boss.js" defer></script>
 <script src="js/stats.js" defer></script>
 <script src="js/state-save.js" defer></script>
 <script src="js/level.js" defer></script>

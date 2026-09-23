@@ -2,16 +2,136 @@
 const inventoryOverlayEl = document.getElementById('inventoryOverlay');
 const debugOverlayEl=document.getElementById('debugOverlay');
 const debugTargetInfoEl=document.getElementById('debugTargetInfo');
+let debugHoverLocationLevel=null;
+let debugHoverCell=null;
+const debugBossTargetInfoEl=document.getElementById('debugBossTargetInfo');
+const debugBossSelect=document.getElementById('debugBossSelect');
+const debugAddBossBtn=document.getElementById('debugAddBossBtn');
+const debugRemoveBossBtn=document.getElementById('debugRemoveBossBtn');
+const debugChangeBossBtn=document.getElementById('debugChangeBossBtn');
 document.addEventListener('mousemove', e=>{
   if(!debugOverlayEl.classList.contains('hidden') && debugOverlayEl.contains(e.target)) return;
-  let n=document.elementFromPoint(e.clientX,e.clientY), found=null;
-  while(n){ if(n.__debugTarget){found=n.__debugTarget;break;} if(n===document.body) break; n=n.parentElement; }
+  let n=document.elementFromPoint(e.clientX,e.clientY), found=null, cellFound=null, locationLevel=null;
+  while(n){
+    if(!found && n.__debugTarget && n.__debugTarget.kind!=='cell') found=n.__debugTarget;
+    if(!cellFound && n.__debugCellTarget) cellFound=n.__debugCellTarget;
+    if(locationLevel===null && n.__debugLocationTarget) locationLevel=n.__debugLocationTarget.level;
+    if(n===document.body) break;
+    n=n.parentElement;
+  }
   debugHoverTarget=found;
-  if(!debugOverlayEl.classList.contains('hidden')){ debugTargetInfoEl.innerHTML=debugDescribeTarget(found); debugRefreshSelects(); }
+  debugHoverCellTarget=cellFound || null;
+  debugHoverCell=cellFound?.cell || null;
+  debugHoverLocationLevel=locationLevel===null ? null : Number(locationLevel);
+  if(!debugOverlayEl.classList.contains('hidden')){
+    debugTargetInfoEl.innerHTML=debugDescribeTarget(found);
+    debugRefreshSelects();
+    refreshDebugCellControls();
+    debugRefreshBossControls();
+  }
 });
 const debugLevelInput=document.getElementById('debugLevelInput');
 const debugUpgradeSelect=document.getElementById('debugUpgradeSelect');
 const debugPowerSelect=document.getElementById('debugPowerSelect');
+function populateDebugBossSelect(){
+  if(!debugBossSelect) return;
+  debugBossSelect.innerHTML='';
+  Object.values(BOSS_DEFS).forEach(def=>{
+    const o=document.createElement('option');
+    o.value=def.id;
+    o.textContent=def.name;
+    o.style.color=def.color;
+    debugBossSelect.appendChild(o);
+  });
+}
+
+function debugRefreshBossControls(){
+  if(!debugBossTargetInfoEl || !debugBossSelect) return;
+  if(debugHoverLocationLevel===null){
+    debugBossTargetInfoEl.innerHTML='<span class="debug-none">Hãy đưa con trỏ tới một màn trên location bar.</span>';
+    debugBossSelect.disabled=true;
+    debugAddBossBtn?.setAttribute('disabled','');
+    debugRemoveBossBtn?.setAttribute('disabled','');
+    debugChangeBossBtn?.setAttribute('disabled','');
+    return;
+  }
+  const level=debugHoverLocationLevel;
+  const boss=getBossDefForLevel(level);
+  debugBossTargetInfoEl.innerHTML=boss
+    ? `<strong style="color:${boss.color}">Màn ${level}</strong><br>Boss: <span style="color:${boss.color}">${boss.name}</span>`
+    : `<strong>Màn ${level}</strong><br>Boss: Không có`;
+  debugBossSelect.disabled=false;
+  debugBossSelect.value=boss?.id || debugBossSelect.value || BOSS_ALL_IDS[0];
+  debugAddBossBtn?.toggleAttribute('disabled', !!boss);
+  debugRemoveBossBtn?.toggleAttribute('disabled', !boss);
+  debugChangeBossBtn?.toggleAttribute('disabled', !boss);
+}
+
+function refreshDebugCellControls(){
+  const info=document.getElementById('debugCellTargetInfo');
+  const sel=document.getElementById('debugCellTypeSelect');
+  const btn=document.getElementById('debugApplyCellBtn');
+  if(!info || !sel || !btn) return;
+  if(!debugHoverCell){
+    info.innerHTML='<span class="debug-none">Hãy đưa con trỏ tới một ô trên bảng chơi.</span>';
+    sel.disabled=true;
+    btn.disabled=true;
+    return;
+  }
+  const r=debugHoverCellTarget?.el?.dataset?.r;
+  const c=debugHoverCellTarget?.el?.dataset?.c;
+  info.innerHTML=`<strong>Ô ${r ?? '?'}:${c ?? '?'}</strong><br>Loại: ${debugCellKindLabel(debugHoverCell)}${debugHoverCell.block ? '<br>Đang có khối' : ''}`;
+  const kind = debugHoverCell.type==='black' ? 'black' : debugHoverCell.assassinTarget ? 'assassinTarget' : debugHoverCell.locked ? 'locked' : debugHoverCell.debuff ? 'debuff' : debugHoverCell.nerf ? 'nerf' : debugHoverCell.controlled ? 'controlled' : 'empty';
+  sel.disabled=false;
+  sel.value=kind;
+  btn.disabled=false;
+}
+
+function debugApplyCell(){
+  const target=debugHoverCellTarget;
+  if(!target?.cell || !state) return;
+  const r=Number(target.el?.dataset?.r), c=Number(target.el?.dataset?.c);
+  if(!Number.isInteger(r)||!Number.isInteger(c)||!state.cells?.[r]?.[c]) return;
+  const cell=state.cells[r][c];
+  const next=document.getElementById('debugCellTypeSelect')?.value || 'empty';
+  const previousBlock=cell.block;
+
+  if(next==='black'){
+    if(previousBlock){
+      state.bag.push(previousBlock);
+      cell.block=null;
+    }
+    cell.type='black';
+    for(const key of BOSS_ADVERSE_KEYS) delete cell[key];
+  }else{
+    cell.type='empty';
+    // Debugging a cell always makes the selected adverse type exclusive.
+    for(const key of BOSS_ADVERSE_KEYS) cell[key]=false;
+    if(next!=='empty') cell[next]=true;
+    if(next==='assassinTarget' && state.boss?.id==='assassin'){
+      const key=`${r},${c}`;
+      if(!state.boss.assassinTargets.includes(key)) state.boss.assassinTargets.push(key);
+    }
+    if(next!=='assassinTarget' && state.boss?.assassinTargets){
+      state.boss.assassinTargets=state.boss.assassinTargets.filter(key=>key!==`${r},${c}`);
+    }
+  }
+
+  if(cell.type==='black') cell.block=null;
+  render();
+  renderLocationBar?.(false);
+  renderTargetBanner?.();
+  scheduleAutoSave();
+  debugHoverCellTarget = {el: boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`), cell};
+  debugHoverCell = cell;
+  refreshDebugCellControls();
+}
+
+function clearDebugTargetCellReference(){
+  debugHoverCellTarget=null;
+  debugHoverCell=null;
+}
+
 function populateDebugCardSelects(){
   debugUpgradeSelect.innerHTML='';
   UPGRADE_POOL.forEach(def=>{
@@ -25,6 +145,7 @@ function populateDebugCardSelects(){
 function refreshDebugMenuValues(){
   if(state){ debugLevelInput.value=state.level||1; }
   populateDebugCardSelects();
+  populateDebugBossSelect();
 }
 async function debugAdvanceLevel(){
   if(!state || state.resolving || state.phase==='reward') return;
@@ -47,11 +168,15 @@ async function debugAdvanceLevel(){
 function debugSetLevel(){
   const level=Math.max(1,Math.floor(Number(debugLevelInput.value)||1));
   if(!state) return;
+  clearBossTransientBlockFlags();
   state.level=level;
-  state.target=computeTarget(level);
+  ensureBossForLevel(level);
+  state.target=getBossTarget(computeTarget(level));
+  state.discardsLeft=getMaxDiscards();
   levelValEl.textContent=formatNumber(state.level);
   targetValEl.textContent=formatNumber(state.target);
   render();
+  renderLocationBar?.(false);
   renderTargetBanner();
   refreshOpenShop();
   scheduleAutoSave();
@@ -74,6 +199,8 @@ function toggleDebugMenu(){
     refreshDebugMenuValues();
     debugTargetInfoEl.innerHTML=debugDescribeTarget(debugHoverTarget);
     debugRefreshSelects();
+    refreshDebugCellControls();
+    debugRefreshBossControls();
   }
 }
 document.addEventListener('keydown', e=>{ if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='d'){e.preventDefault();toggleDebugMenu();} });
@@ -84,6 +211,24 @@ document.getElementById('debugAdvanceLevelBtn').addEventListener('click',debugAd
 document.getElementById('debugAddUpgradeBtn').addEventListener('click',()=>debugAddCard('upgrade',debugUpgradeSelect.value));
 document.getElementById('debugAddPowerBtn').addEventListener('click',()=>debugAddCard('power',debugPowerSelect.value));
 document.getElementById('debugApplyTargetBtn').addEventListener('click',debugApplyTarget);
+document.getElementById('debugApplyCellBtn')?.addEventListener('click',debugApplyCell);
+
+
+debugAddBossBtn?.addEventListener('click',()=>{
+  if(debugHoverLocationLevel===null || !debugBossSelect?.value) return;
+  debugSetBossForLevel(debugHoverLocationLevel,debugBossSelect.value);
+  debugRefreshBossControls();
+});
+debugRemoveBossBtn?.addEventListener('click',()=>{
+  if(debugHoverLocationLevel===null) return;
+  debugRemoveBossForLevel(debugHoverLocationLevel);
+  debugRefreshBossControls();
+});
+debugChangeBossBtn?.addEventListener('click',()=>{
+  if(debugHoverLocationLevel===null || !debugBossSelect?.value) return;
+  debugSetBossForLevel(debugHoverLocationLevel,debugBossSelect.value);
+  debugRefreshBossControls();
+});
 document.getElementById('inventoryBtn').addEventListener('click', openInventory);
 
 function collectOwnedBlocks(){

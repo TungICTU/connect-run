@@ -170,10 +170,14 @@ function debugSetBossForLevel(level,id){
       if(state.ballsFired===0) state.ballQueue=makeBallQueue();
       applyBossStartEffects();
       applyBossHandEffects();
+      // The Boss HUD/location visuals must reflect the new Boss in the same click.
+      renderHUD?.();
+      renderLocationBar?.(false);
     }
   }
   ensureBossHistoryThrough(Math.max(lv,(Number(state.level)||1)+4));
   render?.();
+  renderHUD?.();
   renderLocationBar?.(false);
   renderTargetBanner?.();
   scheduleAutoSave?.();
@@ -197,6 +201,7 @@ function debugRemoveBossForLevel(level){
   }
   ensureBossHistoryThrough(Math.max(lv,(Number(state.level)||1)+4));
   render?.();
+  renderHUD?.();
   renderLocationBar?.(false);
   renderTargetBanner?.();
   scheduleAutoSave?.();

@@ -58,29 +58,272 @@ const BALL_ENH_DESC = {
   invert:'Khi bóng bị mất, vẫn được tính 1/2 số điểm bóng đang chứa vào điểm màn',
 };
 
-function blockTooltip(block){
-  const level = ((state.typeBonus[block.type]||0)/5) + 1;
+const TOOLTIP_CELL_HAZARDS = {
+  locked: { id:'locked', title:'Ô khóa', color:'#ff4f83', desc:'Khối được đặt vào ô này sẽ bị khóa và không thể kéo hoặc xoay cho đến khi qua màn.', className:'locked-tooltip-stack' },
+  debuff: { id:'debuff', title:'Ô debuff', color:'#ff5836', desc:'Khối được đặt vào ô này bị vô hiệu hóa toàn bộ hiệu ứng của khối và không tăng điểm khi bóng đi qua khối.', className:'debuff-tooltip-stack' },
+  nerf: { id:'nerf', title:'Ô giảm sức mạnh', color:'#f7b267', desc:'Khối trong ô này chỉ nhận 50% giá trị của các hiệu ứng bị giảm sức mạnh.', className:'boss-nerf-tooltip' },
+  controlled: { id:'controlled', title:'Ô bị điều khiển', color:'#c792ea', desc:'Trước mỗi lần bắn, khối trong ô này sẽ bị xoay về hướng ngẫu nhiên.', className:'boss-controlled-tooltip' },
+  assassinTarget: { id:'assassinTarget', title:'Ô mục tiêu', color:'#8b1e3f', desc:'Sau mỗi lần bắn, nếu có khối trong ô này thì khối sẽ bị triệt tiêu và ô mục tiêu biến mất.', className:'boss-assassin-tooltip' },
+};
+
+function normalizeTooltipHazardList(raw){
+  if(!raw) return [];
+  if(typeof raw==='string') return [raw];
+  if(Array.isArray(raw)) return raw.flatMap(item=>normalizeTooltipHazardList(item));
+  if(typeof raw==='object') return raw.id ? [String(raw.id)] : Object.keys(raw).filter(key=>!!raw[key]);
+  return [];
+}
+
+function getBlockHandHazardEntries(block){
+  if(!block) return [];
+  const ids=[];
+  // Generic hand-carried hazard metadata is supported so a physical block can
+  // carry a cell-like debuff while it is still in hand.
+  ids.push(...normalizeTooltipHazardList(block.handHazards));
+  ids.push(...normalizeTooltipHazardList(block.handHazard));
+  ['locked','debuff','nerf','controlled','assassinTarget'].forEach(id=>{
+    const cap=id[0].toUpperCase()+id.slice(1);
+    if(block[`hand${cap}`] || block[id]) ids.push(id);
+  });
+
+  // Boss effects that explicitly live on the physical block also get the same
+  // stacked tooltip/tint treatment while the block is in hand.
+  if(block.bossSilenced) ids.push('silenced');
+  if(typeof getCurrentBossTypeReduction==='function' && getCurrentBossTypeReduction(block)<1) ids.push('bossNerf');
+  if(block.bossThiefTarget) ids.push('thief');
+
+  const unique=[];
+  for(const id of ids){ if(id && !unique.includes(id)) unique.push(id); }
+  return unique.map(id=>{
+    if(TOOLTIP_CELL_HAZARDS[id]) return TOOLTIP_CELL_HAZARDS[id];
+    if(id==='silenced') return {
+      id,
+      title:'Hiệu ứng Debuff',
+      color:TOOLTIP_CELL_HAZARDS.debuff.color,
+      desc:'Khối này bị vô hiệu hóa toàn bộ hiệu ứng khi bóng đi qua khối.',
+      className:'debuff-tooltip-stack'
+    };
+    if(id==='bossNerf') return {
+      id,
+      title:'Hiệu ứng Giảm sức mạnh',
+      color:TOOLTIP_CELL_HAZARDS.nerf.color,
+      desc:'Khối này bị giảm 50% giá trị của các hiệu ứng khi bóng đi qua khối.',
+      className:'boss-nerf-tooltip'
+    };
+    if(id==='thief') {
+      const boss=state?.boss?.id==='thief' ? state.boss : null;
+      const typeLabel=TYPE_LABEL[boss?.thiefType] || 'khối';
+      return {id, title:'The Thief', color:(typeof BOSS_DEFS!=='undefined'&&BOSS_DEFS.thief?.color)||'#e74c3c', desc:`Trừ $1 với mỗi khối ${typeLabel} mà bóng đi qua.`, className:'boss-tooltip'};
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+function getBlockTooltipHazard(block, targetEl=null){
+  if(!block) return null;
+  const cell=targetEl?.closest?.('.cell');
+  let cellData=null;
+  if(cell){
+    const r=Number(cell.dataset.r), c=Number(cell.dataset.c);
+    cellData=state?.cells?.[r]?.[c] || null;
+  } else if(typeof getBlockCellForBoss==='function'){
+    const pos=getBlockCellForBoss(block);
+    cellData=pos ? state?.cells?.[pos.r]?.[pos.c] || null : null;
+  }
+  if(cellData){
+    for(const id of ['assassinTarget','locked','debuff','nerf','controlled']){
+      if(cellData[id] && TOOLTIP_CELL_HAZARDS[id]) return TOOLTIP_CELL_HAZARDS[id];
+    }
+  }
+  return getBlockHandHazardEntries(block)[0] || null;
+}
+
+function getBlockNerfTooltipPenalty(block, targetEl=null){
+  if(!block) return 0;
+  const hazard=getBlockTooltipHazard(block,targetEl);
+  if(hazard?.id==='nerf' || hazard?.id==='bossNerf') return blockIgnoresCellHazards(block) ? 0 : 0.5;
+  // If this block is on a Nerf cell but another hazard tooltip is currently
+  // taking precedence, the score line should still communicate the Nerf loss.
+  const cell=targetEl?.closest?.('.cell');
+  if(cell?.classList.contains('nerf-cell') && !blockIgnoresCellHazards(block)) return 0.5;
+  if(normalizeTooltipHazardList(block.handHazards).includes('nerf') && !blockIgnoresCellHazards(block)) return 0.5;
+  if(normalizeTooltipHazardList(block.handHazard).includes('nerf') && !blockIgnoresCellHazards(block)) return 0.5;
+  return 0;
+}
+
+function appendColoredTooltipLine(parent, line){
+  const d=document.createElement('div');
+  if(typeof line==='string'){ d.textContent=line; parent.appendChild(d); return d; }
+  if(Array.isArray(line?.parts)){
+    for(const part of line.parts){
+      const span=document.createElement('span');
+      span.textContent=String(part.text ?? '');
+      if(part.color) span.style.color=part.color;
+      d.appendChild(span);
+    }
+  } else {
+    d.textContent=String(line?.text ?? '');
+    if(line?.color) d.style.color=line.color;
+  }
+  parent.appendChild(d);
+  return d;
+}
+
+function getTooltipHazardEntries(block,targetEl=null){
+  if(!block) return [];
+  const entries=[];
+  const pushUnique=(entry)=>{
+    if(entry && !entries.some(e=>e.id===entry.id && e.title===entry.title)) entries.push(entry);
+  };
+
+  // Cell tooltip always comes first.
+  let cellData=null;
+  const cellEl=targetEl?.closest?.('.cell');
+  if(cellEl){
+    const r=Number(cellEl.dataset.r), c=Number(cellEl.dataset.c);
+    cellData=state?.cells?.[r]?.[c] || null;
+  } else if(typeof getBlockCellForBoss==='function'){
+    const pos=getBlockCellForBoss(block);
+    cellData=pos ? state?.cells?.[pos.r]?.[pos.c] || null : null;
+  }
+  if(cellData){
+    for(const id of ['locked','debuff','nerf','controlled','assassinTarget']){
+      if(cellData[id] && TOOLTIP_CELL_HAZARDS[id]){
+        pushUnique(TOOLTIP_CELL_HAZARDS[id]);
+        break;
+      }
+    }
+  }
+
+  // Block/Boss effect tooltip comes second.
+  const directEffects=getBlockHandHazardEntries(block);
+  for(const effect of directEffects) pushUnique(effect);
+  return entries;
+}
+
+function getTooltipBlockScore(block,targetEl=null){
+  const baseScore=10+(state.typeBonus[block.type]||0);
+  let multiplier=1;
+  if(typeof getBlockEffectMultiplier==='function') multiplier=getBlockEffectMultiplier(block);
+  const modifiedBase=Math.floor(baseScore*multiplier);
+  const ballBonus=Number(state.baseRateBonus||0);
+  const actual=modifiedBase+ballBonus;
+  return {baseScore, actual, difference:actual-baseScore};
+}
+
+function blockTooltip(block,targetEl=null){
+  const level=((state.typeBonus[block.type]||0)/5)+1;
+  const blockLevelColor=levelColor(level);
+  const score=getTooltipBlockScore(block,targetEl);
+  const parts=[
+    {text:'Số điểm cho khi bóng đi ra: '},
+    {text:formatNumber(score.actual), color:blockLevelColor}
+  ];
+  if(score.difference!==0){
+    const diffColor=score.difference>0 ? 'var(--cyan)' : TOOLTIP_CELL_HAZARDS.locked.color;
+    parts.push({text:' ('},{text:`${score.difference>0?'+':''}${formatNumber(score.difference)}`,color:diffColor},{text:')'});
+  }
   return {
     title:TYPE_LABEL[block.type],
     level,
-    lines:[`Số điểm cho khi bóng đi ra: ${formatNumber((10+state.baseRateBonus)+(state.typeBonus[block.type]||0))}`],
-    property:block.property ? { label:PROP_LABEL[block.property], color:PROP_COLOR[block.property], desc:BLOCK_PROP_DESC[block.property] } : null,
-    enhancement:block.enhancement ? { label:ENH_LABEL[block.enhancement], id:block.enhancement, color:ENH_COLOR[block.enhancement], desc:BLOCK_ENH_DESC[block.enhancement] } : null,
-    core:block.core ? { label:CORE_LABEL[block.core.id], id:block.core.id, color:CORE_COLOR[block.core.id], desc:CORE_DEFS[block.core.id]?.desc || '', count:coreHasCount(block.core) ? block.core.count : null } : null
+    lines:[{parts}],
+    property:block.property ? {label:PROP_LABEL[block.property],color:PROP_COLOR[block.property],desc:BLOCK_PROP_DESC[block.property]} : null,
+    enhancement:block.enhancement ? {label:ENH_LABEL[block.enhancement],id:block.enhancement,color:ENH_COLOR[block.enhancement],desc:BLOCK_ENH_DESC[block.enhancement]} : null,
+    core:block.core ? {label:CORE_LABEL[block.core.id],id:block.core.id,color:CORE_COLOR[block.core.id],desc:CORE_DEFS[block.core.id]?.desc||'',count:coreHasCount(block.core)?block.core.count:null} : null
   };
 }
+
+function getBallActualRate(){
+  return 10 + Number(state.baseRateBonus||0);
+}
 function ballTooltip(b){
-  const level = ((state.baseRateBonus||0)/2) + 1;
+  const level=((state.baseRateBonus||0)/2)+1;
+  const levelClr=levelColor(level);
+  const actual=getBallActualRate();
+  const difference=actual-10;
+  const rateParts=[{text:'Tỉ lệ cộng: '},{text:formatNumber(actual),color:levelClr}];
+  if(difference!==0){
+    const diffColor=difference>0 ? 'var(--cyan)' : TOOLTIP_CELL_HAZARDS.locked.color;
+    rateParts.push({text:' ('},{text:`${difference>0?'+':''}${formatNumber(difference)}`,color:diffColor},{text:')'});
+  }
+  rateParts.push({text:'/khối'});
   return {
-    title:'Bóng',
-    level,
+    title:'Bóng', level,
     lines:[
       `Số điểm bóng chứa: ${formatNumber(50+state.startBonus)}`,
-      `Tỉ lệ cộng: ${formatNumber(10)}${state.baseRateBonus>0?`(+${formatNumber(state.baseRateBonus)})`:''}/khối`,
+      {parts:rateParts},
     ],
-    property:b.property ? { label:PROP_LABEL[b.property], color:PROP_COLOR[b.property], desc:BALL_PROP_DESC[b.property] } : null,
-    enhancement:b.enhancement ? { label:ENH_LABEL[b.enhancement], id:b.enhancement, color:ENH_COLOR[b.enhancement], desc:BALL_ENH_DESC[b.enhancement] } : null
+    property:b.property ? {label:PROP_LABEL[b.property],color:PROP_COLOR[b.property],desc:BALL_PROP_DESC[b.property]} : null,
+    enhancement:b.enhancement ? {label:ENH_LABEL[b.enhancement],id:b.enhancement,color:ENH_COLOR[b.enhancement],desc:BALL_ENH_DESC[b.enhancement]} : null
   };
+}
+
+function clearTooltipClasses(){
+  hoverTipEl.classList.remove('locked-tooltip-stack','debuff-tooltip-stack','hazard-tooltip','boss-tooltip','boss-nerf-tooltip','boss-controlled-tooltip','boss-assassin-tooltip','cell-hazard-tooltip-stack','composed-object-tooltip');
+  hoverTipEl.style.removeProperty('--tooltip-accent');
+}
+
+function appendTooltipPanelToGroup(group, titleText, bodyText, color, className=''){
+  const panel=document.createElement('div');
+  panel.className='tooltip-group-panel'+(className?` ${className}`:'');
+  panel.style.setProperty('--tooltip-accent',color||'var(--cyan)');
+  const title=document.createElement('div'); title.className='tooltip-group-panel-title'; title.textContent=titleText;
+  const desc=document.createElement('div'); desc.className='tooltip-group-panel-desc'; desc.textContent=bodyText;
+  panel.append(title,desc); group.appendChild(panel);
+  return panel;
+}
+
+function buildObjectTooltipGroup(group,info){
+  const main=document.createElement('div'); main.className='hover-tip-main tooltip-group-panel-block';
+  const t=document.createElement('div'); t.className='tip-title';
+  const titleLeft=document.createElement('div'); titleLeft.className='tip-title-left';
+  const baseTitle=document.createElement('span'); baseTitle.className='tip-title-base'; baseTitle.textContent=info.title; titleLeft.appendChild(baseTitle);
+  if(info.property) titleLeft.appendChild(createTooltipPill(info.property,'property'));
+  if(info.enhancement) titleLeft.appendChild(createTooltipPill(info.enhancement,'enhancement'));
+  if(info.core) titleLeft.appendChild(createTooltipPill(info.core,'core'));
+  t.appendChild(titleLeft);
+  const lv=document.createElement('span'); lv.className='tip-level'; lv.textContent=`Lv.${info.level}`; lv.style.color=levelColor(info.level); t.appendChild(lv);
+  main.appendChild(t);
+  (info.lines||[]).forEach(line=>appendColoredTooltipLine(main,line));
+  group.appendChild(main);
+}
+
+function showObjectTooltip(targetEl, info, hazardEntries=[]){
+  hoverTipEl._targetEl=targetEl;
+  hoverTipEl.innerHTML='';
+  clearTooltipClasses();
+  hoverTipEl.classList.add('composed-object-tooltip');
+
+  const groups=[];
+  const blockGroup=document.createElement('div'); blockGroup.className='tooltip-group tooltip-group-block';
+  buildObjectTooltipGroup(blockGroup,info); groups.push(blockGroup);
+
+  const detailEntries=[];
+  if(info.property) detailEntries.push({info:info.property,type:'property'});
+  if(info.enhancement) detailEntries.push({info:info.enhancement,type:'enhancement'});
+  if(info.core) detailEntries.push({info:info.core,type:'core'});
+  if(detailEntries.length){
+    // Keep property/enhancement/core tooltips visually identical to the old UI:
+    // one .hover-tip-details column containing the existing independent
+    // .hover-tip-detail panels. Do not wrap each detail in another panel.
+    const detailGroup=document.createElement('div');
+    detailGroup.className='hover-tip-details tooltip-group-details';
+    detailEntries.forEach(item=>{
+      detailGroup.appendChild(createTooltipDetail(item.info,item.type));
+    });
+    groups.push(detailGroup);
+  }
+
+  if(hazardEntries.length){
+    const hazardGroup=document.createElement('div'); hazardGroup.className='tooltip-group tooltip-group-hazards';
+    for(const hazard of hazardEntries){
+      appendTooltipPanelToGroup(hazardGroup,hazard.title,hazard.desc,hazard.color,hazard.className||'');
+    }
+    groups.push(hazardGroup);
+  }
+  groups.forEach(g=>hoverTipEl.appendChild(g));
+  hoverTipEl.classList.remove('hidden');
+  placeHoverTip(targetEl);
 }
 
 const hoverTipEl = document.createElement('div'); hoverTipEl.className='hover-tip hidden';
@@ -218,54 +461,9 @@ function placeHoverTip(targetEl){
 }
 
 function showHoverTip(targetEl, info){
-  hoverTipEl._targetEl = targetEl;
-  hoverTipEl.innerHTML = '';
-  hoverTipEl.classList.remove('locked-tooltip-stack', 'debuff-tooltip-stack', 'hazard-tooltip', 'boss-tooltip', 'boss-nerf-tooltip', 'boss-controlled-tooltip', 'boss-assassin-tooltip', 'cell-hazard-tooltip-stack');
-  hoverTipEl.style.removeProperty('--tooltip-accent');
-
-  const main = document.createElement('div');
-  main.className='hover-tip-main';
-
-  const t = document.createElement('div');
-  t.className='tip-title';
-  const titleLeft = document.createElement('div');
-  titleLeft.className='tip-title-left';
-  const baseTitle = document.createElement('span');
-  baseTitle.className='tip-title-base';
-  baseTitle.textContent=info.title;
-  titleLeft.appendChild(baseTitle);
-  if(info.property) titleLeft.appendChild(createTooltipPill(info.property, 'property'));
-  if(info.enhancement) titleLeft.appendChild(createTooltipPill(info.enhancement, 'enhancement'));
-  if(info.core) titleLeft.appendChild(createTooltipPill(info.core, 'core'));
-  t.appendChild(titleLeft);
-
-  const levelEl=document.createElement('span');
-  levelEl.className='tip-level';
-  levelEl.textContent=`Lv.${info.level}`;
-  levelEl.style.color=levelColor(info.level);
-  t.appendChild(levelEl);
-  main.appendChild(t);
-
-  info.lines.forEach(line=>{
-    const d = document.createElement('div');
-    if(typeof line === 'string') d.textContent = line;
-    else { d.textContent = line.text; d.style.color = line.color; }
-    main.appendChild(d);
-  });
-  hoverTipEl.appendChild(main);
-
-  if(info.property || info.enhancement || info.core){
-    const details=document.createElement('div');
-    details.className='hover-tip-details';
-    if(info.property) details.appendChild(createTooltipDetail(info.property, 'property'));
-    if(info.enhancement) details.appendChild(createTooltipDetail(info.enhancement, 'enhancement'));
-    if(info.core) details.appendChild(createTooltipDetail(info.core, 'core'));
-    hoverTipEl.appendChild(details);
-  }
-
-  hoverTipEl.classList.remove('hidden');
-  placeHoverTip(targetEl);
+  showObjectTooltip(targetEl, info, info?.__hazards || []);
 }
+
 function hideHoverTip(){ hoverTipEl.classList.add('hidden'); hoverTipEl._targetEl = null; }
 window.addEventListener('resize', ()=>{
   if(!hoverTipEl.classList.contains('hidden') && hoverTipEl._targetEl) placeHoverTip(hoverTipEl._targetEl);
@@ -275,7 +473,11 @@ window.addEventListener('scroll', ()=>{
 }, true);
 
 function attachObjectTooltip(el, obj, kind){
-  el.addEventListener('mouseenter', ()=> showHoverTip(el, kind==='ball' ? ballTooltip(obj) : blockTooltip(obj)));
+  el.addEventListener('mouseenter', ()=>{
+    const info=kind==='ball' ? ballTooltip(obj) : blockTooltip(obj,el);
+    if(kind==='block'){ info.__hazards=getTooltipHazardEntries(obj,el); }
+    showHoverTip(el,info);
+  });
   el.addEventListener('mouseleave', hideHoverTip);
 }
 

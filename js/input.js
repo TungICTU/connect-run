@@ -121,9 +121,42 @@ function onDragEnd(e){
       : boardEl.querySelector(`.cell[data-r="${drag.r}"][data-c="${drag.c}"]`);
     const visual = containerEl && containerEl.querySelector('.block-visual');
     if(visual){
-      const nextDeg = parseFloat(visual.dataset.deg||'0') + 90;
+      const isAssassinTarget = containerEl.classList.contains('boss-assassin-target');
+      const previousDeg = Number.isFinite(parseFloat(visual.dataset.deg)) ? parseFloat(visual.dataset.deg) : ((drag.block.rotation+3)%4)*90;
+      const nextDeg = previousDeg + 90;
+      if(isAssassinTarget) visual.style.animation='none';
+      if(visual._rotationAnimation){
+        try{ visual._rotationAnimation.cancel(); }catch(_){ }
+        visual._rotationAnimation=null;
+      }
       visual.dataset.deg = nextDeg;
-      visual.style.transform = `rotate(${nextDeg}deg)`;
+      visual.style.setProperty('--block-base-rotation', `${nextDeg}deg`);
+      visual.style.transform = `rotate(${previousDeg}deg)`;
+
+      const duration=scaledDuration(320);
+      if(typeof visual.animate==='function'){
+        const anim=visual.animate(
+          [
+            {transform:`rotate(${previousDeg}deg)`},
+            {transform:`rotate(${nextDeg}deg)`}
+          ],
+          {duration, easing:'cubic-bezier(.34,1.56,.64,1)', fill:'forwards'}
+        );
+        visual._rotationAnimation=anim;
+        anim.onfinish=()=>{
+          if(!visual.isConnected) return;
+          visual.style.transform=`rotate(${nextDeg}deg)`;
+          visual.style.setProperty('--block-base-rotation', `${nextDeg}deg`);
+          visual._rotationAnimation=null;
+          if(isAssassinTarget){
+            visual.style.animation='bossTargetFear calc(.5s / var(--anim-speed)) ease-in-out infinite';
+          }
+        };
+      } else {
+        visual.style.transition=`transform calc(.32s / var(--anim-speed)) cubic-bezier(.34,1.56,.64,1)`;
+        requestAnimationFrame(()=>{ if(visual.isConnected) visual.style.transform=`rotate(${nextDeg}deg)`; });
+        setTimeout(()=>{ if(visual.isConnected){ visual.style.transition=''; if(isAssassinTarget) visual.style.animation='bossTargetFear calc(.5s / var(--anim-speed)) ease-in-out infinite'; } },duration+20);
+      }
     }
     syncHoleConnectionsForBlock(drag.r, drag.c);
     drag = null;

@@ -20,15 +20,9 @@ discardBtnEl.addEventListener('click', discardHand);
 let placeAnimCell = null; // {r,c} of the block placed by the most recent drop, for the pop-in animation
 let swapAnim = null; // {source:{r,c},target:{r,c}} for two-block movement animation
 
-function getBoardCellTintColor(container){
-  const cell=container?.closest?.('.cell');
-  if(!cell) return null;
-  if(cell.classList.contains('controlled-cell')) return BOSS_CONTROLLED_COLOR;
-  if(cell.classList.contains('nerf-cell')) return '#f7b267';
-  if(cell.classList.contains('debuff-cell')) return '#ff5836';
-  if(cell.classList.contains('locked-cell')) return '#ff4f83';
-  if(cell.classList.contains('boss-assassin-target')) return '#8b1e3f';
-  return null;
+function getBoardCellTintColor(container, block=null){
+  const hazard=typeof getBlockTooltipHazard==='function' ? getBlockTooltipHazard(block,container) : null;
+  return hazard?.color || null;
 }
 
 function appendBlockCellTint(element, color){
@@ -60,7 +54,7 @@ function renderBlockArms(container, block, options={}){
   visual.dataset.deg = deg;
   visual.style.setProperty('--block-base-rotation', `${deg}deg`);
   visual.style.transform = `rotate(${deg}deg)`;
-  const cellTint=getBoardCellTintColor(container);
+  const cellTint=getBoardCellTintColor(container, block);
   const hub = document.createElement('div'); hub.className='hub';
   appendBlockCellTint(hub, cellTint);
   visual.appendChild(hub);
@@ -99,7 +93,12 @@ function renderBlockArms(container, block, options={}){
   if(block.property) container.style.setProperty('--prop-color', PROP_COLOR[block.property]);
   if(block.enhancement) container.style.setProperty('--enh-color', ENH_COLOR[block.enhancement]);
   if(!options.suppressTooltip){
-    container.addEventListener('mouseenter', ()=> showHoverTip(container, blockTooltip(block)));
+    container.addEventListener('mouseenter', ()=>{
+      const info=blockTooltip(block,container);
+      const hazards=typeof getTooltipHazardEntries==='function' ? getTooltipHazardEntries(block,container) : [];
+      info.__hazards=hazards;
+      showObjectTooltip(container,info,hazards);
+    });
     container.addEventListener('mouseleave', hideHoverTip);
   }
 }
@@ -190,81 +189,26 @@ function renderLockIcon(el, isFilled){
 }
 
 function showCellHazardHoverTip(targetEl, block, titleText, bodyText, color, extraClass='cell-hazard-tooltip-stack'){
-  hoverTipEl._targetEl=targetEl;
-  hoverTipEl.innerHTML='';
-  hoverTipEl.classList.remove('locked-tooltip-stack','debuff-tooltip-stack','hazard-tooltip','boss-tooltip','boss-nerf-tooltip','boss-controlled-tooltip','boss-assassin-tooltip','cell-hazard-tooltip-stack');
-  hoverTipEl.classList.add('cell-hazard-tooltip-stack');
-  if(extraClass) hoverTipEl.classList.add(extraClass);
-  hoverTipEl.style.setProperty('--tooltip-accent', color || 'var(--cyan)');
-
-  if(block){
-    const info=blockTooltip(block);
-    const blockWrap=document.createElement('div');
-    blockWrap.className='hover-tip';
-    blockWrap.style.position='static';
-    blockWrap.style.maxWidth='none';
-    blockWrap.style.maxHeight='none';
-    blockWrap.style.whiteSpace='normal';
-    blockWrap.style.flexDirection='row';
-    blockWrap.style.alignItems='flex-start';
-    blockWrap.style.gap='6px';
-    blockWrap.style.pointerEvents='none';
-
-    const main=document.createElement('div');
-    main.className='hover-tip-main';
-    const title=document.createElement('div');
-    title.className='tip-title';
-    const left=document.createElement('div');
-    left.className='tip-title-left';
-    const base=document.createElement('span');
-    base.className='tip-title-base';
-    base.textContent=info.title;
-    left.appendChild(base);
-    if(info.property) left.appendChild(createTooltipPill(info.property,'property'));
-    if(info.enhancement) left.appendChild(createTooltipPill(info.enhancement,'enhancement'));
-    if(info.core) left.appendChild(createTooltipPill(info.core,'core'));
-    title.appendChild(left);
-    const lv=document.createElement('span');
-    lv.className='tip-level';
-    lv.textContent=`Lv.${info.level}`;
-    lv.style.color=levelColor(info.level);
-    title.appendChild(lv);
-    main.appendChild(title);
-    info.lines.forEach(line=>{
-      const d=document.createElement('div');
-      if(typeof line==='string') d.textContent=line;
-      else { d.textContent=line.text; d.style.color=line.color; }
-      main.appendChild(d);
-    });
-    blockWrap.appendChild(main);
-
-    if(info.property || info.enhancement || info.core){
-      const details=document.createElement('div');
-      details.className='hover-tip-details';
-      if(info.property) details.appendChild(createTooltipDetail(info.property,'property'));
-      if(info.enhancement) details.appendChild(createTooltipDetail(info.enhancement,'enhancement'));
-      if(info.core) details.appendChild(createTooltipDetail(info.core,'core'));
-      blockWrap.appendChild(details);
-    }
-    hoverTipEl.appendChild(blockWrap);
+  const info=block ? blockTooltip(block,targetEl) : null;
+  const hazards=[];
+  if(block && typeof getTooltipHazardEntries==='function'){
+    hazards.push(...getTooltipHazardEntries(block,targetEl));
+  } else if(titleText){
+    hazards.push({id:'cell',title:titleText,desc:bodyText,color,className:extraClass});
   }
-
-  const panel=document.createElement('div');
-  panel.className='cell-hazard-tooltip-panel';
-  const title=document.createElement('div');
-  title.className='cell-hazard-tooltip-title';
-  title.textContent=titleText;
-  const desc=document.createElement('div');
-  desc.className='cell-hazard-tooltip-desc';
-  desc.textContent=bodyText;
-  panel.appendChild(title);
-  panel.appendChild(desc);
-  hoverTipEl.appendChild(panel);
-
-  hoverTipEl.classList.remove('hidden');
-  placeHoverTip(targetEl);
+  // Keep cell tooltip first; getTooltipHazardEntries already orders it that way.
+  // The caller-supplied fallback is only used when there is no block.
+  if(block && titleText && !hazards.some(h=>h.title===titleText)){
+    hazards.unshift({id:'cell',title:titleText,desc:bodyText,color,className:extraClass});
+  }
+  if(info){ info.__hazards=hazards; showObjectTooltip(targetEl,info,hazards); }
+  else {
+    showSimpleHoverTip(targetEl,titleText,bodyText,extraClass);
+    hoverTipEl.style.setProperty('--tooltip-accent',color||'var(--cyan)');
+    const main=hoverTipEl.querySelector('.hover-tip-main');
+    if(main){ main.style.borderColor=color||'var(--cyan)'; main.style.boxShadow='0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055)'; }
+  }
 }
-
 function lockedCellTooltip(el){
   el.addEventListener('mouseenter', ()=>{
     const r=+el.dataset.r, c=+el.dataset.c;
@@ -677,6 +621,17 @@ function replaceLocationTrackSafely(current){
   return next;
 }
 
+function refreshExistingLocationSteps(track,current){
+  if(!track) return;
+  const steps=[...track.querySelectorAll('.location-step')];
+  for(const step of steps){
+    const level=Number(step.dataset.locationLevel)||0;
+    if(!level) continue;
+    const replacement=createLocationStep(level,current);
+    step.replaceWith(replacement);
+  }
+}
+
 function renderLocationBar(animate=false){
   if(!locationBarEl || !state) return;
   const current=Math.max(1,Number(state.level)||1);
@@ -684,6 +639,11 @@ function renderLocationBar(animate=false){
   ensureLocationCurrentArrow();
 
   let track=locationBarEl.querySelector('.location-track');
+  if(track){
+    // Debug Boss changes mutate bossHistory/state without rebuilding the rail.
+    // Refresh each existing step in place so its Boss ring/name/tooltip updates immediately.
+    refreshExistingLocationSteps(track,current);
+  }
   if(!track){
     track=replaceLocationTrackSafely(current);
     syncLocationTrackImmediate(track,current);

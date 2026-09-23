@@ -621,17 +621,6 @@ function replaceLocationTrackSafely(current){
   return next;
 }
 
-function refreshExistingLocationSteps(track,current){
-  if(!track) return;
-  const steps=[...track.querySelectorAll('.location-step')];
-  for(const step of steps){
-    const level=Number(step.dataset.locationLevel)||0;
-    if(!level) continue;
-    const replacement=createLocationStep(level,current);
-    step.replaceWith(replacement);
-  }
-}
-
 function renderLocationBar(animate=false){
   if(!locationBarEl || !state) return;
   const current=Math.max(1,Number(state.level)||1);
@@ -639,11 +628,6 @@ function renderLocationBar(animate=false){
   ensureLocationCurrentArrow();
 
   let track=locationBarEl.querySelector('.location-track');
-  if(track){
-    // Debug Boss changes mutate bossHistory/state without rebuilding the rail.
-    // Refresh each existing step in place so its Boss ring/name/tooltip updates immediately.
-    refreshExistingLocationSteps(track,current);
-  }
   if(!track){
     track=replaceLocationTrackSafely(current);
     syncLocationTrackImmediate(track,current);

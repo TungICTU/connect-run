@@ -1,0 +1,184 @@
+/* Use the available viewport, including mobile browser bars. */
+html, body { width:100%; height:100%; min-height:0; overflow:hidden; }
+body {
+  height:100dvh; height:var(--viewport-height,100dvh);
+  padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  gap:0;
+}
+.app {
+  width:100%; height:100%; min-height:0; max-width:560px;
+  display:grid; grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto auto minmax(0,1fr) auto auto auto;
+  gap:clamp(4px,1dvh,10px); align-items:center; justify-items:center;
+}
+header.hud { display:flex; flex-direction:column; gap:0; padding:6px 10px 0; min-width:0; }
+.hud-main { display:flex; width:100%; align-items:center; justify-content:space-between; gap:8px; }
+.hud .stats { min-width:0; flex:1; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.hud .stat { min-width:0; }
+.hud .stat .value { font-size:clamp(11px,3.4vw,15px); white-space:nowrap; }
+.hud .stat .label { font-size:9px; }
+.hud .location-bar { height:54px; flex:none; border-bottom:0; margin-top:4px; }
+.board-stage { width:100%; height:100%; min-width:0; min-height:0; display:flex; align-items:center; justify-content:center; }
+.board-wrap { flex:none; width:var(--fitted-board-width,240px); height:var(--fitted-board-height,240px); max-width:100%; max-height:100%; }
+.ball-queue { max-width:100%; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; padding:3px; min-height:34px; justify-content:safe center; }
+.ball-queue .ball-chip { flex:0 0 28px; }
+.hand-row { min-width:0; gap:8px; }
+.hand { min-width:0; flex:1; justify-content:safe center; gap:6px; overflow-x:auto; overflow-y:hidden; }
+.hand-slot { width:clamp(42px,9dvh,70px); height:clamp(42px,9dvh,70px); flex:0 0 clamp(42px,9dvh,70px); }
+.discard-row { flex:none; }
+.discard-btn { padding:6px 8px; font-size:11px; white-space:nowrap; }
+.bag-row { width:100%; min-width:0; gap:8px; justify-content:center; }
+.bag-count { font-size:10px; }
+.bag-row button { font-size:12px; padding:5px 8px; }
+.card-hand { flex-wrap:nowrap; justify-content:safe center; overflow-x:auto; overflow-y:hidden; min-width:0; min-height:18px; padding:2px; }
+.power-card-chip { flex:none; font-size:11px; padding:4px 6px; gap:6px; }
+.power-card-chip button { font-size:11px; padding:5px 7px; }
+/* Keep owned balls, cards and inventory accessible in the shop, without the board. */
+body.shop-open .app { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto auto minmax(0,1fr); }
+body.shop-open .hud { grid-area:1 / 1; }
+body.shop-open .ball-queue { grid-area:2 / 1; }
+body.shop-open .card-hand { grid-area:3 / 1; }
+body.shop-open .bag-row { grid-area:4 / 1; position:relative; z-index:101; }
+body.shop-open .board-stage, body.shop-open .hand-row { display:none; }
+.shop-panel { margin-bottom:0; }
+.target-banner { max-width:calc(100vw - 16px); flex-wrap:wrap; justify-content:center; }
+@media (max-height:600px) {
+  header.hud { padding-top:4px; }
+  .hud .location-bar { height:48px; margin-top:0; }
+  .hand-slot { width:44px; height:44px; flex-basis:44px; }
+  .settings-btn { width:30px; height:30px; padding:2px; }
+  .hud .stat .label { font-size:8px; }
+}
+@media (max-height:520px) and (min-width:480px) {
+  .app { max-width:1000px; grid-template-columns:minmax(0,1fr) minmax(210px,.8fr); grid-template-rows:auto auto minmax(0,1fr) auto auto; column-gap:14px; }
+  .hud { grid-area:1 / 1 / 2 / 3; }
+  .board-stage { grid-area:2 / 1 / 6 / 2; }
+  .ball-queue { grid-area:2 / 2; }
+  .hand-row { grid-area:3 / 2; }
+  .bag-row { grid-area:4 / 2; }
+  .card-hand { grid-area:5 / 2; }
+}
+body.boss-theme .cell:not(.black-block) { background:var(--boss-cell); border-color:var(--panel-line); }
+body.boss-theme .location-node:not(.boss) { background:var(--bg-deep); }
+body.boss-theme .hud, body.boss-theme .board, body.boss-theme .hand-slot,
+body.boss-theme .power-card-chip { border-color:var(--panel-line); }
+body.boss-theme button:not(.discard-btn):not(.sell-card-btn) { border-color:var(--panel-line); color:var(--cyan); background:var(--bg-deep); }
+body.boss-theme .stat.score .value, body.boss-theme .stat.money .value { color:var(--cyan); }
+.inventory-item.targetable { cursor:pointer; border-color:var(--cyan); }
+.inventory-item.target-selected { box-shadow:inset 0 0 0 2px var(--green); }
+#inventoryOverlay { z-index:190; }
+
+/* A single HUD row, with a five-stop window into the location rail. */
+header.hud { width:min(1000px,calc(100vw - 16px)); max-width:none; padding:4px 8px; }
+.hud-main { gap:8px; flex-wrap:nowrap; }
+.hud .stats { gap:6px; }
+.hud-location-slot { flex:0 0 clamp(104px,34vw,330px); height:48px; overflow:hidden; display:flex; align-items:center; }
+.hud .location-bar { width:330px; min-width:330px; height:54px; margin:0; transform-origin:left center; }
+.hud .settings-btn { flex:none; }
+@media(max-width:480px){
+  header.hud { padding:3px 4px; }
+  .hud-main { gap:4px; }
+  .hud .stats { gap:3px; }
+  .hud .stat .label { font-size:8px; }
+  .hud .stat .value { font-size:10px; overflow:hidden; text-overflow:ellipsis; }
+  .hud .settings-btn { width:26px; height:28px; padding:0; }
+}
+.ball-chip.empty-slot { background:transparent!important; border:1px dashed var(--ink-dim); box-shadow:none!important; opacity:.55; }
+.ball-chip.empty-slot::before,.ball-chip.empty-slot::after { display:none; }
+.ball-chip.dart-debuff { border-color:#ff5836; }
+.ball-debuff-x { position:absolute; inset:0; display:grid; place-items:center; color:#ff5836; font-size:31px; line-height:1; font-weight:900; z-index:3; text-shadow:0 1px 3px #000; pointer-events:none; }
+
+/* Compact HUD: size the statistics to their contents, not equal-width columns. */
+header.hud { width:max-content; max-width:calc(100vw - 16px); }
+.hud .stats { flex:0 1 auto; grid-template-columns:repeat(4,minmax(0,max-content)); gap:clamp(10px,2vw,22px); }
+.hud .stat .value { max-width:100px; overflow:hidden; text-overflow:ellipsis; }
+.hud-main { gap:12px; }
+.hud .location-current-arrow { top:-12px; left:50%; }
+@media(max-width:480px){
+  .hud .stats { gap:6px; }
+  .hud-main { gap:4px; }
+  .hud .stat .value { max-width:52px; }
+}
+/* One full spectral tile per cycle: identical endpoints, no reversal. */
+.ball-chip[data-enh=spark]::before,
+.ball[data-enh=spark]::before,
+.mini-ball[data-enh=spark]::before,
+.mini-block[data-enh=spark] .arm::after,
+.mini-block[data-enh=spark] .hub::after,
+.block-visual[data-enh=spark] .arm::after,
+.block-visual[data-enh=spark] .hub::after,
+.block-visual[data-enh=spark]::after,
+.mini-block[data-enh=spark]::after {
+  background-image:repeating-linear-gradient(90deg,#ff3048 0%,#ff8c20 7.14285%,#ffe83b 14.2857%,#37e85d 21.42855%,#20dfff 28.57145%,#4165ff 35.7143%,#b348ff 42.85715%,#ff3048 50%);
+  background-size:200% 100%; background-repeat:repeat; background-position:0 0;
+  background-blend-mode:normal; mix-blend-mode:normal; filter:none; opacity:.86;
+  animation:rainbowContinuous calc(4.2s / var(--anim-speed)) linear infinite normal;
+}
+@keyframes rainbowContinuous { from{background-position:0 0} to{background-position:100% 0} }
+/* Larger foil grains and clear star highlights remain readable on small balls. */
+.ball-chip[data-enh=holo]:not(.fired)::before,
+.ball-chip[data-enh=holo]::before,
+.ball[data-enh=holo]::before,
+.mini-ball[data-enh=holo]::before,
+.gacha-opt .mini-ball[data-enh=holo]::before,
+.mini-block[data-enh=holo] .arm::after,
+.mini-block[data-enh=holo] .hub::after,
+.block-visual[data-enh=holo] .arm::after,
+.block-visual[data-enh=holo] .hub::after,
+.block-visual[data-enh=holo]::after,
+.mini-block[data-enh=holo]::after {
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Cpath fill='white' d='M10 2L12 8L18 10L12 12L10 18L8 12L2 10L8 8Z'/%3E%3Cpath fill='%23fff3b5' d='M27 19L28.5 24.5L34 26L28.5 27.5L27 33L25.5 27.5L20 26L25.5 24.5Z'/%3E%3C/svg%3E"),var(--Vmaxbg),linear-gradient(115deg,transparent 25%,rgba(255,255,255,.6) 48%,transparent 70%);
+  background-size:36px 36px,180px 120px,160px 100%;
+  background-position:0 0,center,0 0; background-repeat:repeat;
+  background-blend-mode:screen,soft-light; mix-blend-mode:screen;
+  filter:brightness(1.05) contrast(1.2); opacity:.82;
+  animation:glitterClarity calc(3.6s / var(--anim-speed)) linear infinite normal;
+}
+@keyframes glitterClarity {
+  0%{background-position:0 0,center,0 0;opacity:.65}
+  35%{opacity:.95}
+  70%{opacity:.75}
+  100%{background-position:0 0,center,160px 0;opacity:.65}
+}
+
+/* Never restart the foil pattern separately on an arm or the hub. */
+:is(.block-visual,.mini-block)[data-enh] :is(.arm,.hub)::after { content:none !important; }
+:is(.block-visual,.mini-block)::after,
+:is(.block-visual,.mini-block)::before {
+  position:absolute; inset:0; pointer-events:none;
+  mask-image:var(--block-surface-mask); -webkit-mask-image:var(--block-surface-mask);
+  mask-size:100% 100%; -webkit-mask-size:100% 100%;
+  mask-repeat:no-repeat; -webkit-mask-repeat:no-repeat;
+}
+:is(.block-visual,.mini-block)[data-enh=spark]::after,
+:is(.block-visual,.mini-block)[data-enh=holo]::after { content:""; z-index:2; }
+/* Translucent rainbow foil preserves the underlying material's color. */
+:is(.block-visual,.mini-block)[data-enh=spark]::after,
+.ball-chip[data-enh=spark]::before,.ball[data-enh=spark]::before,.mini-ball[data-enh=spark]::before {
+  background-image:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.4) 0 1px,transparent 1px 9px,rgba(0,0,0,.25) 9px 10px,transparent 10px 18px),
+    repeating-linear-gradient(-45deg,rgba(255,255,255,.3) 0 1px,transparent 1px 9px,rgba(0,0,0,.2) 9px 10px,transparent 10px 18px),
+    repeating-linear-gradient(90deg,#ff3048 0%,#ff8c20 7.14285%,#ffe83b 14.2857%,#37e85d 21.42855%,#20dfff 28.57145%,#4165ff 35.7143%,#b348ff 42.85715%,#ff3048 50%);
+  background-size:100% 100%,100% 100%,200% 100%;
+  background-blend-mode:soft-light,soft-light,normal;
+  mix-blend-mode:normal; opacity:.42;
+  animation:rainbowDiamondFlow calc(4.2s / var(--anim-speed)) linear infinite;
+}
+@keyframes rainbowDiamondFlow {
+  from { background-position:0 0,0 0,0% 0; }
+  to { background-position:0 0,0 0,100% 0; }
+}
+/* A shared light band sweeps across the entire metal silhouette. */
+:is(.block-visual,.mini-block)[data-prop=steel]::before,
+:is(.block-visual,.mini-block)[data-prop=gold]::before {
+  content:""; z-index:1;
+  background-image:linear-gradient(115deg,transparent 24%,rgba(255,255,255,.05) 34%,rgba(255,255,255,.95) 43%,rgba(255,255,255,.15) 49%,transparent 61%),linear-gradient(135deg,rgba(0,0,0,.38),rgba(255,255,255,.6) 22%,rgba(0,0,0,.35) 46%,rgba(255,255,255,.5) 68%,rgba(0,0,0,.25));
+  background-size:260% 100%,100% 100%; background-repeat:no-repeat;
+  background-position:150% 0,0 0; opacity:.8;
+  animation:metalReflection calc(5s / var(--anim-speed)) linear infinite;
+}
+:is(.block-visual,.mini-block)[data-prop=gold]::before { opacity:.68; }
+@keyframes metalReflection {
+  0%,12% { background-position:150% 0,0 0; }
+  82%,100% { background-position:-150% 0,0 0; }
+}

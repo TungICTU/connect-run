@@ -134,6 +134,7 @@ function setSettingsTab(name){
 }
 
 function openSettings(){
+  cancelActiveDrags();
   // Cài đặt always opens on the Game tab.
   setSettingsTab('game');
   refreshSpeedControl();

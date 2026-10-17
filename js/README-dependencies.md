@@ -18,7 +18,8 @@
 14. `inventory.js` — inventory/debug UI helpers.
 15. `shop.js` — common shop and gacha.
 16. `settings.js` — settings panel, run statistics UI, persistent speed slider.
-17. `main.js` — persistence/lifecycle boot.
+17. `presentation.js` — responsive viewport layout, shop visibility and boss theme.
+18. `main.js` — persistence/lifecycle boot.
 
 
 Asset UI: `../assets/assassin-skull.png` is the target-cell skull icon.

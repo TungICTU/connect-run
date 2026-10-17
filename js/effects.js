@@ -106,6 +106,7 @@ function coreExitEffects(block, ballState){
     // Purple consumes its count when the split actually occurs in travel().
   }
 
+  ballState.total=finiteGameValue(ballState.total);
   return {
     tooltips,
     purpleSplit:core.id==='purple' && coreCanUse(block,shotMeta),
@@ -148,6 +149,8 @@ function blockExitEffects(block, ballState, options={}){
     // Glass's break probability is intentionally NOT reduced by boss/nerf.
     brokeBlock = true;
   }
+
+  if(prop==='stone' || prop==='wood') BLOCK_PROP_EFFECTS[prop].onExit(ballState,effectMultiplier);
 
   if(prop==='stone') tooltips.push({text:`+${Math.round(50*effectMultiplier*100)/100}`,kind:'stone'});
 
@@ -196,6 +199,8 @@ function blockExitEffects(block, ballState, options={}){
     }
   }
 
+  ballState.total=finiteGameValue(ballState.total);
+  ballState.rate=finiteGameValue(ballState.rate);
   return {brokeBlock, tooltips, sparkMultiplierUsed};
 }
 
@@ -207,6 +212,7 @@ function ballExitEffects(ballState, blockRef){
     tooltips.push({text:`x${SPARK_START_MULTIPLIER.toFixed(1)}`,kind:'spark'});
   }
   if(enh==='holo') ENHANCEMENT_EFFECTS.holo.ballExit(ballState);
+  ballState.total=finiteGameValue(ballState.total);
   return tooltips;
 }
 
@@ -270,9 +276,9 @@ function animateBlockExitTooltips(row,col,tooltips,generation){
 }
 function removeBallPermanently(ballId){
   if(!ballId || !state) return false;
-  const qIndex=state.ballQueue.findIndex(q=>q._id===ballId);
+  const qIndex=state.ballQueue.findIndex(q=>q?._id===ballId);
   let changed=false;
-  if(qIndex>=0){ state.ballQueue.splice(qIndex,1); state.ballsFired=Math.max(0,state.ballsFired-1); changed=true; }
+  if(qIndex>=0){ state.ballQueue[qIndex]=null; state.ballSlots[qIndex]=null; changed=true; }
   const before=state.ballPool.length;
   state.ballPool=state.ballPool.filter(b=>b._id!==ballId);
   changed=changed || state.ballPool.length!==before;
@@ -369,7 +375,7 @@ async function animateSteelGoalMultipliers(ballState, goalPopup, generation){
     const entry=steelBlocks[i];
     const nextTip=createSteelMultiplierTooltip(entry.block, entry.isRedCore, entry.multiplier);
     if(!nextTip){
-      ballState.total*=entry.multiplier;
+      ballState.total=finiteGameValue(ballState.total*entry.multiplier);
       updateGoalPopupScore(goalPopup, ballState);
       continue;
     }
@@ -380,7 +386,7 @@ async function animateSteelGoalMultipliers(ballState, goalPopup, generation){
     await wait(70);
     if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
 
-    ballState.total*=entry.multiplier;
+    ballState.total=finiteGameValue(ballState.total*entry.multiplier);
     updateGoalPopupScore(goalPopup, ballState, {impact:true, rise:40});
 
     if(activeTip){
@@ -447,6 +453,7 @@ async function animateGoldBlockRewards(goldBlocks, generation){
     activeTip.classList.remove('show');
     activeTip.classList.add('hide');
     await wait(100);
+    if(generation!==runGeneration || !state){ activeTip.remove(); return false; }
     activeTip.remove();
     if(activeEntry?.block){
       state.money += 3*getBlockEffectMultiplier(activeEntry.block);
@@ -619,7 +626,7 @@ async function animateSteelLostBallMultipliers(ballState, payoutState, popup, ge
     const entry=steelBlocks[i];
     const nextTip=createSteelMultiplierTooltip(entry.block, entry.isRedCore, entry.multiplier);
     if(!nextTip){
-      payoutState.total*=entry.multiplier;
+      payoutState.total=finiteGameValue(payoutState.total*entry.multiplier);
       updateGoalPopupScore(popup,payoutState,{impact:true,rise:40});
       continue;
     }
@@ -628,7 +635,7 @@ async function animateSteelLostBallMultipliers(ballState, payoutState, popup, ge
     await wait(70);
     if(generation!==runGeneration || !state){ nextTip.remove(); activeTip?.remove(); return false; }
 
-    payoutState.total*=entry.multiplier;
+    payoutState.total=finiteGameValue(payoutState.total*entry.multiplier);
     updateGoalPopupScore(popup,payoutState,{impact:true,rise:40});
 
     if(activeTip){
@@ -654,13 +661,14 @@ async function animateSteelLostBallMultipliers(ballState, payoutState, popup, ge
 }
 
 async function awardLostInvertBall(ballState, row, col, generation=runGeneration){
+  if(generation!==runGeneration || !state) return false;
   if(ballState?.enh!=='invert' || ballState.lostScorePaid) return true;
   ballState.lostScorePaid=true;
 
   const created=createLostBallScorePopup(ballState,row,col);
   if(!created){
     const points=Math.round((ballState.total/2));
-    state.score += points;
+    state.score = finiteGameValue(state.score + points);
     if(ballState.counter) ballState.counter.points=(ballState.counter.points||0)+points;
     scoreValEl.textContent=formatNumber(state.score);
     return true;
@@ -678,7 +686,7 @@ async function awardLostInvertBall(ballState, row, col, generation=runGeneration
 
   popup.remove();
   const points=Math.round(payoutState.total);
-  state.score += points;
+  state.score = finiteGameValue(state.score + points);
   if(ballState.counter) ballState.counter.points=(ballState.counter.points||0)+points;
   scoreValEl.textContent=formatNumber(state.score);
   return true;
@@ -694,6 +702,7 @@ async function loseBall(ball, tip, r, c, ballState=null){
   // to that 50% payout before it is added to the stage score.
   const generation=runGeneration;
   await wait(300);
+  if(generation!==runGeneration || !state){ removeEntity(ball,tip); return []; }
   removeEntity(ball,tip);
   if(Number.isInteger(r) && Number.isInteger(c)){
     const ok=await awardLostInvertBall(ballState,r,c,generation);
@@ -775,6 +784,7 @@ async function travel(ball, tip, row, col, dir, ballState, counter, generation=r
 
     const beforeGoalEffects=ballState.total;
     ballGoalEffects(ballState);
+    ballState.total=finiteGameValue(ballState.total);
     updateTip(tip, ballState);
     updateGoalPopupScore(goalPopup, ballState, {impact:ballState.total>beforeGoalEffects, rise:GOAL_POPUP_IMPACT_RISE});
 
@@ -785,7 +795,7 @@ async function travel(ball, tip, row, col, dir, ballState, counter, generation=r
     counter.scored++;
     if(ballState.broke) counter.broke=(counter.broke||0)+1;
     const points=ballState.broke ? 0 : Math.round(ballState.total);
-    state.score += points;
+    state.score = finiteGameValue(state.score + points);
     counter.points=(counter.points||0) + points;
     scoreValEl.textContent=formatNumber(state.score);
     finishGlassBranch(ballState,true);
@@ -838,6 +848,7 @@ async function travel(ball, tip, row, col, dir, ballState, counter, generation=r
     ball.classList.add('lost');
     tip.style.opacity='0';
     await wait(300);
+    if(generation!==runGeneration || !state){ removeEntity(ball,tip); return []; }
     removeEntity(ball,tip);
     if(ballState.enh==='invert'){
       const ok=await awardLostInvertBall(ballState,nr,nc,generation);
@@ -885,6 +896,10 @@ async function travel(ball, tip, row, col, dir, ballState, counter, generation=r
   ];
   animateBlockExitTooltips(nr,nc,exitTooltips,generation);
 
+  if(exits.length===1){
+    updateTip(tip,ballState);
+    return travel(ball,tip,nr,nc,exits[0],ballState,counter,generation);
+  }
   removeEntity(ball,tip);
 
   const branches = [];
@@ -903,7 +918,7 @@ async function travel(ball, tip, row, col, dir, ballState, counter, generation=r
       shotMeta:ballState.shotMeta, counter:ballState.counter, lostScorePaid:false
     };
     const c1=createBallEntity(nr,nc,childState,true,previousTotal);
-    branches.push(travel(c1.ball,c1.tip,nr,nc,exitDir,childState,counter));
+    branches.push(travel(c1.ball,c1.tip,nr,nc,exitDir,childState,counter,generation));
   });
   const results = await Promise.all(branches);
   return results.flat();
@@ -911,9 +926,15 @@ async function travel(ball, tip, row, col, dir, ballState, counter, generation=r
 
 async function onNodeClick(){
   if(state.resolving || state.phase!=='playing' || state.targeting) return;
-  if(state.ballsFired >= state.ballQueue.length) return;
+  if(nextFireableBallIndex() < 0) return;
+  cancelActiveDrags();
+  saveGame({silent:true});
+  const checkpoint=snapshotGameState();
   const generation = runGeneration;
   state.resolving = true;
+  renderCardHand();
+  renderHUD();
+  try{
 
   // Controlled cells change the orientation of their contained blocks before
   // the ball is actually launched. For The Hacker, its 5 controlled positions
@@ -930,7 +951,7 @@ async function onNodeClick(){
     if(b) b._splitUsed = false;
   }
 
-  const idx = state.ballsFired;
+  const idx = nextFireableBallIndex();
   syncBallQueueFromPool();
   const queued = state.ballQueue[idx];
   const canonical = state.ballPool.find(b=>b._id===queued._id);
@@ -975,7 +996,6 @@ async function onNodeClick(){
   });
   const resultsArrays = await Promise.all(branchPromises);
   if(generation!==runGeneration || !state){
-    if(state) state._activeShotMeta = null;
     return;
   }
   const results = resultsArrays.flat();
@@ -989,11 +1009,28 @@ async function onNodeClick(){
   }
 
   await applyBossAfterShot();
-  state.resolving = false;
+  if(generation!==runGeneration || !state) return;
   state._activeShotMeta = null;
-  render();
   await checkEndState();
-  saveGame({silent:true});
+  }catch(error){
+    if(generation!==runGeneration) return;
+    console.error('Lượt bắn thất bại; đã khôi phục trước lượt bắn.',error);
+    runGeneration++;
+    document.querySelectorAll('.ball, .ball-tooltip, .ball-goal-popup, .block-exit-tooltip').forEach(el=>el.remove());
+    state=checkpoint;
+    restoreKnownObjects();
+    render();
+    saveGame({silent:true});
+    return;
+  }finally{
+    if(generation===runGeneration && state){
+      state.resolving=false;
+      state._activeShotMeta=null;
+      if(state.phase==='playing') render();
+      else { renderCardHand(); renderHUD(); }
+      saveGame({silent:true});
+    }
+  }
 }
 
 function getWinBonus(){
@@ -1003,11 +1040,12 @@ function getWinBonus(){
 
 async function checkEndState(){
   if(state.score >= state.target){
+    state.phase='settling';
     if(state.boss?.id) markBossDefeated(state.boss.id);
-    const unfired = state.ballQueue.length - state.ballsFired;
+    const unfired = countUnfiredBalls();
     const interestCap = 5 + state.interestCapBonus;
     const interest = Math.min(Math.floor(state.money/5), interestCap);
-    const ballBonus = unfired*2;
+    const ballBonus = unfired*UNUSED_BALL_REWARD;
 
     const goldBlocks = [];
     if(state.cells) for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){
@@ -1027,9 +1065,10 @@ async function checkEndState(){
     const goldResolved = await animateGoldBlockRewards(goldBlocks, generation);
     if(!goldResolved || generation!==runGeneration || !state) return;
 
+    state.pendingReward={winBonus:getWinBonus(), unfired, ballBonus, interest};
     state.phase = 'reward';
-    runBoardHideAnimation(()=>showLevelReward({winBonus:getWinBonus(), unfired, ballBonus, interest}));
-  } else if(state.ballsFired >= state.ballQueue.length){
+    runBoardHideAnimation(()=>showLevelReward(state.pendingReward));
+  } else if(nextFireableBallIndex() < 0){
     state.phase = 'gameover';
     renderCardHand();
     showOverlay('lose', 'GAME OVER', `Dừng lại ở màn ${formatNumber(state.level)}, đạt ${formatNumber(state.score)}/${formatNumber(state.target)} điểm. Tổng tiền tích luỹ: ${formatMoney(state.money)}.`);
@@ -1091,7 +1130,7 @@ function showLevelReward(info){
   overlayTextEl.innerHTML=`
     <div class="reward-layout">
       <div class="reward-row"><span class="reward-label reward-win-label reward-step">- Thưởng thắng:</span><span class="reward-value reward-step">${formatNumber(winBonus)}$</span></div>
-      <div class="reward-row"><span class="reward-label reward-step">- ${formatNumber(info.unfired)} bóng còn sót (${formatNumber(2)}$ mỗi bóng):</span><span class="reward-value reward-step">${formatNumber(info.ballBonus)}$</span></div>
+      <div class="reward-row"><span class="reward-label reward-step">- ${formatNumber(info.unfired)} bóng còn sót (${formatNumber(UNUSED_BALL_REWARD)}$ mỗi bóng):</span><span class="reward-value reward-step">${formatNumber(info.ballBonus)}$</span></div>
       <div class="reward-row"><span class="reward-label reward-step">- Tiền lãi (Mỗi 5$ nhận thêm 1$, tối đa ${formatMoney(5 + state.interestCapBonus)}):</span><span class="reward-value reward-step">${formatNumber(info.interest)}$</span></div>
     </div>`;
 
@@ -1111,6 +1150,7 @@ function showLevelReward(info){
     // No scale/zoom-out animation when collecting the reward.
     state.money += total;
     state.phase='shop';
+    state.pendingReward=null;
     state._boardHideComplete=null;
     state._handRewardHidden=true;
     document.querySelector('.hand-row')?.classList.add('reward-hidden');
@@ -1135,7 +1175,7 @@ function showLevelReward(info){
     btn.dataset.busy='';
     btn.disabled=false;
     btn.onclick=newRun;
-    scheduleAutoSave();
+    saveGame({silent:true});
   };
   overlayEl.classList.remove('hidden');
 

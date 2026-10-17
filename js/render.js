@@ -33,6 +33,14 @@ function appendBlockCellTint(element, color){
   element.appendChild(tint);
 }
 
+// One silhouette and one coordinate system for the complete material surface.
+function blockSurfaceStyle(sides){
+  const rects={N:[38,0,24,54],E:[46,38,54,24],S:[38,46,24,54],W:[0,38,54,24]};
+  const shapes=sides.map(side=>{const [x,y,w,h]=rects[side];return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="white"/>`;}).join('');
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="14" fill="white"/>${shapes}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+
 function renderBlockArms(container, block, options={}){
   container.querySelectorAll('.block-visual, .block-core-dot, .boss-hidden-block, .boss-silenced-x, .boss-block-nerf-indicator').forEach(n=>n.remove());
 
@@ -48,6 +56,7 @@ function renderBlockArms(container, block, options={}){
   }
 
   const visual = document.createElement('div'); visual.className='block-visual';
+  visual.style.setProperty('--block-surface-mask',blockSurfaceStyle(BASE_SIDES[block.type].map(side=>DIR_NAMES[side])));
   if(block.property) visual.dataset.prop = block.property;
   if(block.enhancement) visual.dataset.enh = block.enhancement;
   const deg = block.rotation*90;
@@ -205,6 +214,8 @@ function showCellHazardHoverTip(targetEl, block, titleText, bodyText, color, ext
   else {
     showSimpleHoverTip(targetEl,titleText,bodyText,extraClass);
     hoverTipEl.style.setProperty('--tooltip-accent',color||'var(--cyan)');
+    const title=hoverTipEl.querySelector('.tip-title');
+    if(title) title.style.color=color||'var(--cyan)';
     const main=hoverTipEl.querySelector('.hover-tip-main');
     if(main){ main.style.borderColor=color||'var(--cyan)'; main.style.boxShadow='0 4px 18px rgba(0,0,0,.30), 0 0 4px rgba(255,255,255,.055)'; }
   }
@@ -487,7 +498,7 @@ function buildLocationTrack(current, options={}){
   track.__locationTranslateX=-(current-start)*LOCATION_STEP_DISTANCE;
   track.style.transition='none';
   track.style.transform=`translate3d(${track.__locationTranslateX}px,0,0)`;
-  track.style.left='calc(50% - 31px)';
+  track.style.left=`${2+Math.min(2,Math.max(0,current-1))*LOCATION_STEP_DISTANCE}px`;
   return track;
 }
 
@@ -551,6 +562,8 @@ function normalizeLocationCurrentNode(track,current){
   if(!node) return false;
   track.querySelectorAll('.location-node.current').forEach(n=>n.classList.remove('current'));
   node.classList.add('current');
+  const arrow=ensureLocationCurrentArrow();
+  if(arrow) node.appendChild(arrow);
   return true;
 }
 
@@ -561,7 +574,7 @@ function syncLocationTrackImmediate(track,current){
   const first=getLocationFirstLevel(track);
   const translate=-(current-first)*LOCATION_STEP_DISTANCE;
   track.style.transition='none';
-  track.style.left='calc(50% - 31px)';
+  track.style.left=`${2+Math.min(2,Math.max(0,current-1))*LOCATION_STEP_DISTANCE}px`;
   setLocationTranslate(track,translate);
   return true;
 }
@@ -656,10 +669,11 @@ function renderLocationBar(animate=false){
 
   const currentX=getLocationTranslate(track);
   const targetX=currentX-LOCATION_STEP_DISTANCE;
-  track.style.transition='transform calc(.46s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
+  track.style.transition='transform calc(.46s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1), left calc(.46s / var(--anim-speed)) cubic-bezier(.22,.8,.24,1)';
 
   requestAnimationFrame(()=>{
     if(token!==locationTransitionToken || !track.isConnected) return;
+    track.style.left=`${2+Math.min(2,Math.max(0,current-1))*LOCATION_STEP_DISTANCE}px`;
     setLocationTranslate(track,targetX);
   });
 
@@ -681,6 +695,7 @@ function renderLocationBar(animate=false){
 }
 
 function renderHUD(){
+  syncGamePresentation();
   bagCountEl.textContent = `Túi khối còn lại: ${formatNumber(state.bag.length)}`;
   discardCountEl.textContent = `(${formatNumber(state.discardsLeft)}/${formatNumber(getMaxDiscards())})`;
   discardBtnEl.disabled = state.discardsLeft<=0 || !state.hand.some(Boolean) || state.resolving || state.phase!=='playing' || !!state.targeting;
@@ -691,6 +706,7 @@ function renderHUD(){
 }
 
 function render(){
+  cancelActiveDrags();
   hideHoverTip();
   const boardReveal = !!state._boardReveal;
   const boardHide = !!state._boardHide;
@@ -719,6 +735,7 @@ function render(){
   renderCardHand();
   renderHUD();
   refreshAnimSlots.clear();
+  scheduleAutoSave();
 }
 
 function renderHand(){
@@ -746,6 +763,7 @@ function syncBallPoolFromQueue(){
   const byId = new Map(state.ballPool.map(b=>[b._id,b]));
   const ordered = [];
   for(const q of state.ballQueue){
+    if(!q) continue;
     const b = byId.get(q._id);
     if(!b) continue;
     b.property = q.property || null;
@@ -753,6 +771,8 @@ function syncBallPoolFromQueue(){
     ordered.push(b);
   }
   if(ordered.length===state.ballPool.length) state.ballPool = ordered;
+  state.ballSlots=state.ballQueue.map(b=>b?._id||null);
+  scheduleAutoSave();
 }
 
 function syncBallMutationTargets(targets){
@@ -779,6 +799,7 @@ function syncBallMutationTargets(targets){
   });
 
   state.ballQueue.forEach(q=>{
+    if(!q) return;
     const changed = changedById.get(q._id);
     if(!changed) return;
     q.property = changed.property;
@@ -791,15 +812,10 @@ function syncBallMutationTargets(targets){
 }
 
 function syncBallQueueFromPool(){
-  ensureBallIds();
-  const firedIds = new Set(state.ballQueue.filter(b=>b.fired).map(b=>b._id));
-  const unfired = state.ballPool.filter(b=>!firedIds.has(b._id));
-  let u=0;
-  state.ballQueue = state.ballQueue.map(q=>{
-    if(q.fired) return q;
-    const b=unfired[u++];
-    return {_id:b._id, fired:false, property:b.property||null, enhancement:b.enhancement||null};
-  });
+  ensureBallSlots();
+  const firedIds=new Set(state.ballQueue.filter(b=>b?.fired).map(b=>b._id));
+  const byId=new Map(state.ballPool.map(b=>[b._id,b]));
+  state.ballQueue=state.ballSlots.map(id=>id ? {...byId.get(id),fired:firedIds.has(id)} : null);
 }
 
 let ballClickSelection = null;
@@ -813,7 +829,7 @@ function clearBallClickSelection(){
 function handleBallQueueClick(idx){
   if(state.targeting || state.resolving || (state.phase!=='playing' && state.phase!=='shop')) return;
   const ball = state.ballQueue[idx];
-  if(!ball || ball.fired || idx < state.ballsFired) return;
+  if(ball?.fired || (!ball && ballClickSelection===null)) return;
 
   const chip = [...ballQueueEl.children][idx];
   if(ballClickSelection===null){
@@ -848,12 +864,22 @@ function renderBallQueue(){
   ballQueueEl.innerHTML = '';
   state.ballQueue.forEach((b, i)=>{
     const chip = document.createElement('div');
+    if(!b){
+      chip.className='ball-chip empty-slot'; chip.dataset.ballIndex=i;
+      chip.setAttribute('aria-label','Ô bóng trống');
+      chip.addEventListener('click',()=>{if(performance.now()>=suppressBallClickUntil) handleBallQueueClick(i);});
+      ballQueueEl.appendChild(chip); return;
+    }
     chip.className = 'ball-chip' + (b.fired ? ' fired' : '');
+    if(state.phase==='playing' && isCurrentBoss('dart') && !b.fired && i!==nextFireableBallIndex()){
+      chip.classList.add('dart-debuff');
+    }
     chip.dataset.ballIndex = i;
     if(b.property) chip.style.setProperty('--prop-color', PROP_COLOR[b.property]);
     if(b.property) chip.dataset.prop = b.property;
     if(b.enhancement) chip.dataset.enh = b.enhancement;
     chip.textContent = '';
+    if(chip.classList.contains('dart-debuff')){const x=document.createElement('span');x.className='ball-debuff-x';x.textContent='×';chip.appendChild(x);}
     markDebugTarget(chip, b, 'ball');
 
     attachObjectTooltip(chip, b, 'ball');
@@ -899,20 +925,22 @@ function attachBallDrag(chip, idx){
   chip.addEventListener('pointerdown', e=>{
     if(state.targeting){ e.preventDefault(); return; }
     if(state.resolving || (state.phase!=='playing' && state.phase!=='shop')) return;
-    if(idx < state.ballsFired || state.ballQueue[idx].fired) return;
+    if(!state.ballQueue[idx] || state.ballQueue[idx].fired) return;
     startBallDrag(e, idx);
   });
 }
 
 function startBallDrag(e, idx){
+  if(drag || ballDrag || (e.button!==undefined && e.button!==0)) return;
   e.preventDefault();
-  ballDrag={idx,startX:e.clientX,startY:e.clientY,targetX:e.clientX,targetY:e.clientY,moved:false,ghostEl:null,sourceEl:null,curX:e.clientX,curY:e.clientY};
+  ballDrag={pointerId:e.pointerId,generation:runGeneration,idx,startX:e.clientX,startY:e.clientY,targetX:e.clientX,targetY:e.clientY,moved:false,ghostEl:null,sourceEl:null,curX:e.clientX,curY:e.clientY};
   window.addEventListener('pointermove', onBallDragMove);
   window.addEventListener('pointerup', onBallDragEnd);
+  window.addEventListener('pointercancel', onDragCancel);
 }
 
 function onBallDragMove(e){
-  if(!ballDrag) return;
+  if(!ballDrag || e.pointerId!==ballDrag.pointerId) return;
   ballDrag.targetX=e.clientX; ballDrag.targetY=e.clientY;
   const dx=e.clientX-ballDrag.startX, dy=e.clientY-ballDrag.startY;
   if(!ballDrag.moved && Math.hypot(dx,dy)>6){
@@ -939,11 +967,14 @@ function updateBallDropHover(x,y){
   const el=document.elementFromPoint(x,y)?.closest?.('.ball-chip');
   if(!el || el.classList.contains('fired')) return;
   const targetIdx=[...ballQueueEl.children].indexOf(el);
-  if(targetIdx>=state.ballsFired && targetIdx!==ballDrag.idx) el.classList.add('ball-drop-hover');
+  if(targetIdx>=0 && targetIdx!==ballDrag.idx) el.classList.add('ball-drop-hover');
 }
 
 
 function onBallDragEnd(e){
+  if(!ballDrag || e.pointerId!==ballDrag.pointerId) return;
+  if(state.resolving || !['playing','shop'].includes(state.phase) || ballDrag.generation!==runGeneration){ cancelActiveDrags(); return; }
+  window.removeEventListener('pointercancel', onDragCancel);
   window.removeEventListener('pointermove', onBallDragMove);
   window.removeEventListener('pointerup', onBallDragEnd);
   if(!ballDrag) return;
@@ -962,12 +993,13 @@ function onBallDragEnd(e){
   const el=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.ball-chip');
   const targetIdx=el ? [...ballQueueEl.children].indexOf(el) : -1;
   const sourceIdx=info.idx;
-  if(targetIdx>=state.ballsFired && targetIdx!==sourceIdx && !state.ballQueue[targetIdx].fired){
+  if(targetIdx>=0 && targetIdx!==sourceIdx && !state.ballQueue[targetIdx]?.fired){
     const sourceRect=info.sourceEl?.getBoundingClientRect();
     const targetEl=[...ballQueueEl.children][targetIdx];
     const targetRect=targetEl?.getBoundingClientRect();
     [state.ballQueue[sourceIdx], state.ballQueue[targetIdx]]=[state.ballQueue[targetIdx],state.ballQueue[sourceIdx]];
     syncBallPoolFromQueue();
+    scheduleAutoSave();
     info.sourceEl?.classList.remove('drag-source-fade');
     info.ghostEl?.remove();
     if(sourceRect && targetRect) ballSwapAnim={source:sourceIdx,target:targetIdx,sourceRect,targetRect};
@@ -997,16 +1029,16 @@ function renderCardHand(){
 
     const actions = document.createElement('div'); actions.className='card-actions';
     const btn = document.createElement('button'); btn.textContent='Dùng';
-    btn.disabled = !['playing','shop'].includes(state.phase) || !!state.targeting;
+    btn.disabled = state.resolving || !['playing','shop'].includes(state.phase) || !!state.targeting;
     btn.addEventListener('click', ()=> activateCardFromHand(idx, def));
 
     const sellPrice = getCardSellPrice(def);
     const sellBtn = document.createElement('button');
     sellBtn.className='sell-card-btn';
     sellBtn.textContent=`Bán ${formatMoney(sellPrice)}`;
-    sellBtn.disabled = !['playing','shop'].includes(state.phase) || !!state.targeting || sellPrice<=0;
+    sellBtn.disabled = state.resolving || !['playing','shop'].includes(state.phase) || !!state.targeting || sellPrice<=0;
     sellBtn.addEventListener('click', ()=>{
-      if(!['playing','shop'].includes(state.phase) || state.targeting || sellPrice<=0) return;
+      if(state.resolving || !['playing','shop'].includes(state.phase) || state.targeting || sellPrice<=0) return;
       state.cardHand.splice(idx,1);
       state.money += sellPrice;
       moneyValEl.textContent=formatMoney(state.money);

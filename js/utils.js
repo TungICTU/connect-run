@@ -67,3 +67,11 @@ setAnimationSpeed(animationSpeed, false);
 
 function scaledDuration(ms){ return ms / animationSpeed; }
 
+
+// Finite saturation for very long runs (JSON cannot preserve Infinity).
+const MAX_GAME_VALUE = 1e300;
+function finiteGameValue(value){
+  const n=Number(value);
+  if(Number.isNaN(n)) return 0;
+  return Math.max(-MAX_GAME_VALUE, Math.min(MAX_GAME_VALUE,n));
+}

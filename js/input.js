@@ -31,13 +31,15 @@ function attachBoardBlockDrag(cellEl){
   });
 }
 function startDrag(e, info){
+  if(drag || ballDrag || (e.button!==undefined && e.button!==0)) return;
   e.preventDefault();
-  drag = Object.assign(info, {startX:e.clientX, startY:e.clientY, moved:false, ghostEl:null});
+  drag = Object.assign(info, {pointerId:e.pointerId,generation:runGeneration}, {startX:e.clientX, startY:e.clientY, moved:false, ghostEl:null});
   window.addEventListener('pointermove', onDragMove);
   window.addEventListener('pointerup', onDragEnd);
+  window.addEventListener('pointercancel', onDragCancel);
 }
 function onDragMove(e){
-  if(!drag) return;
+  if(!drag || e.pointerId!==drag.pointerId) return;
   drag.targetX = e.clientX; drag.targetY = e.clientY;
   const dx=e.clientX-drag.startX, dy=e.clientY-drag.startY;
   if(!drag.moved && Math.hypot(dx,dy)>6){
@@ -102,6 +104,9 @@ function animateDragReturn(info){
 }
 
 function onDragEnd(e){
+  if(!drag || e.pointerId!==drag.pointerId) return;
+  if(state.resolving || state.phase!=='playing' || drag.generation!==runGeneration){ cancelActiveDrags(); return; }
+  window.removeEventListener('pointercancel', onDragCancel);
   window.removeEventListener('pointermove', onDragMove);
   window.removeEventListener('pointerup', onDragEnd);
   if(!drag) return;
@@ -159,17 +164,19 @@ function onDragEnd(e){
       }
     }
     syncHoleConnectionsForBlock(drag.r, drag.c);
+    scheduleAutoSave();
     drag = null;
     return;
   }
 
-  if(drag.ghostEl) drag.ghostEl.remove();
-  document.querySelectorAll('.cell.drop-hover').forEach(c=>c.classList.remove('drop-hover'));
+  document.querySelectorAll('.cell.drop-hover,.hand-slot.drop-hover').forEach(c=>c.classList.remove('drop-hover'));
 
   const el = document.elementFromPoint(e.clientX, e.clientY);
 
   const handSlot = el && el.closest ? el.closest('.hand-slot.filled') : null;
   if(handSlot && drag.origin==='hand'){
+    drag.ghostEl?.remove();
+    drag.sourceEl?.classList.remove('drag-source-fade');
     const targetIdx = +handSlot.dataset.idx;
     if(targetIdx !== drag.idx){
       [state.hand[drag.idx], state.hand[targetIdx]] = [state.hand[targetIdx], state.hand[drag.idx]];
@@ -182,6 +189,7 @@ function onDragEnd(e){
   const cellEl = dropTargetCell(el);
 
   if(cellEl){
+    drag.ghostEl?.remove();
     const r=+cellEl.dataset.r, c=+cellEl.dataset.c;
     if(drag.origin==='hand'){
       // The Illusioner only hides the block while it is in hand. The moment the
@@ -212,8 +220,8 @@ function onDragEnd(e){
   } else {
     animateDragReturn(drag);
   }
-  render();
   drag = null;
+  render();
 }
 
 function syncHoleConnectionsForBlock(r,c){
@@ -239,3 +247,24 @@ function syncHoleConnectionsForBlock(r,c){
   }
 }
 
+
+function onDragCancel(e){
+  if(e.pointerId===drag?.pointerId || e.pointerId===ballDrag?.pointerId) cancelActiveDrags();
+}
+function cancelActiveDrags(){
+  for(const info of [drag,ballDrag]){
+    if(!info) continue;
+    if(info.raf) cancelAnimationFrame(info.raf);
+    info.ghostEl?.remove();
+    info.sourceEl?.classList.remove('drag-source-fade');
+  }
+  drag=null; ballDrag=null;
+  window.removeEventListener('pointermove',onDragMove);
+  window.removeEventListener('pointerup',onDragEnd);
+  window.removeEventListener('pointermove',onBallDragMove);
+  window.removeEventListener('pointerup',onBallDragEnd);
+  window.removeEventListener('pointercancel',onDragCancel);
+  document.querySelectorAll('.drop-hover,.ball-drop-hover,.drag-source-fade').forEach(el=>el.classList.remove('drop-hover','ball-drop-hover','drag-source-fade'));
+}
+window.addEventListener('blur',cancelActiveDrags);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') cancelActiveDrags(); });

@@ -366,7 +366,7 @@ function normalizeBossState(){
 }
 
 function getBossTarget(baseTarget){
-  return isCurrentBoss('rock') ? Math.round(Number(baseTarget||0)*2) : Number(baseTarget||0);
+  return finiteGameValue(isCurrentBoss('rock') ? Math.round(Number(baseTarget||0)*2) : Number(baseTarget||0));
 }
 
 function getBossHandSizeModifier(){

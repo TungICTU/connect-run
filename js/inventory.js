@@ -270,6 +270,15 @@ function openInventory(){
       const item=document.createElement('div');
       item.className='inventory-item' + (status==='discarded'||status==='board' ? ' grayed' : '');
       renderBlockArms(item,block);
+      if(state.targeting && targetMatchesDef(state.targeting.def,block,'block')){
+        item.classList.add('targetable');
+        item.classList.toggle('target-selected',state.targeting.targets.some(t=>t.obj===block));
+        item.addEventListener('click',()=>{
+          handleTargetClick({obj:block,kind:'block'});
+          if(state.targeting) openInventory();
+          else { inventoryOverlayEl.classList.add('hidden'); inventoryOverlayEl.innerHTML=''; }
+        });
+      }
       grid.appendChild(item);
     });
   }

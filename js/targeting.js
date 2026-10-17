@@ -19,6 +19,7 @@ function rememberLastUsedCard(def){
 }
 
 function commitTargeting(){
+  if(!state || state.resolving || !['playing','shop'].includes(state.phase)) return false;
   const t=state.targeting; if(!t) return false;
   const def=t.def, min=def.targetMinCount||def.targetCount, max=def.targetCount;
   if(t.targets.length<min || t.targets.length>max) return false;
@@ -30,6 +31,7 @@ function commitTargeting(){
 }
 
 function activateCardFromHand(handIdx, def){
+  if(!state || state.resolving || !['playing','shop'].includes(state.phase)) return false;
   if(!def) return;
   const card=state.cardHand[handIdx];
   if(!card) return;
@@ -48,6 +50,7 @@ function activateCardFromHand(handIdx, def){
 }
 
 function activatePowerCardFromHand(handIdx, def){
+  if(!state || state.resolving || !['playing','shop'].includes(state.phase)) return false;
   if(!def) return;
   if(def.targetCount===0){
     state.cardHand.splice(handIdx,1);
@@ -61,6 +64,7 @@ function activatePowerCardFromHand(handIdx, def){
 }
 
 function startTargeting(handIdx, def){
+  if(!state || state.resolving || !['playing','shop'].includes(state.phase)) return false;
   if(def.targetCount===0){
     state.cardHand.splice(handIdx,1);
     def.use([]); recordPowerUse(def.id); rememberLastUsedCard(def); render(); return;
@@ -68,6 +72,7 @@ function startTargeting(handIdx, def){
   state.targeting={handIdx,def,need:def.targetCount,targets:[]};
   render();
   renderTargetBanner();
+  if(state.phase==='shop' && def.targetKind==='block') openInventory();
 }
 
 function cancelTargeting(){
@@ -80,6 +85,7 @@ function cancelTargeting(){
 }
 
 function handleTargetClick(target){
+  if(!state || state.resolving || !['playing','shop'].includes(state.phase)) return false;
   const t = state.targeting;
   if(!t) return;
   const def = t.def;

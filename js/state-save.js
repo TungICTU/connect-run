@@ -11,7 +11,8 @@ function ensureBallIds(){ state.ballPool.forEach(b=>{ if(!b._id) b._id=ballUid()
 // ---------- persistent save / load ----------
 // Saves the current run locally in the browser. No account or server is required.
 const SAVE_KEY = 'connect-run-save-v1';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 8;
+let lastSavedPayload = null;
 let saveTimer = null;
 let savePending = false;
 
@@ -34,7 +35,8 @@ function snapshotGameState(){
     if(key === 'lastUpgrade') return undefined;
     if(key === 'shopBuff') return undefined;
     if(key === 'holeConnections') return [...state.holeConnections];
-    if(key === '_bossRuntime') return undefined;
+    if(key === '_bossRuntime' || key === '_activeShotMeta' || key === 'powerTargets') return undefined;
+    if(typeof value === 'number' && !Number.isFinite(value)) return finiteGameValue(value);
     return value;
   }));
 
@@ -51,7 +53,11 @@ function saveGame(options={}){
   if(!state || state.resolving) return false;
   try{
     const save = snapshotGameState();
-    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    const payload=JSON.stringify(save);
+    if(payload !== lastSavedPayload){
+      localStorage.setItem(SAVE_KEY, payload);
+      lastSavedPayload=payload;
+    }
     savePending = false;
     return true;
   }catch(err){
@@ -110,6 +116,7 @@ function restoreKnownObjects(){
   state.pendingBlocks = state.pendingBlocks || [];
   state.ballPool = state.ballPool || [];
   state.ballQueue = state.ballQueue || [];
+  syncBallQueueFromPool();
   state.cardHand = state.cardHand || [];
   state.lastUsedCard = state.lastUsedCard || null;
   state.discardBonus = Number.isFinite(state.discardBonus) ? state.discardBonus : 0;
@@ -133,6 +140,15 @@ function restoreKnownObjects(){
   // visible history instead of starting again from current - 2.
   state.locationBarFirstLevel = Math.max(1, Math.floor(Number(state.locationBarFirstLevel) || Math.max(1, Number(state.level || 1) - 2)));
 
+  // Repair overflowed targets in older saves while preserving the formula.
+  if(!Number.isFinite(state.target) || state.target<=0) state.target=getBossTarget(computeTarget(state.level));
+  state.target=finiteGameValue(state.target);
+  state.score=finiteGameValue(state.score ?? 0);
+  state.money=finiteGameValue(state.money ?? 0);
+  state.pendingReward=state.pendingReward || null;
+  if(state.pendingReward){
+    state.pendingReward.ballBonus=Math.max(0,Number(state.pendingReward.unfired)||0)*UNUSED_BALL_REWARD;
+  }
   ensureBallIds();
   syncSaveCounters();
 }
@@ -169,13 +185,14 @@ function loadGame(){
     if(state.phase === 'reward'){
       hideOverlay();
       hideShop();
-      const unfired = Math.max(0, state.ballQueue.length - state.ballsFired);
+      const unfired = countUnfiredBalls();
       const interestCap = 5 + state.interestCapBonus;
       const interest = Math.min(Math.floor(state.money/5), interestCap);
       state._boardHide = false;
       render();
       renderLocationBar?.(false);
-      runBoardHideAnimation(()=>showLevelReward({winBonus:getWinBonus(), unfired, ballBonus:unfired*2, interest}));
+      state.pendingReward ||= {winBonus:getWinBonus(), unfired, ballBonus:unfired*UNUSED_BALL_REWARD, interest};
+      runBoardHideAnimation(()=>showLevelReward(state.pendingReward));
       return true;
     }
 
@@ -193,6 +210,7 @@ function loadGame(){
 }
 
 function deleteSave(){
+  lastSavedPayload=null;
   try{ localStorage.removeItem(SAVE_KEY); }catch(err){ console.error('Không thể xoá save:', err); }
 }
 
@@ -211,6 +229,9 @@ function flushAutoSave(){
 }
 
 function newRun(){
+  cancelActiveDrags();
+  if(saveTimer){ clearTimeout(saveTimer); saveTimer=null; }
+  savePending=false;
   rewardGeneration++;
   // Invalidate async work from the previous run before replacing the global state.
   runGeneration++;
@@ -258,7 +279,7 @@ function computeTarget(level){
     100000 *
     Math.pow(2.25, n) *
     Math.pow(1.1, (n * (n - 1)) / 2);
-  return Math.round(target);
+  return Math.round(finiteGameValue(target));
 }
 
 // kho đồ (bag) is generated once per run and persists (recycled level to level) until loss/restart
@@ -271,23 +292,35 @@ function makeInitialDeck(){
   return bag;
 }
 
-function makeBallQueue(){
-  // The boss Dart limits only the balls available for this level; it must not
-  // permanently delete balls from the player's persistent ball pool.
-  const persistentMax = BASE_MAX_BALLS + state.maxBallsBonus;
-  while(state.ballPool.length < persistentMax) state.ballPool.push({_id:ballUid(),property:null, enhancement:null});
-  if(state.ballPool.length > persistentMax) state.ballPool.length = persistentMax;
+function ensureBallSlots(){
   ensureBallIds();
-  const queueMax = Math.max(0, Math.min(persistentMax, getBossMaxBalls(persistentMax)));
-  const queue = state.ballPool.slice(0, queueMax).map(b => ({_id:b._id, fired:false, property:b.property||null, enhancement:b.enhancement||null}));
-  if(state.nextBallPreset){
-    queue[0].property = state.nextBallPreset.property;
-    queue[0].enhancement = state.nextBallPreset.enhancement;
-    state.nextBallPreset = null;
-  }
+  const max=BASE_MAX_BALLS+state.maxBallsBonus;
+  const existing=Array.isArray(state.ballSlots);
+  const oldLength=existing ? state.ballSlots.length : max;
+  if(!existing) state.ballSlots=(state.ballQueue||[]).map(b=>b?._id||null);
+  state.ballSlots.length=Math.min(state.ballSlots.length,max);
+  while(state.ballSlots.length<max) state.ballSlots.push(null);
+  const ids=new Set(state.ballPool.map(b=>b._id)), seen=new Set();
+  state.ballSlots=state.ballSlots.map(id=>{if(!ids.has(id)||seen.has(id))return null;seen.add(id);return id;});
+  for(const b of state.ballPool){if(!seen.has(b._id)){const i=state.ballSlots.indexOf(null);if(i>=0){state.ballSlots[i]=b._id;seen.add(b._id);}}}
+  for(let i=oldLength;i<max;i++) if(!state.ballSlots[i]){const b={_id:ballUid(),property:null,enhancement:null};state.ballPool.push(b);state.ballSlots[i]=b._id;}
+}
+function nextFireableBallIndex(){
+  if(isCurrentBoss('dart') && state.ballsFired>=1) return -1;
+  return state.ballQueue.findIndex(b=>b && !b.fired);
+}
+function countUnfiredBalls(){
+  const n=state.ballQueue.filter(b=>b && !b.fired).length;
+  return isCurrentBoss('dart') ? Math.min(n,Math.max(0,1-state.ballsFired)) : n;
+}
+function makeBallQueue(){
+  ensureBallSlots();
+  const byId=new Map(state.ballPool.map(b=>[b._id,b]));
+  const queue=state.ballSlots.map(id=>id ? {...byId.get(id),fired:false} : null);
+  const first=queue.find(Boolean);
+  if(state.nextBallPreset && first){Object.assign(first,state.nextBallPreset);state.nextBallPreset=null;}
   return queue;
 }
-
 function getBlackBlockCount(level){
   if(level < 4) return 0;
 

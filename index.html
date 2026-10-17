@@ -1727,26 +1727,30 @@
   .ball-choice-item.selected .ball-chip{ box-shadow:0 0 0 2px var(--green),0 0 10px rgba(111,207,151,.45); }
 
 </style>
+  <link rel="stylesheet" href="responsive.css">
 </head>
 <body>
 <div class="app">
 
   <header class="hud">
+    <div class="hud-main">
     <div class="stats">
       <div class="stat level"><span class="label">Màn</span><span class="value" id="levelVal">1</span></div>
       <div class="stat score"><span class="label">Điểm</span><span class="value" id="scoreVal">0</span></div>
       <div class="stat target"><span class="label">Mục tiêu</span><span class="value" id="targetVal">0</span></div>
       <div class="stat money"><span class="label">Tiền</span><span class="value" id="moneyVal">$0</span></div>
     </div>
+    <div class="hud-location-slot"><div class="location-bar" id="locationBar" aria-label="Tiến trình màn chơi"></div></div>
     <button class="settings-btn" id="settingsBtn" aria-label="Cài đặt" title="Cài đặt">⚙</button>
+    </div>
   </header>
-
-  <div class="location-bar" id="locationBar" aria-label="Tiến trình màn chơi"></div>
 
   <div class="ball-queue" id="ballQueue"></div>
 
-  <div class="board-wrap">
-    <div class="board" id="board"></div>
+  <div class="board-stage">
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
   </div>
 
   <div class="hand-row">
@@ -1921,6 +1925,7 @@
 <script src="js/inventory.js" defer></script>
 <script src="js/shop.js" defer></script>
 <script src="js/settings.js" defer></script>
+<script src="js/presentation.js" defer></script>
 <script src="js/main.js" defer></script>
 </body>
 </html>

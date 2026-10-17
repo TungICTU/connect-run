@@ -14,6 +14,7 @@ function openSides(block){ return BASE_SIDES[block.type].map(s => (s + block.rot
 
 const BAG_RECIPE = { straight:8, L:8, T:6, plus:3 };
 const BASE_MAX_BALLS = 5;
+const UNUSED_BALL_REWARD = 1;
 const HAND_SIZE = 3;
 const MAX_CARD_HAND = 5;
 
@@ -267,7 +268,7 @@ function appendTooltipPanelToGroup(group, titleText, bodyText, color, className=
   const panel=document.createElement('div');
   panel.className='tooltip-group-panel'+(className?` ${className}`:'');
   panel.style.setProperty('--tooltip-accent',color||'var(--cyan)');
-  const title=document.createElement('div'); title.className='tooltip-group-panel-title'; title.textContent=titleText;
+  const title=document.createElement('div'); title.className='tooltip-group-panel-title'; title.textContent=titleText; title.style.color=color||'var(--cyan)';
   const desc=document.createElement('div'); desc.className='tooltip-group-panel-desc'; desc.textContent=bodyText;
   panel.append(title,desc); group.appendChild(panel);
   return panel;
@@ -384,7 +385,7 @@ function debugApplyTarget(){
   if(t.kind==='block') t.obj.core=coreId ? makeCore(coreId) : null;
   if(t.kind==='ball'){
     const pool=t.obj._id ? state.ballPool.find(b=>b._id===t.obj._id) : null;
-    const q=t.obj._id ? state.ballQueue.find(b=>b._id===t.obj._id) : null;
+    const q=t.obj._id ? state.ballQueue.find(b=>b?._id===t.obj._id) : null;
     if(pool){ pool.property=prop; pool.enhancement=enh; }
     if(q){ q.property=prop; q.enhancement=enh; }
     if(pool || q){ syncBallMutationTargets([{obj:t.obj,kind:'ball'}]); }
@@ -476,6 +477,7 @@ function attachObjectTooltip(el, obj, kind){
   el.addEventListener('mouseenter', ()=>{
     const info=kind==='ball' ? ballTooltip(obj) : blockTooltip(obj,el);
     if(kind==='block'){ info.__hazards=getTooltipHazardEntries(obj,el); }
+    if(kind==='ball' && el.classList.contains('dart-debuff')) info.__hazards=[{title:'Debuff — The Dart',desc:'Chỉ bóng đầu tiên từ trái sang phải được bắn. Toàn màn chỉ có 1 lượt bắn.',color:'#ff5836'}];
     showHoverTip(el,info);
   });
   el.addEventListener('mouseleave', hideHoverTip);
@@ -630,6 +632,12 @@ POWER_CARD_DEFS['annihilate'] = { id:'annihilate', name:'Thẻ triệt tiêu', d
           state.cells[r][c].block = null;
         }
       }
+    }
+    for(const key of ['bag','discardPile','pendingBlocks']){
+      state[key]=state[key].filter(block=>{
+        if(!selected.has(block)) return true;
+        removed.add(block); return false;
+      });
     }
     removed.forEach(recordBlockLost);
     refillHand();
